@@ -12,13 +12,17 @@ pub const MAX_BUFFER_SIZE: usize = 65536;
 /// Maximum number of clients
 pub const MAX_CLIENTS_LIMIT: usize = 10000;
 
+mod buffer;
 mod error;
 mod rtmp;
+mod rtmp_parser;
 mod srt;
 mod webrtc;
 
+pub use buffer::*;
 pub use error::*;
 pub use rtmp::*;
+pub use rtmp_parser::*;
 pub use srt::*;
 pub use webrtc::*;
 
@@ -193,24 +197,45 @@ impl LiveServer {
 
     async fn start_rtmp(&mut self) -> Result<()> {
         self.state = StreamState::Connecting;
-        // RTMP server implementation would go here
-        tracing::info!("RTMP server started");
+
+        // Create and start the RTMP server
+        let server = RtmpServer::new(self.config.listen_addr);
+        server.start().await?;
+
+        tracing::info!("RTMP server started on {}", self.config.listen_addr);
         self.state = StreamState::Streaming;
         Ok(())
     }
 
     async fn start_srt(&mut self) -> Result<()> {
         self.state = StreamState::Connecting;
-        // SRT server implementation would go here
-        tracing::info!("SRT server started");
+
+        // Create and start the SRT server
+        let srt_config = SrtConfig {
+            mode: SrtMode::Listener,
+            latency: self.config.timeout,
+            ..Default::default()
+        };
+        let server = SrtServer::new(self.config.listen_addr, srt_config);
+        server.start().await?;
+
+        tracing::info!("SRT server started on {}", self.config.listen_addr);
         self.state = StreamState::Streaming;
         Ok(())
     }
 
     async fn start_webrtc(&mut self) -> Result<()> {
         self.state = StreamState::Connecting;
-        // WebRTC server implementation would go here
-        tracing::info!("WebRTC server started");
+
+        // Create and start the WebRTC signaling server
+        let webrtc_config = WebRtcConfig::default();
+        let server = WebRtcServer::new(self.config.listen_addr, webrtc_config);
+        server.start().await?;
+
+        tracing::info!(
+            "WebRTC signaling server started on {}",
+            self.config.listen_addr
+        );
         self.state = StreamState::Streaming;
         Ok(())
     }
