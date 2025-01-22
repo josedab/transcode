@@ -62,8 +62,10 @@
 pub mod decoder;
 pub mod encoder;
 pub mod error;
+pub mod motion;
 pub mod nal;
 pub mod syntax;
+pub mod transform;
 
 // Re-export main error types
 pub use error::{Result, VvcError, VvcLevel, VvcProfile, VvcTier};
@@ -88,6 +90,17 @@ pub use decoder::{VvcDecoder, VvcDecoderConfig};
 pub use encoder::{
     FrameStats, GopStructure, RateControlMode, TemporalLayerConfig, VvcEncoder, VvcEncoderConfig,
     VvcPreset,
+};
+
+// Re-export transform types
+pub use transform::{
+    LfnstIndex, LfnstTransform, QuantParams, TransformKernel, TransformSize, TransformType,
+    VvcTransforms,
+};
+
+// Re-export motion compensation types
+pub use motion::{
+    BcwIndex, DmvrProcessor, MotionCompensator, MvPredictor, CHROMA_FILTER, LUMA_FILTER,
 };
 
 /// VVC codec information and capabilities.

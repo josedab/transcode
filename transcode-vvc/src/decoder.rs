@@ -21,7 +21,7 @@ use crate::nal::{
 };
 use crate::syntax::{
     AlfCtuParams, CodingTreeUnit, CodingUnit, IntraChromaMode, IntraMode,
-    IspMode, LmcsData, MergeMode, PredMode, SaoParams, SplitMode, TransformUnit,
+    IspMode, LmcsData, MergeMode, MotionVector, PredMode, SaoParams, SplitMode, TransformUnit,
 };
 use std::collections::HashMap;
 use transcode_core::frame::{Frame, PixelFormat};
@@ -59,6 +59,43 @@ impl Default for VvcDecoderConfig {
             lmcs_enabled: true,
         }
     }
+}
+
+/// Merge candidate for inter prediction.
+#[derive(Debug, Clone, Copy, Default)]
+struct MergeCandidate {
+    /// Motion vector for L0 reference.
+    mv_l0: MotionVector,
+    /// Motion vector for L1 reference.
+    mv_l1: MotionVector,
+    /// Reference index for L0.
+    ref_idx_l0: i8,
+    /// Reference index for L1.
+    ref_idx_l1: i8,
+}
+
+/// Affine merge candidate for subblock motion.
+#[derive(Debug, Clone, Copy, Default)]
+struct AffineMergeCandidate {
+    /// Control point motion vectors (up to 3 for 6-parameter affine).
+    cpmv: [MotionVector; 3],
+    /// Affine type: 0 = 4-parameter, 1 = 6-parameter.
+    affine_type: u8,
+    /// Reference index for L0.
+    ref_idx_l0: i8,
+    /// Reference index for L1.
+    ref_idx_l1: i8,
+}
+
+/// Palette entry for palette mode.
+#[derive(Debug, Clone, Copy, Default)]
+struct PaletteEntry {
+    /// Luma value.
+    y: u8,
+    /// Cb chroma value.
+    cb: u8,
+    /// Cr chroma value.
+    cr: u8,
 }
 
 /// Reference picture entry.
@@ -1072,56 +1109,669 @@ impl VvcDecoder {
     }
 
     /// Decode regular merge mode.
+    ///
+    /// In regular merge mode, the motion information is derived from spatial and temporal
+    /// neighboring blocks. The merge_idx selects which candidate from the merge list to use.
     fn decode_regular_merge(&mut self, cu: &mut CodingUnit, slice_header: &SliceHeader) -> Result<()> {
-        // Decode merge index and derive motion info
+        // Build merge candidate list from spatial and temporal neighbors
+        let merge_candidates = self.build_merge_candidate_list(cu, slice_header, 6)?;
+
+        // Select candidate based on merge index
+        let idx = cu.merge_idx as usize;
+        if idx < merge_candidates.len() {
+            let candidate = &merge_candidates[idx];
+            cu.mv_l0 = candidate.mv_l0;
+            cu.mv_l1 = candidate.mv_l1;
+            cu.ref_idx_l0 = candidate.ref_idx_l0;
+            cu.ref_idx_l1 = candidate.ref_idx_l1;
+        }
+
         Ok(())
     }
 
     /// Decode MMVD merge mode.
+    ///
+    /// MMVD (Merge with MVD) extends regular merge by adding a motion vector difference
+    /// to the base merge candidate. It uses predefined distance and direction steps.
     fn decode_mmvd_merge(&mut self, cu: &mut CodingUnit, slice_header: &SliceHeader) -> Result<()> {
-        // Decode MMVD parameters
+        // Build merge candidate list (only first 2 candidates used for MMVD)
+        let merge_candidates = self.build_merge_candidate_list(cu, slice_header, 2)?;
+
+        // MMVD uses base_idx to select from first two merge candidates
+        let base_idx = if cu.mmvd_merge_flag { 1 } else { 0 };
+
+        if base_idx < merge_candidates.len() {
+            let candidate = &merge_candidates[base_idx];
+            cu.mv_l0 = candidate.mv_l0;
+            cu.mv_l1 = candidate.mv_l1;
+            cu.ref_idx_l0 = candidate.ref_idx_l0;
+            cu.ref_idx_l1 = candidate.ref_idx_l1;
+
+            // Apply MMVD offset based on distance and direction indices
+            // Distance steps: 1/4, 1/2, 1, 2, 4, 8, 16, 32 pels
+            // Direction: 0=+x, 1=-x, 2=+y, 3=-y
+            let mmvd_distance_idx = (cu.merge_idx >> 2) & 0x7;
+            let mmvd_direction_idx = cu.merge_idx & 0x3;
+
+            let distance = match mmvd_distance_idx {
+                0 => 1,   // 1/4 pel (in 1/16 units = 4)
+                1 => 2,   // 1/2 pel (in 1/16 units = 8)
+                2 => 4,   // 1 pel (in 1/16 units = 16)
+                3 => 8,   // 2 pels
+                4 => 16,  // 4 pels
+                5 => 32,  // 8 pels
+                6 => 64,  // 16 pels
+                _ => 128, // 32 pels
+            } * 4; // Convert to 1/16 pel units
+
+            let (dx, dy) = match mmvd_direction_idx {
+                0 => (distance as i16, 0),
+                1 => (-(distance as i16), 0),
+                2 => (0, distance as i16),
+                _ => (0, -(distance as i16)),
+            };
+
+            // Apply offset to appropriate reference list
+            if cu.ref_idx_l0 >= 0 {
+                cu.mv_l0.x = cu.mv_l0.x.saturating_add(dx);
+                cu.mv_l0.y = cu.mv_l0.y.saturating_add(dy);
+            }
+            if cu.ref_idx_l1 >= 0 {
+                cu.mv_l1.x = cu.mv_l1.x.saturating_add(dx);
+                cu.mv_l1.y = cu.mv_l1.y.saturating_add(dy);
+            }
+        }
+
         Ok(())
     }
 
     /// Decode subblock merge mode (affine).
+    ///
+    /// Affine merge mode uses control point motion vectors to model complex motion
+    /// like rotation and zoom. Each 4x4 subblock gets its own derived motion vector.
     fn decode_subblock_merge(&mut self, cu: &mut CodingUnit, slice_header: &SliceHeader) -> Result<()> {
-        // Decode subblock/affine merge
+        // Build affine merge candidate list from spatial neighbors
+        let affine_candidates = self.build_affine_merge_list(cu, slice_header)?;
+
+        let idx = cu.merge_idx as usize;
+        if idx < affine_candidates.len() {
+            let candidate = &affine_candidates[idx];
+            cu.affine_flag = true;
+            cu.affine_type = candidate.affine_type;
+            cu.affine_cpmv = candidate.cpmv;
+            cu.ref_idx_l0 = candidate.ref_idx_l0;
+            cu.ref_idx_l1 = candidate.ref_idx_l1;
+        }
+
         Ok(())
     }
 
     /// Decode CIIP (Combined Inter-Intra Prediction).
+    ///
+    /// CIIP combines inter merge prediction with planar intra prediction using
+    /// weighted averaging. The weights depend on block position.
     fn decode_ciip(&mut self, cu: &mut CodingUnit, slice_header: &SliceHeader, sps: &Sps) -> Result<()> {
-        // Decode CIIP mode - combines inter merge with intra prediction
+        // First, decode regular merge for the inter part
+        self.decode_regular_merge(cu, slice_header)?;
+
+        // Set up intra mode for the intra part (always planar)
+        cu.intra_luma_mode = 0; // Planar mode
+        cu.ciip_flag = true;
+
+        // The actual blending will be done in apply_inter_prediction
         Ok(())
     }
 
     /// Decode GPM (Geometric Partition Mode).
+    ///
+    /// GPM splits the block diagonally and applies different motion to each partition.
+    /// There are 64 possible split directions.
     fn decode_gpm(&mut self, cu: &mut CodingUnit, slice_header: &SliceHeader) -> Result<()> {
-        // Decode GPM parameters (split direction, merge indices)
+        // Build merge candidate list
+        let merge_candidates = self.build_merge_candidate_list(cu, slice_header, 6)?;
+
+        // GPM uses two separate merge indices for the two partitions
+        let idx0 = cu.gpm_merge_idx[0] as usize;
+        let idx1 = cu.gpm_merge_idx[1] as usize;
+
+        if idx0 < merge_candidates.len() {
+            let candidate = &merge_candidates[idx0];
+            cu.mv_l0 = candidate.mv_l0;
+            cu.ref_idx_l0 = candidate.ref_idx_l0;
+        }
+
+        if idx1 < merge_candidates.len() {
+            let candidate = &merge_candidates[idx1];
+            cu.mv_l1 = candidate.mv_l0; // Use L0 MV from second candidate as "L1" for GPM
+            cu.ref_idx_l1 = candidate.ref_idx_l0;
+        }
+
+        cu.gpm_flag = true;
+        // gpm_split_dir was already decoded from bitstream
+
         Ok(())
     }
 
     /// Decode AMVP mode.
+    ///
+    /// AMVP (Advanced Motion Vector Prediction) explicitly signals the motion vector
+    /// difference from a predictor. This allows more precise motion specification.
     fn decode_amvp(&mut self, cu: &mut CodingUnit, slice_header: &SliceHeader) -> Result<()> {
-        // Decode AMVP index and MVD
+        // Build AMVP candidate list (2 candidates) for L0
+        if cu.ref_idx_l0 >= 0 {
+            let amvp_list_l0 = self.build_amvp_candidate_list(cu, slice_header, 0)?;
+
+            // MVP index selects the predictor
+            let mvp_idx = 0; // Would be decoded from bitstream
+            if mvp_idx < amvp_list_l0.len() {
+                let mvp = amvp_list_l0[mvp_idx];
+                // Add MVD to MVP
+                cu.mv_l0.x = mvp.x.saturating_add(cu.mvd_l0.x);
+                cu.mv_l0.y = mvp.y.saturating_add(cu.mvd_l0.y);
+            }
+        }
+
+        // Build AMVP candidate list for L1 (B-slices only)
+        if cu.ref_idx_l1 >= 0 {
+            let amvp_list_l1 = self.build_amvp_candidate_list(cu, slice_header, 1)?;
+
+            let mvp_idx = 0;
+            if mvp_idx < amvp_list_l1.len() {
+                let mvp = amvp_list_l1[mvp_idx];
+                cu.mv_l1.x = mvp.x.saturating_add(cu.mvd_l1.x);
+                cu.mv_l1.y = mvp.y.saturating_add(cu.mvd_l1.y);
+            }
+        }
+
         Ok(())
     }
 
+    /// Build merge candidate list from spatial and temporal neighbors.
+    fn build_merge_candidate_list(
+        &self,
+        cu: &CodingUnit,
+        _slice_header: &SliceHeader,
+        max_candidates: usize,
+    ) -> Result<Vec<MergeCandidate>> {
+        let mut candidates = Vec::with_capacity(max_candidates);
+
+        // Spatial candidates: A0, A1, B0, B1, B2
+        // A0: Bottom-left
+        // A1: Left
+        // B0: Top-right
+        // B1: Top
+        // B2: Top-left
+
+        let positions = [
+            (cu.x as i32 - 1, cu.y as i32 + cu.height as i32 - 1), // A1 (left)
+            (cu.x as i32 + cu.width as i32, cu.y as i32 - 1),      // B1 (top-right corner)
+            (cu.x as i32 + cu.width as i32 - 1, cu.y as i32 - 1),  // B0 (top)
+            (cu.x as i32 - 1, cu.y as i32),                        // A0 (bottom-left)
+            (cu.x as i32 - 1, cu.y as i32 - 1),                    // B2 (top-left)
+        ];
+
+        for &(nx, ny) in &positions {
+            if candidates.len() >= max_candidates {
+                break;
+            }
+
+            if nx >= 0 && ny >= 0 {
+                // Check if neighbor is available and inter-coded
+                // For now, create a default candidate
+                if let Some(neighbor_mv) = self.get_neighbor_motion(nx as u32, ny as u32) {
+                    // Check for duplicate before adding
+                    let is_duplicate = candidates.iter().any(|c: &MergeCandidate| {
+                        c.mv_l0.x == neighbor_mv.mv_l0.x && c.mv_l0.y == neighbor_mv.mv_l0.y
+                    });
+
+                    if !is_duplicate {
+                        candidates.push(neighbor_mv);
+                    }
+                }
+            }
+        }
+
+        // Add temporal candidate (collocated)
+        if candidates.len() < max_candidates {
+            if let Some(temporal_mv) = self.get_temporal_mv_predictor(cu) {
+                candidates.push(temporal_mv);
+            }
+        }
+
+        // Fill remaining with zero MV candidates
+        while candidates.len() < max_candidates {
+            candidates.push(MergeCandidate::default());
+        }
+
+        Ok(candidates)
+    }
+
+    /// Build affine merge candidate list.
+    fn build_affine_merge_list(
+        &self,
+        cu: &CodingUnit,
+        _slice_header: &SliceHeader,
+    ) -> Result<Vec<AffineMergeCandidate>> {
+        let mut candidates = Vec::with_capacity(5);
+
+        // Check spatial neighbors for affine-coded blocks
+        // Inherited affine candidates from A0, A1, B0, B1, B2
+        let positions = [
+            (cu.x as i32 - 1, cu.y as i32 + cu.height as i32 - 1), // A1
+            (cu.x as i32 + cu.width as i32, cu.y as i32 - 1),      // B1
+            (cu.x as i32 + cu.width as i32 - 1, cu.y as i32 - 1),  // B0
+            (cu.x as i32 - 1, cu.y as i32),                        // A0
+            (cu.x as i32 - 1, cu.y as i32 - 1),                    // B2
+        ];
+
+        for &(nx, ny) in &positions {
+            if candidates.len() >= 5 {
+                break;
+            }
+
+            if nx >= 0 && ny >= 0 {
+                // Would check if neighbor is affine-coded and inherit CPMVs
+                // For now, construct candidates from regular MVs
+            }
+        }
+
+        // Construct affine candidates from control point MVs
+        // This requires deriving CPMVs from neighboring translation MVs
+        let default_cpmv = [MotionVector::default(); 3];
+
+        // Add constructed 4-parameter affine candidate
+        if candidates.len() < 5 {
+            candidates.push(AffineMergeCandidate {
+                cpmv: default_cpmv,
+                affine_type: 0, // 4-parameter
+                ref_idx_l0: 0,
+                ref_idx_l1: -1,
+            });
+        }
+
+        // Fill with zero candidates
+        while candidates.len() < 5 {
+            candidates.push(AffineMergeCandidate::default());
+        }
+
+        Ok(candidates)
+    }
+
+    /// Build AMVP candidate list for a reference list.
+    fn build_amvp_candidate_list(
+        &self,
+        cu: &CodingUnit,
+        _slice_header: &SliceHeader,
+        ref_list: u8,
+    ) -> Result<Vec<MotionVector>> {
+        let mut candidates = Vec::with_capacity(2);
+
+        // Spatial MVP candidates
+        let positions = [
+            (cu.x as i32 - 1, cu.y as i32 + cu.height as i32 - 1), // Left
+            (cu.x as i32 + cu.width as i32 - 1, cu.y as i32 - 1),  // Top
+        ];
+
+        for &(nx, ny) in &positions {
+            if candidates.len() >= 2 {
+                break;
+            }
+
+            if nx >= 0 && ny >= 0 {
+                if let Some(neighbor_mv) = self.get_neighbor_motion(nx as u32, ny as u32) {
+                    let mv = if ref_list == 0 { neighbor_mv.mv_l0 } else { neighbor_mv.mv_l1 };
+
+                    // Check for duplicate
+                    if !candidates.iter().any(|c: &MotionVector| c.x == mv.x && c.y == mv.y) {
+                        candidates.push(mv);
+                    }
+                }
+            }
+        }
+
+        // Temporal MVP
+        if candidates.len() < 2 {
+            if let Some(temporal) = self.get_temporal_mv_predictor(cu) {
+                let mv = if ref_list == 0 { temporal.mv_l0 } else { temporal.mv_l1 };
+                if !candidates.iter().any(|c| c.x == mv.x && c.y == mv.y) {
+                    candidates.push(mv);
+                }
+            }
+        }
+
+        // Fill with zero MV
+        while candidates.len() < 2 {
+            candidates.push(MotionVector::default());
+        }
+
+        Ok(candidates)
+    }
+
+    /// Get motion information from a neighboring position.
+    fn get_neighbor_motion(&self, _x: u32, _y: u32) -> Option<MergeCandidate> {
+        // Would look up motion info from decoded picture buffer
+        // For now return a default candidate if position is valid
+        Some(MergeCandidate::default())
+    }
+
+    /// Get temporal motion vector predictor from collocated picture.
+    fn get_temporal_mv_predictor(&self, cu: &CodingUnit) -> Option<MergeCandidate> {
+        // Would derive MV from collocated block in reference picture
+        // Scale MV based on POC difference
+        let center_x = cu.x + cu.width / 2;
+        let center_y = cu.y + cu.height / 2;
+
+        // Look up collocated block position in reference picture
+        // For now, return a default candidate
+        let _ = (center_x, center_y);
+        Some(MergeCandidate::default())
+    }
+
     /// Decode IBC (Intra Block Copy) prediction.
+    ///
+    /// IBC copies a block from already-decoded regions of the current picture.
+    /// It's useful for screen content with repeated patterns.
     fn decode_ibc_prediction(
         &mut self,
         cu: &mut CodingUnit,
         slice_header: &SliceHeader,
         sps: &Sps,
     ) -> Result<()> {
-        // Decode IBC block vector
+        // Check if IBC is enabled
+        if !sps.sps_ibc_enabled_flag {
+            return Err(VvcError::Bitstream("IBC not enabled in SPS".to_string()));
+        }
+
+        // Decode IBC block vector using merge or AMVP
+        if cu.merge_flag {
+            // IBC merge mode - derive BV from spatial neighbors
+            let bv_candidates = self.build_ibc_merge_list(cu)?;
+
+            let idx = cu.merge_idx as usize;
+            if idx < bv_candidates.len() {
+                cu.mv_l0 = bv_candidates[idx]; // BV stored in mv_l0
+            }
+        } else {
+            // IBC AMVP mode - decode BVD and add to predictor
+            let bv_predictors = self.build_ibc_amvp_list(cu)?;
+
+            let mvp_idx = 0; // Would be decoded from bitstream
+            if mvp_idx < bv_predictors.len() {
+                let bvp = bv_predictors[mvp_idx];
+                cu.mv_l0.x = bvp.x.saturating_add(cu.mvd_l0.x);
+                cu.mv_l0.y = bvp.y.saturating_add(cu.mvd_l0.y);
+            }
+        }
+
+        // Validate BV: must point to already decoded region
+        let bv_x = cu.mv_l0.x >> 4; // Convert to integer pels
+        let bv_y = cu.mv_l0.y >> 4;
+
+        let ref_x = cu.x as i16 + bv_x;
+        let ref_y = cu.y as i16 + bv_y;
+
+        // Check that reference block is fully within already-decoded area
+        // Reference must be to the left or above current CTU
+        if ref_x < 0 || ref_y < 0 {
+            return Err(VvcError::Bitstream("IBC reference out of bounds".to_string()));
+        }
+
+        // Apply IBC: copy block from reference position
+        self.apply_ibc_copy(cu)?;
+
+        Ok(())
+    }
+
+    /// Build IBC merge candidate list.
+    fn build_ibc_merge_list(&self, cu: &CodingUnit) -> Result<Vec<MotionVector>> {
+        let mut candidates = Vec::with_capacity(6);
+
+        // Spatial BV candidates from neighboring IBC blocks
+        let positions = [
+            (cu.x as i32 - 1, cu.y as i32 + cu.height as i32 - 1), // Left
+            (cu.x as i32 + cu.width as i32 - 1, cu.y as i32 - 1),  // Top
+            (cu.x as i32 + cu.width as i32, cu.y as i32 - 1),      // Top-right
+            (cu.x as i32 - 1, cu.y as i32),                        // Bottom-left
+            (cu.x as i32 - 1, cu.y as i32 - 1),                    // Top-left
+        ];
+
+        for &(nx, ny) in &positions {
+            if candidates.len() >= 6 {
+                break;
+            }
+
+            if nx >= 0 && ny >= 0 {
+                // Would look up BV from neighboring IBC-coded block
+                // For now, add default candidates
+                candidates.push(MotionVector::default());
+            }
+        }
+
+        // History-based BV predictor (HBVP)
+        // Would maintain a FIFO of recent BVs
+        while candidates.len() < 6 {
+            candidates.push(MotionVector::default());
+        }
+
+        Ok(candidates)
+    }
+
+    /// Build IBC AMVP list.
+    fn build_ibc_amvp_list(&self, cu: &CodingUnit) -> Result<Vec<MotionVector>> {
+        let mut candidates = Vec::with_capacity(2);
+
+        // Spatial BV predictors
+        let positions = [
+            (cu.x as i32 - 1, cu.y as i32 + cu.height as i32 - 1), // Left
+            (cu.x as i32 + cu.width as i32 - 1, cu.y as i32 - 1),  // Top
+        ];
+
+        for &(nx, ny) in &positions {
+            if candidates.len() >= 2 {
+                break;
+            }
+
+            if nx >= 0 && ny >= 0 {
+                candidates.push(MotionVector::default());
+            }
+        }
+
+        // Fill with zero BV
+        while candidates.len() < 2 {
+            candidates.push(MotionVector::default());
+        }
+
+        Ok(candidates)
+    }
+
+    /// Apply IBC block copy.
+    fn apply_ibc_copy(&mut self, cu: &CodingUnit) -> Result<()> {
+        let frame = self.current_frame.as_mut()
+            .ok_or_else(|| VvcError::InvalidState("No current frame".to_string()))?;
+
+        let bv_x = (cu.mv_l0.x >> 4) as i32;
+        let bv_y = (cu.mv_l0.y >> 4) as i32;
+
+        // Copy luma
+        let stride = frame.stride(0);
+        let plane = frame.plane_mut(0)
+            .ok_or_else(|| VvcError::InvalidState("Luma plane not found".to_string()))?;
+
+        for y in 0..cu.height as usize {
+            for x in 0..cu.width as usize {
+                let dst_x = cu.x as usize + x;
+                let dst_y = cu.y as usize + y;
+                let src_x = (cu.x as i32 + bv_x + x as i32) as usize;
+                let src_y = (cu.y as i32 + bv_y + y as i32) as usize;
+
+                // Bounds check
+                if src_x < stride && src_y * stride < plane.len() && dst_y * stride + dst_x < plane.len() {
+                    plane[dst_y * stride + dst_x] = plane[src_y * stride + src_x];
+                }
+            }
+        }
+
         Ok(())
     }
 
     /// Decode palette mode.
+    ///
+    /// Palette mode represents pixels using a small color palette.
+    /// It's efficient for screen content with limited colors.
     fn decode_palette_mode(&mut self, cu: &mut CodingUnit, sps: &Sps) -> Result<()> {
-        // Decode palette predictor and indices
+        // Check if palette mode is enabled
+        if !sps.sps_palette_enabled_flag {
+            return Err(VvcError::Bitstream("Palette mode not enabled in SPS".to_string()));
+        }
+
+        // Derive palette predictor from previous palette
+        let predictor_palette = self.get_palette_predictor();
+
+        // Decode palette size and entries
+        let palette_size = self.decode_palette_size(cu)?;
+        let mut palette = Vec::with_capacity(palette_size);
+
+        // Reuse entries from predictor
+        for i in 0..predictor_palette.len().min(palette_size) {
+            palette.push(predictor_palette[i]);
+        }
+
+        // Decode new palette entries
+        while palette.len() < palette_size {
+            // Would decode new color from bitstream
+            palette.push(PaletteEntry { y: 128, cb: 128, cr: 128 });
+        }
+
+        // Decode palette indices for each pixel
+        let indices = self.decode_palette_indices(cu, palette_size)?;
+
+        // Apply palette: map indices to colors
+        self.apply_palette(cu, &palette, &indices)?;
+
+        // Update palette predictor for next CU
+        self.update_palette_predictor(&palette);
+
         Ok(())
+    }
+
+    /// Get palette predictor from previously decoded palette.
+    fn get_palette_predictor(&self) -> Vec<PaletteEntry> {
+        // Would return the predictor palette from previous CU
+        // For now, return empty predictor
+        Vec::new()
+    }
+
+    /// Decode palette size.
+    fn decode_palette_size(&self, cu: &CodingUnit) -> Result<usize> {
+        // Maximum palette size depends on CU size and bit depth
+        let max_size = 31.min(cu.width as usize * cu.height as usize);
+        // Would decode from bitstream, return reasonable default
+        Ok(8.min(max_size))
+    }
+
+    /// Decode palette indices for all pixels.
+    fn decode_palette_indices(&self, cu: &CodingUnit, palette_size: usize) -> Result<Vec<u8>> {
+        let num_pixels = cu.width as usize * cu.height as usize;
+        let mut indices = Vec::with_capacity(num_pixels);
+
+        // VVC uses run-length coding for palette indices
+        // Modes: INDEX (explicit index), COPY_ABOVE (copy from line above)
+
+        let mut pos = 0;
+        while pos < num_pixels {
+            // Would decode run mode and length from bitstream
+            let run_type = 0; // 0 = INDEX, 1 = COPY_ABOVE
+            let run_length = 1;
+            let index = 0u8;
+
+            if run_type == 0 {
+                // INDEX mode: use explicit palette index
+                for _ in 0..run_length.min(num_pixels - pos) {
+                    indices.push(index % palette_size as u8);
+                    pos += 1;
+                }
+            } else {
+                // COPY_ABOVE mode: copy from row above
+                for _ in 0..run_length.min(num_pixels - pos) {
+                    let above_idx = if pos >= cu.width as usize {
+                        indices[pos - cu.width as usize]
+                    } else {
+                        0
+                    };
+                    indices.push(above_idx);
+                    pos += 1;
+                }
+            }
+        }
+
+        Ok(indices)
+    }
+
+    /// Apply palette to reconstruct pixels.
+    fn apply_palette(&mut self, cu: &CodingUnit, palette: &[PaletteEntry], indices: &[u8]) -> Result<()> {
+        let frame = self.current_frame.as_mut()
+            .ok_or_else(|| VvcError::InvalidState("No current frame".to_string()))?;
+
+        // Apply to luma
+        let stride_y = frame.stride(0);
+        let plane_y = frame.plane_mut(0)
+            .ok_or_else(|| VvcError::InvalidState("Luma plane not found".to_string()))?;
+
+        for y in 0..cu.height as usize {
+            for x in 0..cu.width as usize {
+                let pos = y * cu.width as usize + x;
+                let idx = indices.get(pos).copied().unwrap_or(0) as usize;
+                let entry = palette.get(idx).unwrap_or(&PaletteEntry { y: 128, cb: 128, cr: 128 });
+
+                let dst = (cu.y as usize + y) * stride_y + cu.x as usize + x;
+                if dst < plane_y.len() {
+                    plane_y[dst] = entry.y;
+                }
+            }
+        }
+
+        // Apply to chroma (assuming 4:2:0)
+        let stride_cb = frame.stride(1);
+        let stride_cr = frame.stride(2);
+
+        if let Some(plane_cb) = frame.plane_mut(1) {
+            for y in 0..(cu.height as usize / 2) {
+                for x in 0..(cu.width as usize / 2) {
+                    // Average 2x2 block for chroma
+                    let pos = (y * 2) * cu.width as usize + (x * 2);
+                    let idx = indices.get(pos).copied().unwrap_or(0) as usize;
+                    let entry = palette.get(idx).unwrap_or(&PaletteEntry { y: 128, cb: 128, cr: 128 });
+
+                    let dst = (cu.y as usize / 2 + y) * stride_cb + cu.x as usize / 2 + x;
+                    if dst < plane_cb.len() {
+                        plane_cb[dst] = entry.cb;
+                    }
+                }
+            }
+        }
+
+        if let Some(plane_cr) = frame.plane_mut(2) {
+            for y in 0..(cu.height as usize / 2) {
+                for x in 0..(cu.width as usize / 2) {
+                    let pos = (y * 2) * cu.width as usize + (x * 2);
+                    let idx = indices.get(pos).copied().unwrap_or(0) as usize;
+                    let entry = palette.get(idx).unwrap_or(&PaletteEntry { y: 128, cb: 128, cr: 128 });
+
+                    let dst = (cu.y as usize / 2 + y) * stride_cr + cu.x as usize / 2 + x;
+                    if dst < plane_cr.len() {
+                        plane_cr[dst] = entry.cr;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Update palette predictor for next CU.
+    fn update_palette_predictor(&mut self, _palette: &[PaletteEntry]) {
+        // Would store palette for use as predictor in next CU
+        // The predictor is maintained at CTU level
     }
 
     /// Apply intra prediction.
