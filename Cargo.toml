@@ -100,6 +100,14 @@ members = [
     "transcode-dts",
     # JPEG2000 codec (DCP/cinema)
     "transcode-jpeg2000",
+    # Next-gen features
+    "transcode-whip",
+    "transcode-pertitle-ml",
+    "transcode-confidential",
+    "transcode-otel",
+    "transcode-multicloud",
+    "transcode-compliance",
+    "transcode-genai",
 ]
 resolver = "2"
 

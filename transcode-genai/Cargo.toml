@@ -1,0 +1,45 @@
+[package]
+name = "transcode-genai"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Generative AI extensions for video transcoding"
+keywords = ["genai", "video-generation", "style-transfer", "super-resolution", "ai"]
+categories = ["multimedia::video"]
+
+[features]
+default = []
+style-transfer = []
+super-resolution = []
+video-generation = []
+face-enhancement = []
+background-removal = []
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+futures = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+parking_lot = { workspace = true }
+uuid = { workspace = true }
+
+# Math
+nalgebra = "0.33"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = { workspace = true }
