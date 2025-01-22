@@ -20,6 +20,9 @@ bytes.workspace = true
 # URL parsing
 url = "2.5"
 
+# Random number generation for socket IDs
+rand = "0.8"
+
 [dev-dependencies]
 pretty_assertions.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
