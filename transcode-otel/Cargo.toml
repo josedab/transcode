@@ -1,0 +1,54 @@
+[package]
+name = "transcode-otel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "OpenTelemetry observability integration for the transcode library"
+keywords = ["opentelemetry", "observability", "tracing", "metrics", "telemetry"]
+categories = ["development-tools::profiling"]
+
+[features]
+default = ["tracing", "metrics"]
+tracing = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp"]
+metrics = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp"]
+jaeger = []
+prometheus = ["dep:opentelemetry-prometheus", "dep:prometheus"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# OpenTelemetry
+opentelemetry = { version = "0.27", optional = true }
+opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"], optional = true }
+opentelemetry-otlp = { version = "0.27", features = ["tonic"], optional = true }
+opentelemetry-prometheus = { version = "0.27", optional = true }
+
+# Prometheus (optional)
+prometheus = { version = "0.13", optional = true }
+
+# Tracing integration
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-opentelemetry = "0.28"
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+parking_lot = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+rand = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = { workspace = true }
