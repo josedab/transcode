@@ -1,0 +1,63 @@
+[package]
+name = "transcode-whip"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "WHIP/WHEP WebRTC-based live ingest for the transcode library"
+keywords = ["whip", "whep", "webrtc", "live", "streaming"]
+categories = ["multimedia::video"]
+
+[features]
+default = ["whip", "whep"]
+whip = []
+whep = []
+tls = ["dep:rustls", "dep:tokio-rustls"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+futures = { workspace = true }
+
+# HTTP server for WHIP/WHEP endpoints
+axum = "0.8"
+hyper = { version = "1.0", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# WebRTC
+# Note: Using webrtc-rs for pure Rust WebRTC implementation
+# In production, would use: webrtc = "0.11"
+# For now, implementing protocol layer with mock transport
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# SDP parsing
+sdp-types = "0.1"
+
+# Utilities
+uuid = { workspace = true }
+base64 = { workspace = true }
+bytes = { workspace = true }
+parking_lot = { workspace = true }
+tracing = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+rand = { workspace = true }
+
+# Optional TLS
+rustls = { version = "0.23", optional = true }
+tokio-rustls = { version = "0.26", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }
