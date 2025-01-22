@@ -1,0 +1,52 @@
+[package]
+name = "transcode-confidential"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Confidential computing support for secure transcoding in TEEs"
+keywords = ["confidential", "tee", "sgx", "enclave", "security"]
+categories = ["multimedia::video", "cryptography"]
+
+[features]
+default = []
+# Hardware TEE backends (simulation mode used when not available)
+sgx = []
+sev = []
+trustzone = []
+nitro = []
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+
+# Cryptography
+ring = "0.17"
+aes-gcm = "0.10"
+x25519-dalek = "2.0"
+ed25519-dalek = "2.0"
+sha2 = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+parking_lot = { workspace = true }
+uuid = { workspace = true }
+base64 = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+zeroize = { version = "1.8", features = ["derive"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = { workspace = true }
+pretty_assertions = { workspace = true }

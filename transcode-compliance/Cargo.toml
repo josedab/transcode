@@ -1,0 +1,44 @@
+[package]
+name = "transcode-compliance"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Compliance automation suite for video transcoding workflows"
+keywords = ["compliance", "accessibility", "captions", "regulation", "audit"]
+categories = ["multimedia::video"]
+
+[features]
+default = []
+cea608 = []
+cea708 = []
+webvtt = []
+ebu-tt = []
+imsc = []
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async
+tokio = { workspace = true }
+futures = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+parking_lot = { workspace = true }
+uuid = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = { workspace = true }
