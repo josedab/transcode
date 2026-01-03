@@ -1,0 +1,27 @@
+[package]
+name = "transcode-av1"
+version = "0.1.0"
+edition = "2021"
+description = "AV1 codec support for the transcode library"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/anthropics/transcode"
+keywords = ["av1", "video", "codec", "rav1e", "encoding"]
+categories = ["multimedia::video", "encoding"]
+
+[features]
+default = ["encoder"]
+encoder = ["rav1e"]
+# decoder feature would use dav1d when available
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# AV1 encoder
+rav1e = { version = "0.7", optional = true }
+
+# Utilities
+log = "0.4"
+thiserror = "2.0"
+
+[dev-dependencies]
+pretty_assertions = "1.4"
