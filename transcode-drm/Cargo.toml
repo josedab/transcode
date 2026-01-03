@@ -1,0 +1,32 @@
+[package]
+name = "transcode-drm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "DRM and encryption support for transcode"
+keywords = ["video", "drm", "encryption", "widevine", "cenc"]
+categories = ["multimedia::video", "cryptography"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+aes = "0.8"
+ctr = "0.9"
+sha2.workspace = true
+rand.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+base64 = "0.22"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+widevine = []
+fairplay = []
+playready = []

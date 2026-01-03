@@ -1,0 +1,59 @@
+[package]
+name = "transcode-telemetry"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "OpenTelemetry-based observability for the transcode system"
+keywords = ["observability", "telemetry", "opentelemetry", "metrics", "tracing", "prometheus"]
+categories = ["development-tools::profiling", "web-programming"]
+
+[dependencies]
+# Note: This crate provides a standalone telemetry implementation
+# that doesn't depend on transcode-core to avoid circular dependencies
+
+thiserror.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+# Optional: Full OpenTelemetry integration
+opentelemetry = { version = "0.21", optional = true }
+opentelemetry_sdk = { version = "0.21", optional = true }
+opentelemetry-otlp = { version = "0.14", optional = true }
+
+# Optional: Prometheus client library (alternative to built-in exporter)
+prometheus = { version = "0.13", optional = true }
+
+# Optional: tracing ecosystem integration
+tracing = { workspace = true, optional = true }
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"], optional = true }
+
+# Optional: Tokio for async server support
+tokio = { version = "1", features = ["net", "rt", "sync"], optional = true }
+
+# Optional: Hyper for production HTTP servers
+hyper = { version = "1", optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+
+# Full OpenTelemetry SDK integration
+otlp = ["opentelemetry", "opentelemetry_sdk", "opentelemetry-otlp"]
+
+# Use prometheus client library instead of built-in exporter
+prometheus-client = ["dep:prometheus"]
+
+# Integration with tracing crate ecosystem
+tracing-integration = ["tracing", "tracing-subscriber"]
+
+# Async server support with Tokio
+async-server = ["tokio"]
+
+# Production HTTP server with Hyper
+hyper-server = ["hyper", "async-server"]
+
+# All features
+full = ["otlp", "prometheus-client", "tracing-integration", "async-server"]
