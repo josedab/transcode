@@ -1,0 +1,28 @@
+[package]
+name = "transcode-containers"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Container format demuxers and muxers for the Transcode codec library"
+
+[dependencies]
+transcode-core.workspace = true
+thiserror.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+bitflags.workspace = true
+tokio = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
+tracing.workspace = true
+
+[features]
+default = []
+async = ["tokio", "futures"]
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+proptest.workspace = true
