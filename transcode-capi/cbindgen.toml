@@ -1,0 +1,60 @@
+# cbindgen configuration for transcode-capi
+
+language = "C"
+header = """
+/*
+ * Transcode C API
+ *
+ * A memory-safe, high-performance universal codec library.
+ *
+ * Copyright (c) Transcode Contributors
+ * Licensed under MIT OR Apache-2.0
+ */
+"""
+include_guard = "TRANSCODE_H"
+tab_width = 4
+style = "Both"
+cpp_compat = true
+documentation = true
+documentation_style = "doxy"
+
+[defines]
+# Feature flags for conditional compilation
+
+[export]
+include = [
+    "TranscodeContext",
+    "TranscodePacket",
+    "TranscodeFrame",
+    "TranscodeError",
+    "TranscodePixelFormat",
+    "TranscodeColorSpace",
+    "TranscodeColorRange",
+    "TranscodeStreamType",
+    "TranscodeStreamInfo",
+    "TranscodeConfig",
+]
+exclude = []
+prefix = ""
+renaming_overrides_prefixing = true
+
+[export.rename]
+
+[enum]
+rename_variants = "ScreamingSnakeCase"
+prefix_with_name = true
+
+[struct]
+rename_fields = "SnakeCase"
+
+[fn]
+rename_args = "SnakeCase"
+sort_by = "None"
+
+[parse]
+parse_deps = false
+include = []
+extra_bindings = []
+
+[parse.expand]
+crates = []

@@ -1,0 +1,23 @@
+[package]
+name = "transcode-capi"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "C API bindings for the Transcode codec library"
+keywords = ["video", "audio", "codec", "transcoding", "ffi"]
+categories = ["multimedia", "api-bindings", "external-ffi-bindings"]
+
+[lib]
+name = "transcode"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+transcode-core = { workspace = true }
+libc = "0.2"
+
+[build-dependencies]
+cbindgen = "0.27"
+
+[features]
+default = []
