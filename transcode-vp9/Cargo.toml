@@ -1,0 +1,22 @@
+[package]
+name = "transcode-vp9"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "VP9 codec implementation for transcode"
+keywords = ["video", "codec", "vp9", "webm", "google"]
+categories = ["multimedia::video", "compression"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+simd = []
