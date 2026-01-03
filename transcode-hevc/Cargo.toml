@@ -1,0 +1,23 @@
+[package]
+name = "transcode-hevc"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "HEVC/H.265 codec implementation for transcode"
+keywords = ["video", "codec", "hevc", "h265", "encoding"]
+categories = ["multimedia::video", "compression"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+bitflags.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+simd = []
