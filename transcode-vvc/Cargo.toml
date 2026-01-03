@@ -1,0 +1,19 @@
+[package]
+name = "transcode-vvc"
+version = "0.1.0"
+edition = "2021"
+description = "VVC/H.266 codec implementation for the transcode project"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/example/transcode"
+keywords = ["vvc", "h266", "video", "codec", "transcode"]
+categories = ["multimedia::video", "encoding"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "vvc_bench"
+harness = false
