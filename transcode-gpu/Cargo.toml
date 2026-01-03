@@ -1,0 +1,39 @@
+[package]
+name = "transcode-gpu"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "GPU-accelerated video processing using wgpu compute shaders"
+keywords = ["video", "gpu", "wgpu", "compute", "shader"]
+categories = ["multimedia", "graphics"]
+
+[features]
+default = []
+# Enable async runtime integration
+async = ["dep:tokio", "dep:futures"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# GPU compute
+wgpu = "23.0"
+bytemuck = { version = "1.17", features = ["derive"] }
+
+# Error handling
+thiserror.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Async (optional)
+tokio = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
+
+# Math utilities
+nalgebra = "0.33"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+pretty_assertions.workspace = true
