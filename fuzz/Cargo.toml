@@ -1,0 +1,156 @@
+[package]
+name = "transcode-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+# Internal crates
+transcode-core = { path = "../transcode-core" }
+transcode-codecs = { path = "../transcode-codecs" }
+transcode-containers = { path = "../transcode-containers" }
+transcode-hevc = { path = "../transcode-hevc" }
+transcode-mkv = { path = "../transcode-mkv" }
+transcode-ts = { path = "../transcode-ts" }
+
+# ============================================================================
+# Existing fuzz targets
+# ============================================================================
+
+[[bin]]
+name = "fuzz_h264_decoder"
+path = "fuzz_targets/fuzz_h264_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_aac_decoder"
+path = "fuzz_targets/fuzz_aac_decoder.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_mp4_demuxer"
+path = "fuzz_targets/fuzz_mp4_demuxer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_bitstream"
+path = "fuzz_targets/fuzz_bitstream.rs"
+test = false
+doc = false
+bench = false
+
+# ============================================================================
+# New comprehensive parser fuzz targets
+# ============================================================================
+
+# H.264 NAL unit parsing (Annex B and AVCC formats)
+[[bin]]
+name = "h264_nal"
+path = "fuzz_targets/h264_nal.rs"
+test = false
+doc = false
+bench = false
+
+# H.264 Sequence Parameter Set (SPS) parsing
+[[bin]]
+name = "h264_sps"
+path = "fuzz_targets/h264_sps.rs"
+test = false
+doc = false
+bench = false
+
+# H.264 Picture Parameter Set (PPS) parsing
+[[bin]]
+name = "h264_pps"
+path = "fuzz_targets/h264_pps.rs"
+test = false
+doc = false
+bench = false
+
+# H.264 slice header parsing
+[[bin]]
+name = "h264_slice"
+path = "fuzz_targets/h264_slice.rs"
+test = false
+doc = false
+bench = false
+
+# HEVC/H.265 NAL unit parsing (VPS, SPS, PPS, slice)
+[[bin]]
+name = "hevc_nal"
+path = "fuzz_targets/hevc_nal.rs"
+test = false
+doc = false
+bench = false
+
+# AAC ADTS header parsing
+[[bin]]
+name = "aac_adts"
+path = "fuzz_targets/aac_adts.rs"
+test = false
+doc = false
+bench = false
+
+# MP4 atom/box parsing
+[[bin]]
+name = "mp4_atoms"
+path = "fuzz_targets/mp4_atoms.rs"
+test = false
+doc = false
+bench = false
+
+# MP3 frame header parsing
+[[bin]]
+name = "mp3_frame"
+path = "fuzz_targets/mp3_frame.rs"
+test = false
+doc = false
+bench = false
+
+# BitReader edge cases
+[[bin]]
+name = "bitreader"
+path = "fuzz_targets/bitreader.rs"
+test = false
+doc = false
+bench = false
+
+# ============================================================================
+# Container format fuzz targets
+# ============================================================================
+
+# MKV/WebM EBML parsing
+[[bin]]
+name = "mkv_ebml"
+path = "fuzz_targets/mkv_ebml.rs"
+test = false
+doc = false
+bench = false
+
+# MPEG-TS packet parsing
+[[bin]]
+name = "ts_packet"
+path = "fuzz_targets/ts_packet.rs"
+test = false
+doc = false
+bench = false
+
+# MPEG-TS PES parsing
+[[bin]]
+name = "ts_pes"
+path = "fuzz_targets/ts_pes.rs"
+test = false
+doc = false
+bench = false
