@@ -1,0 +1,21 @@
+[package]
+name = "transcode-hdr"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "HDR video processing for transcode (HDR10, Dolby Vision, tone mapping)"
+keywords = ["video", "hdr", "hdr10", "dolby-vision", "tone-mapping"]
+categories = ["multimedia"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+# Color math
+palette = "0.7"
+
+[dev-dependencies]
+pretty_assertions.workspace = true

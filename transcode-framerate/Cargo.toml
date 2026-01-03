@@ -1,0 +1,22 @@
+[package]
+name = "transcode-framerate"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Frame rate conversion for transcode"
+keywords = ["video", "framerate", "interpolation", "telecine", "pulldown"]
+categories = ["multimedia::video"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+simd = []

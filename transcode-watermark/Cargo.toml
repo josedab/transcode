@@ -1,0 +1,22 @@
+[package]
+name = "transcode-watermark"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Forensic watermarking for transcode"
+keywords = ["video", "watermark", "forensic", "drm", "piracy"]
+categories = ["multimedia", "cryptography"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+# Cryptography
+rand = "0.9"
+sha2 = "0.10"
+
+[dev-dependencies]
+pretty_assertions.workspace = true
