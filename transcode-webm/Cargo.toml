@@ -1,0 +1,22 @@
+[package]
+name = "transcode-webm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "WebM container support for transcode"
+keywords = ["video", "container", "webm", "vp9", "opus"]
+categories = ["multimedia::video", "parser-implementations"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
+
+[features]
+default = []

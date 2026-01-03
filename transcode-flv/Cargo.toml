@@ -1,0 +1,24 @@
+[package]
+name = "transcode-flv"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "FLV (Flash Video) container support for transcode"
+keywords = ["video", "container", "flv", "flash", "streaming"]
+categories = ["multimedia::video", "parser-implementations"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+byteorder.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
+
+[features]
+default = []
+enhanced = []  # Enhanced FLV support (HEVC, etc.)
