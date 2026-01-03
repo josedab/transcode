@@ -1,0 +1,22 @@
+[package]
+name = "transcode-resample"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-quality audio resampling for transcode with SIMD optimization"
+keywords = ["audio", "resampling", "dsp", "simd", "interpolation"]
+categories = ["multimedia::audio"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = ["simd"]
+simd = []

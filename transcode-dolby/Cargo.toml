@@ -1,0 +1,22 @@
+[package]
+name = "transcode-dolby"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Dolby Vision support for transcode (RPU parsing, profile conversion, metadata)"
+keywords = ["video", "dolby-vision", "hdr", "rpu", "metadata"]
+categories = ["multimedia"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+bytes.workspace = true
+byteorder.workspace = true
+bitflags.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+proptest.workspace = true

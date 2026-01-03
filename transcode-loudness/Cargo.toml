@@ -1,0 +1,21 @@
+[package]
+name = "transcode-loudness"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "EBU R128 loudness normalization for transcode"
+keywords = ["audio", "loudness", "ebur128", "lufs", "normalization"]
+categories = ["multimedia::audio"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
