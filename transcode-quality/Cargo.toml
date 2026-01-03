@@ -1,0 +1,41 @@
+[package]
+name = "transcode-quality"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Perceptual video quality metrics for transcode"
+keywords = ["video", "quality", "vmaf", "ssim", "psnr"]
+categories = ["multimedia", "science"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror.workspace = true
+
+# Math operations
+ndarray = "0.16"
+num-traits = "0.2"
+
+# Parallel processing
+rayon = "1.8"
+
+# Logging
+tracing.workspace = true
+
+# Optional VMAF via libvmaf
+vmaf-sys = { version = "0.0.10", optional = true }
+
+[dev-dependencies]
+image = "0.25"
+pretty_assertions.workspace = true
+criterion.workspace = true
+
+[features]
+default = []
+vmaf = ["vmaf-sys"]
+
+[[bench]]
+name = "quality_bench"
+harness = false
