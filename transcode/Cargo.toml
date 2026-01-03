@@ -1,0 +1,32 @@
+[package]
+name = "transcode"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "A memory-safe, high-performance universal codec library"
+
+[dependencies]
+transcode-core.workspace = true
+transcode-codecs.workspace = true
+transcode-containers.workspace = true
+transcode-pipeline.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
+tracing.workspace = true
+
+[features]
+default = ["async"]
+async = ["tokio", "futures", "transcode-containers/async"]
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tempfile.workspace = true
+transcode-quality = { path = "../transcode-quality" }
+transcode-intel = { path = "../transcode-intel" }
+transcode-streaming = { path = "../transcode-streaming" }
