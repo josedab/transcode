@@ -1,0 +1,30 @@
+[package]
+name = "transcode-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Command-line interface for the Transcode codec library"
+
+[[bin]]
+name = "transcode"
+path = "src/main.rs"
+
+[dependencies]
+transcode.workspace = true
+transcode-core.workspace = true
+transcode-codecs.workspace = true
+transcode-compat.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+indicatif.workspace = true
+console.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+glob.workspace = true
