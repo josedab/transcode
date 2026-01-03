@@ -1,0 +1,17 @@
+# Ignore Rust source files
+src/
+Cargo.toml
+Cargo.lock
+build.rs
+target/
+
+# Ignore development files
+.cargo/
+*.rs
+
+# Keep these files
+!index.js
+!index.d.ts
+!package.json
+!README.md
+!*.node

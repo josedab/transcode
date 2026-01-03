@@ -1,0 +1,41 @@
+[package]
+name = "transcode-node"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Node.js bindings for the Transcode codec library"
+keywords = ["video", "audio", "codec", "transcoding", "nodejs", "napi"]
+categories = ["multimedia", "api-bindings"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+transcode = { workspace = true }
+transcode-core = { workspace = true }
+transcode-codecs = { workspace = true }
+transcode-containers = { workspace = true }
+
+# napi-rs for Node.js bindings
+napi = { version = "2", features = ["async", "tokio_rt", "napi9", "serde-json"] }
+napi-derive = "2"
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+thiserror = { workspace = true }
+
+[build-dependencies]
+napi-build = "2"
+
+[features]
+default = []
+
+[profile.release]
+lto = true
