@@ -1,0 +1,43 @@
+[package]
+name = "transcode-neural"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Neural network-based video processing for transcode"
+keywords = ["video", "neural-network", "super-resolution", "upscaling", "ai"]
+categories = ["multimedia", "science"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+ndarray = "0.16"
+
+# ONNX Runtime (optional)
+ort = { version = "2.0.0-rc.10", optional = true, features = ["cuda", "tensorrt"] }
+
+# Image processing
+image = "0.25"
+
+# Async runtime for downloads
+tokio = { version = "1", features = ["rt", "fs"], optional = true }
+
+# HTTP client for model downloads
+reqwest = { version = "0.12", features = ["stream"], optional = true }
+
+# Checksums for model validation
+sha2 = { version = "0.10", optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile = "3"
+tokio = { version = "1", features = ["rt", "macros"] }
+
+[features]
+default = []
+onnx = ["ort"]
+cuda = ["ort/cuda"]
+tensorrt = ["ort/tensorrt"]
+download = ["tokio", "reqwest", "sha2"]

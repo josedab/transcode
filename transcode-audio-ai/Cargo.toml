@@ -1,0 +1,22 @@
+[package]
+name = "transcode-audio-ai"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "AI-powered audio processing for transcode"
+keywords = ["audio", "enhancement", "noise-reduction", "ai", "upsampling"]
+categories = ["multimedia", "science"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+ndarray = "0.16"
+
+# DSP
+rustfft = "6.2"
+
+[dev-dependencies]
+pretty_assertions.workspace = true
