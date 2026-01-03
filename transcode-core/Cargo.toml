@@ -1,0 +1,23 @@
+[package]
+name = "transcode-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Core types and utilities for the Transcode codec library"
+
+[dependencies]
+thiserror.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+bitflags.workspace = true
+num-traits.workspace = true
+num-derive.workspace = true
+smallvec.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+proptest.workspace = true
