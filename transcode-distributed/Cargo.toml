@@ -1,0 +1,61 @@
+[package]
+name = "transcode-distributed"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Distributed transcoding system for transcode"
+keywords = ["video", "transcoding", "distributed", "parallel"]
+categories = ["multimedia", "asynchronous"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Async runtime
+tokio = { version = "1", features = ["full", "sync"] }
+futures.workspace = true
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json.workspace = true
+bincode = "1.3"
+
+# Networking
+tonic = { version = "0.12", optional = true }
+prost = { version = "0.13", optional = true }
+
+# Message queue (optional)
+lapin = { version = "2.3", optional = true }
+
+# Database (optional)
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"], optional = true }
+
+# Redis (optional)
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager", "aio"], optional = true }
+
+# Logging
+tracing.workspace = true
+
+# Utilities
+uuid = { version = "1.8", features = ["v4", "serde"] }
+dashmap = "6.0"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio-test = "0.4"
+
+[features]
+default = []
+grpc = ["tonic", "prost"]
+rabbitmq = ["lapin"]
+postgres = ["sqlx"]
+redis = ["dep:redis"]
+
+[build-dependencies]
+tonic-build = { version = "0.12", optional = true }

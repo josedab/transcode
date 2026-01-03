@@ -1,0 +1,48 @@
+[package]
+name = "transcode-ingest"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Live ingest protocols (RTMP, SRT) for media streaming"
+keywords = ["rtmp", "srt", "streaming", "ingest", "media"]
+categories = ["multimedia", "network-programming"]
+
+[dependencies]
+# Async runtime
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# Bytes and buffer handling
+bytes = { workspace = true }
+byteorder = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async traits
+async-trait = "0.1"
+futures = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Random number generation (for handshakes)
+rand = { workspace = true }
+
+# Time handling
+chrono = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tracing-subscriber = { workspace = true }
+
+[features]
+default = []
+srt-encryption = []
+
+[[test]]
+name = "integration_tests"
+path = "tests/integration_tests.rs"

@@ -1,0 +1,41 @@
+[package]
+name = "transcode-cloud"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Cloud storage integration for transcode (S3, GCS, Azure)"
+keywords = ["video", "cloud", "s3", "gcs", "azure"]
+categories = ["multimedia", "web-programming"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+tokio = { workspace = true, features = ["io-util", "fs"] }
+bytes.workspace = true
+futures.workspace = true
+async-trait = "0.1"
+
+# AWS S3 (optional)
+aws-sdk-s3 = { version = "1.82", optional = true }
+aws-config = { version = "1.6", optional = true }
+
+# GCS (optional)
+cloud-storage = { version = "0.11", optional = true }
+
+# Azure Blob Storage (optional)
+azure_storage = { version = "0.20", optional = true }
+azure_storage_blobs = { version = "0.20", optional = true }
+azure_identity = { version = "0.20", optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[features]
+default = []
+s3 = ["aws-sdk-s3", "aws-config"]
+gcs = ["cloud-storage"]
+azure = ["azure_storage", "azure_storage_blobs", "azure_identity"]

@@ -1,0 +1,24 @@
+[package]
+name = "transcode-live"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Live streaming protocols for transcode (RTMP, SRT, WebRTC)"
+keywords = ["video", "streaming", "rtmp", "srt", "webrtc"]
+categories = ["multimedia", "network-programming"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+tokio = { workspace = true, features = ["net", "io-util", "time", "sync"] }
+bytes.workspace = true
+
+# URL parsing
+url = "2.5"
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
