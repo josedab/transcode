@@ -1,0 +1,34 @@
+[package]
+name = "transcode-bench"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Benchmark suite for transcode"
+keywords = ["benchmark", "performance", "video", "codec"]
+categories = ["development-tools::profiling"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+transcode-codecs = { path = "../transcode-codecs" }
+transcode-quality = { path = "../transcode-quality" }
+
+criterion.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[[bench]]
+name = "codecs"
+harness = false
+
+[[bench]]
+name = "containers"
+harness = false
+
+[[bench]]
+name = "filters"
+harness = false
+
+[[bench]]
+name = "quality"
+harness = false

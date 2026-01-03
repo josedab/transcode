@@ -1,0 +1,42 @@
+[package]
+name = "transcode-conformance"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords = ["conformance", "h264", "testing", "codec", "validation"]
+categories = ["development-tools::testing", "multimedia"]
+description = "H.264 conformance test suite for the Transcode codec library"
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+transcode-codecs = { path = "../transcode-codecs" }
+
+thiserror.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+sha2.workspace = true
+tracing.workspace = true
+
+# For downloading test streams
+reqwest = { version = "0.12", features = ["blocking", "rustls-tls"], optional = true }
+
+# For file handling
+tempfile.workspace = true
+
+# For hex encoding of checksums
+hex = "0.4"
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[features]
+default = []
+download = ["reqwest"]
+full-conformance = []
+
+[[test]]
+name = "h264_conformance"
+path = "src/h264_tests.rs"
