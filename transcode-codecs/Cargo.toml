@@ -1,0 +1,33 @@
+[package]
+name = "transcode-codecs"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Video and audio codecs for the Transcode codec library"
+
+[dependencies]
+transcode-core.workspace = true
+thiserror.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+bitflags.workspace = true
+num-traits.workspace = true
+num-derive.workspace = true
+smallvec.workspace = true
+tracing.workspace = true
+rayon = "1.10"
+parking_lot = "0.12"
+crossbeam-channel = "0.5"
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+proptest.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "codec_bench"
+harness = false
