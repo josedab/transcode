@@ -1,0 +1,24 @@
+[package]
+name = "transcode-analytics"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Real-time quality analytics for transcode"
+keywords = ["video", "analytics", "quality", "monitoring", "qoe"]
+categories = ["multimedia"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["sync", "time"] }
+
+# Time series
+chrono = "0.4"
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
