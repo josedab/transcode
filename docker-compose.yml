@@ -1,0 +1,231 @@
+# Docker Compose for Transcode CLI
+#
+# Usage:
+#   docker compose build                                    # Build all images
+#   docker compose run transcode -i /data/input.mp4 -o /data/output.mp4
+#   docker compose run --rm transcode --help                # Show help
+#   docker compose up dev                                   # Start development environment
+#
+# Examples:
+#   # Transcode a video file
+#   docker compose run --rm transcode -i /data/input.mp4 -o /data/output.mp4 --video-bitrate 5000
+#
+#   # Run with specific codec settings
+#   docker compose run --rm transcode -i /data/input.mp4 -o /data/output.mp4 --video-codec h264 --audio-codec aac
+
+services:
+  # ==========================================================================
+  # Production-ready transcode CLI service
+  # ==========================================================================
+  transcode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: transcode:latest
+    volumes:
+      # Mount current directory to /data for input/output files
+      # Use read-write mode to allow output file creation
+      - ./:/data:rw
+    working_dir: /data
+    # Enable terminal for interactive use
+    stdin_open: true
+    tty: true
+    # Graceful shutdown timeout (allows transcoding to finish)
+    stop_grace_period: 30s
+    # Resource limits for transcoding workloads
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    # Read-only root filesystem for security (output goes to mounted volume)
+    read_only: true
+    # Temp filesystem for any temporary files
+    tmpfs:
+      - /tmp:size=512M,mode=1777
+
+  # ==========================================================================
+  # Development environment with full Rust toolchain
+  # ==========================================================================
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: transcode:dev
+    volumes:
+      # Mount source code
+      - ./:/app:rw
+      # Persistent cargo cache for faster rebuilds
+      - cargo-cache:/usr/local/cargo/registry
+      # Persistent target directory for incremental compilation
+      - target-cache:/app/target
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    environment:
+      - CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+      - CARGO_TERM_COLOR=always
+      - RUST_BACKTRACE=1
+      - RUST_LOG=debug
+    command: cargo watch -x check -x test
+
+  # ==========================================================================
+  # Run tests
+  # ==========================================================================
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: transcode:dev
+    volumes:
+      - ./:/app:rw
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    working_dir: /app
+    command: cargo test --workspace --exclude transcode-python --exclude transcode-wasm
+    environment:
+      - CARGO_TERM_COLOR=always
+      - RUST_BACKTRACE=1
+
+  # ==========================================================================
+  # Run benchmarks
+  # ==========================================================================
+  bench:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: transcode:dev
+    volumes:
+      - ./:/app:rw
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    working_dir: /app
+    command: cargo bench --package transcode-bench
+    environment:
+      - CARGO_TERM_COLOR=always
+
+  # ==========================================================================
+  # Lint and format check
+  # ==========================================================================
+  lint:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: transcode:dev
+    volumes:
+      - ./:/app:rw
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    working_dir: /app
+    command: sh -c "cargo fmt --all -- --check && cargo clippy --workspace --exclude transcode-python --exclude transcode-wasm -- -D warnings"
+    environment:
+      - CARGO_TERM_COLOR=always
+
+  # ==========================================================================
+  # Security audit
+  # ==========================================================================
+  audit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: transcode:dev
+    volumes:
+      - ./:/app:ro
+      - cargo-cache:/usr/local/cargo/registry
+    working_dir: /app
+    command: cargo audit
+    environment:
+      - CARGO_TERM_COLOR=always
+
+  # ==========================================================================
+  # Documentation server
+  # ==========================================================================
+  docs:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: transcode:dev
+    volumes:
+      - ./:/app:rw
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/app/target
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    command: sh -c "cargo doc --workspace --exclude transcode-python --exclude transcode-wasm --no-deps && python3 -m http.server 8000 --directory target/doc"
+    environment:
+      - CARGO_TERM_COLOR=always
+
+  # ==========================================================================
+  # Observability Stack (optional)
+  # ==========================================================================
+
+  # Telemetry collector (for OpenTelemetry)
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    profiles:
+      - observability
+
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    profiles:
+      - observability
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:10.2.2
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    depends_on:
+      - prometheus
+      - jaeger
+    profiles:
+      - observability
+
+volumes:
+  # Persistent cargo registry cache for faster dependency downloads
+  cargo-cache:
+    driver: local
+  # Persistent target directory for incremental builds
+  target-cache:
+    driver: local
+  # Grafana data persistence
+  grafana-data:
+    driver: local
+
+networks:
+  default:
+    name: transcode-network

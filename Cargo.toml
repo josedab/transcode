@@ -1,0 +1,147 @@
+[workspace]
+exclude = ["fuzz"]
+members = [
+    "transcode-core",
+    "transcode-codecs",
+    "transcode-containers",
+    "transcode-pipeline",
+    "transcode",
+    "transcode-cli",
+    "transcode-python",
+    "transcode-node",
+    "transcode-capi",
+    "transcode-wasm",
+    "transcode-av1",
+    "transcode-streaming",
+    "transcode-gpu",
+    "transcode-ai",
+    "transcode-quality",
+    "transcode-distributed",
+    "transcode-intel",
+    "transcode-hwaccel",
+    "transcode-pertitle",
+    "transcode-neural",
+    "transcode-live",
+    "transcode-hdr",
+    "transcode-audio-ai",
+    "transcode-caption",
+    "transcode-watermark",
+    "transcode-cloud",
+    "transcode-analytics",
+    "transcode-zerocopy",
+    # Phase 2 - Core Codecs & Containers
+    "transcode-hevc",
+    "transcode-vvc",
+    "transcode-vp9",
+    "transcode-opus",
+    "transcode-flac",
+    "transcode-mkv",
+    "transcode-webm",
+    "transcode-ts",
+    # Phase 3 - Professional Processing
+    "transcode-deinterlace",
+    "transcode-loudness",
+    "transcode-timecode",
+    "transcode-framerate",
+    "transcode-resample",
+    # Phase 4 - Enterprise Features
+    "transcode-drm",
+    "transcode-telemetry",
+    "transcode-compat",
+    # Benchmarks
+    "transcode-bench",
+    # Subtitle support
+    "transcode-subtitle",
+    # Professional codecs
+    "transcode-prores",
+    # Live ingest
+    "transcode-ingest",
+    # WebP support
+    "transcode-webp",
+    # Conformance testing
+    "transcode-conformance",
+    # Dolby Vision support
+    "transcode-dolby",
+    # FLV container
+    "transcode-flv",
+    # Spatial audio support
+    "transcode-spatial",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Transcode Contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/transcode/transcode"
+description = "A memory-safe, high-performance universal codec library"
+keywords = ["video", "audio", "codec", "transcoding", "media"]
+categories = ["multimedia", "encoding", "compression"]
+
+[workspace.dependencies]
+# Internal crates
+transcode-core = { path = "transcode-core" }
+transcode-codecs = { path = "transcode-codecs" }
+transcode-containers = { path = "transcode-containers" }
+transcode-pipeline = { path = "transcode-pipeline" }
+transcode = { path = "transcode" }
+transcode-compat = { path = "transcode-compat" }
+transcode-dolby = { path = "transcode-dolby" }
+transcode-spatial = { path = "transcode-spatial" }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+indicatif = "0.17"
+console = "0.15"
+glob = "0.3"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+byteorder = "1.5"
+bytes = "1.5"
+bitflags = "2.4"
+num-traits = "0.2"
+num-derive = "0.4"
+parking_lot = "0.12"
+smallvec = "1.11"
+
+# Testing
+pretty_assertions = "1.4"
+criterion = "0.5"
+proptest = "1.4"
+tempfile = "3.10"
+
+# Utilities
+rand = "0.8"
+sha2 = "0.10"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+base64 = "0.22"
+
+# Python bindings
+pyo3 = { version = "0.22", features = ["extension-module"] }
+pyo3-async-runtimes = { version = "0.22", features = ["tokio-runtime"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[profile.bench]
+lto = true
+codegen-units = 1

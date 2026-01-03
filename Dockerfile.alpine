@@ -1,0 +1,103 @@
+# Transcode CLI Docker Image - Alpine Variant
+# Produces a smaller image using musl libc
+#
+# Note: This variant uses musl instead of glibc, which may have
+# slightly different performance characteristics. Use the main
+# Dockerfile for maximum performance.
+
+# =============================================================================
+# Stage 1: Builder
+# =============================================================================
+FROM rust:1.75-alpine AS builder
+
+# Install build dependencies for Alpine
+RUN apk add --no-cache \
+    musl-dev \
+    pkgconfig \
+    openssl-dev \
+    openssl-libs-static
+
+WORKDIR /build
+
+# Copy workspace files first for better layer caching
+COPY Cargo.toml Cargo.lock ./
+
+# Copy all workspace members
+COPY transcode-core ./transcode-core
+COPY transcode-codecs ./transcode-codecs
+COPY transcode-containers ./transcode-containers
+COPY transcode-pipeline ./transcode-pipeline
+COPY transcode ./transcode
+COPY transcode-cli ./transcode-cli
+COPY transcode-av1 ./transcode-av1
+COPY transcode-streaming ./transcode-streaming
+COPY transcode-gpu ./transcode-gpu
+COPY transcode-ai ./transcode-ai
+COPY transcode-quality ./transcode-quality
+COPY transcode-distributed ./transcode-distributed
+COPY transcode-intel ./transcode-intel
+COPY transcode-hwaccel ./transcode-hwaccel
+COPY transcode-pertitle ./transcode-pertitle
+COPY transcode-neural ./transcode-neural
+COPY transcode-live ./transcode-live
+COPY transcode-hdr ./transcode-hdr
+COPY transcode-audio-ai ./transcode-audio-ai
+COPY transcode-caption ./transcode-caption
+COPY transcode-watermark ./transcode-watermark
+COPY transcode-cloud ./transcode-cloud
+COPY transcode-analytics ./transcode-analytics
+COPY transcode-zerocopy ./transcode-zerocopy
+COPY transcode-hevc ./transcode-hevc
+COPY transcode-vp9 ./transcode-vp9
+COPY transcode-opus ./transcode-opus
+COPY transcode-mkv ./transcode-mkv
+COPY transcode-ts ./transcode-ts
+COPY transcode-deinterlace ./transcode-deinterlace
+COPY transcode-loudness ./transcode-loudness
+COPY transcode-timecode ./transcode-timecode
+COPY transcode-framerate ./transcode-framerate
+COPY transcode-drm ./transcode-drm
+COPY transcode-telemetry ./transcode-telemetry
+COPY transcode-compat ./transcode-compat
+COPY transcode-bench ./transcode-bench
+
+# Build with static linking for Alpine
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+RUN cargo build --release --package transcode-cli --locked \
+    && strip /build/target/release/transcode
+
+# =============================================================================
+# Stage 2: Runtime
+# =============================================================================
+FROM alpine:3.19 AS runtime
+
+# Install minimal runtime dependencies
+RUN apk add --no-cache \
+    tini \
+    libgcc \
+    && adduser -D -u 1000 transcode
+
+# Copy the built binary
+COPY --from=builder /build/target/release/transcode /usr/local/bin/transcode
+
+# Ensure binary is executable
+RUN chmod +x /usr/local/bin/transcode
+
+# Create data directory
+RUN mkdir -p /data && chown transcode:transcode /data
+
+# Switch to non-root user
+USER transcode
+WORKDIR /data
+
+# Use tini as init for proper signal handling
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/transcode"]
+CMD ["--help"]
+
+# Labels
+LABEL org.opencontainers.image.title="Transcode CLI (Alpine)"
+LABEL org.opencontainers.image.description="Memory-safe, high-performance media transcoding tool - Alpine variant"
+LABEL org.opencontainers.image.vendor="Transcode Contributors"
+LABEL org.opencontainers.image.licenses="MIT OR Apache-2.0"
+LABEL org.opencontainers.image.source="https://github.com/transcode/transcode"

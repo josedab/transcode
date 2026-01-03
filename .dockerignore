@@ -1,0 +1,97 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+target/
+*.rlib
+*.rmeta
+*.d
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation and non-essential files
+*.md
+!README.md
+docs/
+examples/
+benches/
+
+# Testing artifacts
+*.profraw
+*.profdata
+coverage/
+tarpaulin-report.html
+cobertura.xml
+
+# Python bindings (not needed for CLI Docker image)
+transcode-python/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# WASM builds (not needed for CLI Docker image)
+transcode-wasm/
+pkg/
+*.wasm
+
+# Fuzzing artifacts
+fuzz/
+corpus/
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+*.local.toml
+
+# Cargo lock file is included for reproducible builds
+# Uncomment if you want to exclude it:
+# Cargo.lock
+
+# Docker files (we don't need to copy these into the build context)
+Dockerfile*
+docker-compose*.yml
+.docker/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Miscellaneous
+*.log
+*.bak
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Large test files
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+*.mp3
+*.aac
+*.flac
+*.wav
+test-data/
+test-fixtures/
+fixtures/

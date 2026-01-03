@@ -1,0 +1,59 @@
+# Cargo-tarpaulin configuration for code coverage
+# Run with: cargo tarpaulin --config tarpaulin.toml
+
+[default]
+# Output formats
+out = ["Html", "Lcov", "Xml"]
+
+# Exclude test and benchmark code from coverage
+exclude-files = [
+    "tests/*",
+    "benches/*",
+    "examples/*",
+    "fuzz/*",
+    "**/tests.rs",
+]
+
+# Exclude specific crates (binaries, Python bindings)
+exclude = [
+    "transcode-cli",
+    "transcode-python",
+]
+
+# Run tests for these packages
+packages = [
+    "transcode-core",
+    "transcode-codecs",
+    "transcode-containers",
+    "transcode-pipeline",
+    "transcode",
+]
+
+# Timeout for tests (in seconds)
+timeout = "120s"
+
+# Run tests in release mode for faster execution
+release = false
+
+# Enable all features
+all-features = true
+
+# Output directory
+output-dir = "coverage"
+
+# Verbose output
+verbose = true
+
+# Fail if coverage is below threshold
+# fail-under = 50.0
+
+[ci]
+# CI-specific settings
+out = ["Xml", "Lcov"]
+output-dir = "coverage"
+coveralls = true
+codecov = true
+
+[report]
+# Generate detailed branch coverage
+branch = true
