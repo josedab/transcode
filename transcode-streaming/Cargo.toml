@@ -1,0 +1,27 @@
+[package]
+name = "transcode-streaming"
+version = "0.1.0"
+edition = "2021"
+description = "HLS and DASH streaming output for the transcode library"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/anthropics/transcode"
+keywords = ["hls", "dash", "streaming", "video", "adaptive"]
+categories = ["multimedia::video"]
+
+[features]
+default = ["hls", "dash"]
+hls = []
+dash = []
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4"] }
+quick-xml = { version = "0.37", features = ["serialize"] }
+
+[dev-dependencies]
+tempfile = "3.2"
