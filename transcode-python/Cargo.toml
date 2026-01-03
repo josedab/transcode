@@ -1,0 +1,25 @@
+[package]
+name = "transcode-python"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Python bindings for the Transcode codec library"
+keywords = ["video", "audio", "codec", "transcoding", "python"]
+categories = ["multimedia", "api-bindings"]
+
+[lib]
+name = "transcode_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+transcode = { workspace = true }
+transcode-core = { workspace = true }
+transcode-codecs = { workspace = true }
+pyo3 = { workspace = true }
+pyo3-async-runtimes = { workspace = true }
+tokio = { workspace = true }
+
+[features]
+default = []
+extension-module = ["pyo3/extension-module"]
