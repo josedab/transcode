@@ -1,0 +1,23 @@
+[package]
+name = "transcode-timecode"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "SMPTE timecode support for transcode"
+keywords = ["video", "timecode", "smpte", "broadcast", "ltc"]
+categories = ["multimedia::video"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+serde_json.workspace = true
+
+[features]
+default = []

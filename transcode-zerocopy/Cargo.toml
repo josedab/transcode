@@ -1,0 +1,33 @@
+[package]
+name = "transcode-zerocopy"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Zero-copy I/O optimizations for transcode"
+keywords = ["video", "io", "zero-copy", "performance", "mmap"]
+categories = ["multimedia", "filesystem"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+# Memory mapping
+memmap2 = "0.9"
+
+# Aligned allocations
+aligned-vec = "0.6"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# io_uring support
+io-uring = { version = "0.7", optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile = "3.20"
+
+[features]
+default = []
+io-uring = ["dep:io-uring"]

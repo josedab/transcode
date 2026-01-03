@@ -1,0 +1,24 @@
+[package]
+name = "transcode-compat"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "FFmpeg compatibility layer for transcode"
+keywords = ["video", "ffmpeg", "compatibility", "migration", "libav"]
+categories = ["multimedia::video"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+transcode-codecs = { path = "../transcode-codecs" }
+transcode-containers = { path = "../transcode-containers" }
+
+thiserror.workspace = true
+tracing.workspace = true
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
