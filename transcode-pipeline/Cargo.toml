@@ -1,0 +1,23 @@
+[package]
+name = "transcode-pipeline"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Transcoding pipeline for the Transcode codec library"
+
+[dependencies]
+transcode-core.workspace = true
+transcode-codecs.workspace = true
+transcode-containers.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+futures.workspace = true
+tracing.workspace = true
+parking_lot.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
