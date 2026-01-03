@@ -1,0 +1,22 @@
+[package]
+name = "transcode-opus"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Opus audio codec implementation for transcode"
+keywords = ["audio", "codec", "opus", "webrtc", "voip"]
+categories = ["multimedia::audio", "compression"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+simd = []

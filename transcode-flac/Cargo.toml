@@ -1,0 +1,25 @@
+[package]
+name = "transcode-flac"
+version = "0.1.0"
+edition = "2021"
+description = "FLAC audio codec implementation with streaming support"
+license = "MIT"
+repository = "https://github.com/transcode/transcode-flac"
+keywords = ["audio", "flac", "codec", "decoder", "encoder"]
+categories = ["multimedia::audio", "encoding"]
+
+[dependencies]
+thiserror = "1.0"
+bitstream-io = "2.0"
+crc = "3.0"
+
+[dev-dependencies]
+tempfile = "3.0"
+
+[features]
+default = []
+streaming = []
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
