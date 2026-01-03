@@ -1,0 +1,45 @@
+[package]
+name = "transcode-hwaccel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Hardware-accelerated encoding/decoding for transcode"
+keywords = ["video", "hardware", "nvenc", "vaapi", "videotoolbox"]
+categories = ["multimedia", "hardware-support"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror.workspace = true
+
+# Async support
+tokio = { workspace = true, optional = true }
+
+# Logging
+tracing.workspace = true
+
+# Platform-specific dependencies
+# macOS VideoToolbox (objc2 ecosystem for safe Objective-C bindings)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6", optional = true }
+objc2-foundation = { version = "0.3", optional = true }
+# core-video and core-media would come from objc2 ecosystem
+
+# Linux VA-API
+[target.'cfg(target_os = "linux")'.dependencies]
+# Note: libva-sys would need to be added when available
+# For now we use feature flags to indicate support
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+vaapi = []
+videotoolbox = ["objc2", "objc2-foundation"]
+nvenc = []
+qsv = []
+amf = []
+async = ["tokio"]
