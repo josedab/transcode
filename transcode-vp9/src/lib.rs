@@ -63,6 +63,7 @@
 #![allow(clippy::too_many_arguments)]
 
 pub mod decoder;
+pub mod encoder;
 pub mod entropy;
 pub mod error;
 pub mod frame_header;
@@ -70,6 +71,10 @@ pub mod prediction;
 
 // Re-export main types
 pub use decoder::{Vp9Decoder, Vp9DecoderConfig};
+pub use encoder::{
+    Vp9Encoder, Vp9EncoderConfig, Vp9RateControl, Vp9ContentType,
+    Vp9Packet, Vp9FrameFlags, Vp9EncoderStats,
+};
 pub use entropy::{BoolDecoder, ProbabilityContext};
 pub use error::{Result, Vp9Error};
 pub use frame_header::{
@@ -114,7 +119,7 @@ pub fn codec_info() -> CodecInfo {
     CodecInfo {
         name: CODEC_NAME,
         long_name: CODEC_LONG_NAME,
-        can_encode: false,
+        can_encode: true,
         can_decode: true,
     }
 }

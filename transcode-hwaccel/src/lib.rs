@@ -39,6 +39,9 @@ pub mod videotoolbox;
 #[cfg(feature = "nvenc")]
 pub mod nvenc;
 
+#[cfg(any(target_os = "linux", target_os = "windows"))]
+pub mod qsv;
+
 pub use error::{HwAccelError, Result};
 pub use types::*;
 pub use detect::{detect_accelerators, HwAccelInfo};
@@ -76,6 +79,8 @@ impl HwAccelType {
             HwAccelType::Vaapi => true,
             #[cfg(target_os = "macos")]
             HwAccelType::VideoToolbox => true,
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
+            HwAccelType::Qsv => qsv::is_available(),
             HwAccelType::Software => true,
             _ => false,
         }

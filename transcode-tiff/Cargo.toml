@@ -1,0 +1,17 @@
+[package]
+name = "transcode-tiff"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "TIFF image codec for archival and professional imaging"
+keywords = ["tiff", "image", "archival", "lossless"]
+categories = ["multimedia::images", "compression"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+thiserror.workspace = true
+byteorder.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

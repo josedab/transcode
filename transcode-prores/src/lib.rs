@@ -35,6 +35,7 @@
 //! ```
 
 mod decoder;
+mod encoder;
 mod error;
 mod frame;
 mod slice;
@@ -45,6 +46,7 @@ mod types;
 pub mod huffman;
 
 pub use decoder::{get_dimensions, get_profile, probe_prores, DecoderConfig, ProResDecoder};
+pub use encoder::{encode_prores, encode_prores_4444, EncoderConfig, ProResEncoder};
 pub use error::{ProResError, Result};
 pub use frame::{FrameHeader, ProResFrame};
 pub use slice::SliceHeader;

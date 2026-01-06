@@ -832,6 +832,10 @@ pub enum SubtitleFormat {
     Ssa,
     /// WebVTT format (.vtt).
     WebVtt,
+    /// CEA-608 closed captions (Line 21).
+    Cea608,
+    /// CEA-708 closed captions (DTVCC).
+    Cea708,
 }
 
 impl SubtitleFormat {
@@ -842,6 +846,8 @@ impl SubtitleFormat {
             SubtitleFormat::Ass => "ass",
             SubtitleFormat::Ssa => "ssa",
             SubtitleFormat::WebVtt => "vtt",
+            SubtitleFormat::Cea608 => "cc",
+            SubtitleFormat::Cea708 => "cc",
         }
     }
 
@@ -851,6 +857,8 @@ impl SubtitleFormat {
             SubtitleFormat::Srt => "application/x-subrip",
             SubtitleFormat::Ass | SubtitleFormat::Ssa => "text/x-ssa",
             SubtitleFormat::WebVtt => "text/vtt",
+            SubtitleFormat::Cea608 => "application/x-cea-608",
+            SubtitleFormat::Cea708 => "application/x-cea-708",
         }
     }
 
@@ -873,6 +881,8 @@ impl fmt::Display for SubtitleFormat {
             SubtitleFormat::Ass => write!(f, "ASS"),
             SubtitleFormat::Ssa => write!(f, "SSA"),
             SubtitleFormat::WebVtt => write!(f, "WebVTT"),
+            SubtitleFormat::Cea608 => write!(f, "CEA-608"),
+            SubtitleFormat::Cea708 => write!(f, "CEA-708"),
         }
     }
 }

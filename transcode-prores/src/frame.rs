@@ -304,6 +304,132 @@ impl ProResFrame {
     pub fn has_alpha(&self) -> bool {
         self.alpha_plane.is_some()
     }
+
+    /// Create a frame from raw planar data
+    pub fn from_planes(
+        y_plane: &[i16],
+        cb_plane: &[i16],
+        cr_plane: &[i16],
+        alpha_plane: Option<&[u16]>,
+        width: u16,
+        height: u16,
+        profile: ProResProfile,
+        bit_depth: BitDepth,
+    ) -> Result<Self> {
+        let width = width as u32;
+        let height = height as u32;
+
+        // Round up to macroblock boundaries
+        let padded_width = (width + 15) & !15;
+        let padded_height = (height + 15) & !15;
+
+        let chroma_format = if profile.is_444() {
+            ChromaFormat::YUV444
+        } else {
+            ChromaFormat::YUV422
+        };
+
+        let chroma_h_shift = chroma_format.chroma_h_shift();
+        let chroma_width = padded_width >> chroma_h_shift;
+
+        let expected_y_size = (padded_width * padded_height) as usize;
+        let expected_chroma_size = (chroma_width * padded_height) as usize;
+
+        // Validate input sizes - allow for unpadded input too
+        let min_y_size = (width * height) as usize;
+        let min_chroma_size = ((width >> chroma_h_shift) * height) as usize;
+
+        if y_plane.len() < min_y_size {
+            return Err(ProResError::InvalidHeader(format!(
+                "Y plane too small: {} < {}",
+                y_plane.len(),
+                min_y_size
+            )));
+        }
+
+        if cb_plane.len() < min_chroma_size {
+            return Err(ProResError::InvalidHeader(format!(
+                "Cb plane too small: {} < {}",
+                cb_plane.len(),
+                min_chroma_size
+            )));
+        }
+
+        if cr_plane.len() < min_chroma_size {
+            return Err(ProResError::InvalidHeader(format!(
+                "Cr plane too small: {} < {}",
+                cr_plane.len(),
+                min_chroma_size
+            )));
+        }
+
+        // Copy data to padded buffers
+        let mut y_data = vec![0i16; expected_y_size];
+        let mut cb_data = vec![0i16; expected_chroma_size];
+        let mut cr_data = vec![0i16; expected_chroma_size];
+
+        // Copy Y plane row by row
+        let input_y_stride = width as usize;
+        let output_y_stride = padded_width as usize;
+        for row in 0..height as usize {
+            let src_start = row * input_y_stride;
+            let dst_start = row * output_y_stride;
+            let src_end = (src_start + width as usize).min(y_plane.len());
+            let copy_len = src_end - src_start;
+            y_data[dst_start..dst_start + copy_len].copy_from_slice(&y_plane[src_start..src_end]);
+        }
+
+        // Copy Cb/Cr planes row by row
+        let input_chroma_width = width as usize >> chroma_h_shift;
+        let output_chroma_stride = chroma_width as usize;
+        for row in 0..height as usize {
+            let src_start = row * input_chroma_width;
+            let dst_start = row * output_chroma_stride;
+            let src_end = (src_start + input_chroma_width).min(cb_plane.len());
+            let copy_len = src_end - src_start;
+            cb_data[dst_start..dst_start + copy_len].copy_from_slice(&cb_plane[src_start..src_end]);
+
+            let src_end = (src_start + input_chroma_width).min(cr_plane.len());
+            let copy_len = src_end - src_start;
+            cr_data[dst_start..dst_start + copy_len].copy_from_slice(&cr_plane[src_start..src_end]);
+        }
+
+        // Handle alpha plane
+        let alpha_data = if let Some(alpha) = alpha_plane {
+            if alpha.len() < min_y_size {
+                return Err(ProResError::InvalidHeader(format!(
+                    "Alpha plane too small: {} < {}",
+                    alpha.len(),
+                    min_y_size
+                )));
+            }
+            let mut alpha_buf = vec![0u16; expected_y_size];
+            for row in 0..height as usize {
+                let src_start = row * input_y_stride;
+                let dst_start = row * output_y_stride;
+                let src_end = (src_start + width as usize).min(alpha.len());
+                let copy_len = src_end - src_start;
+                alpha_buf[dst_start..dst_start + copy_len].copy_from_slice(&alpha[src_start..src_end]);
+            }
+            Some(alpha_buf)
+        } else {
+            None
+        };
+
+        Ok(ProResFrame {
+            width,
+            height,
+            profile,
+            bit_depth,
+            chroma_format,
+            y_plane: y_data,
+            cb_plane: cb_data,
+            cr_plane: cr_data,
+            alpha_plane: alpha_data,
+            y_stride: padded_width,
+            chroma_stride: chroma_width,
+        })
+    }
 }
 
 #[cfg(test)]

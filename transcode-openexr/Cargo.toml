@@ -1,0 +1,18 @@
+[package]
+name = "transcode-openexr"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "OpenEXR image codec for high dynamic range imaging"
+keywords = ["openexr", "hdr", "exr", "vfx", "image"]
+categories = ["multimedia::images", "compression"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+thiserror.workspace = true
+byteorder.workspace = true
+bitflags.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

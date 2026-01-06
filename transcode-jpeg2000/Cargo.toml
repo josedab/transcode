@@ -1,0 +1,24 @@
+[package]
+name = "transcode-jpeg2000"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "JPEG2000 codec support for DCP/cinema workflows"
+keywords = ["jpeg2000", "j2k", "jp2", "dcp", "cinema"]
+categories = ["multimedia", "encoding", "compression"]
+
+[features]
+default = []
+# Enable OpenJPEG FFI for full JPEG2000 support
+ffi-openjpeg = []
+
+[dependencies]
+thiserror.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "transcode-ffv1"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "FFV1 lossless video codec implementation"
+keywords = ["video", "codec", "ffv1", "lossless", "archival"]
+categories = ["multimedia", "encoding", "compression"]
+
+[features]
+default = []
+encoder = []
+simd = []
+
+[dependencies]
+thiserror.workspace = true
+byteorder.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

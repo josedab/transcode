@@ -1,0 +1,23 @@
+[package]
+name = "transcode-vp8"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "VP8 video codec for the transcode library"
+repository.workspace = true
+keywords = ["video", "codec", "vp8", "webm"]
+categories = ["multimedia", "encoding", "compression"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+thiserror.workspace = true
+byteorder.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+
+[features]
+default = []
+encoder = []
+simd = []

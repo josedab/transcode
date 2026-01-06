@@ -1,0 +1,18 @@
+[package]
+name = "transcode-pcm"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "PCM audio codec support for the transcode library"
+keywords = ["pcm", "audio", "codec", "uncompressed", "wav"]
+categories = ["multimedia", "encoding"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+thiserror.workspace = true
+byteorder.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

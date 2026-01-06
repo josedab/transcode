@@ -125,6 +125,18 @@ pub enum Vp9Error {
     /// Uncompressed header parsing error.
     #[error("Uncompressed header error: {0}")]
     UncompressedHeaderError(String),
+
+    /// Invalid encoder configuration.
+    #[error("Invalid encoder configuration: {0}")]
+    InvalidConfig(String),
+
+    /// Invalid input frame.
+    #[error("Invalid input frame: {0}")]
+    InvalidFrame(String),
+
+    /// Encoder error.
+    #[error("Encoder error: {0}")]
+    EncoderError(String),
 }
 
 /// VP9 codec result type.

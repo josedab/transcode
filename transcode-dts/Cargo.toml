@@ -1,0 +1,29 @@
+[package]
+name = "transcode-dts"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "DTS and TrueHD audio codec support via FFI wrapper"
+keywords = ["audio", "dts", "truehd", "surround", "codec"]
+categories = ["multimedia::audio", "encoding"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+
+# DTS/TrueHD FFI bindings (optional - user must have libraries installed)
+# libdca-sys = { version = "0.1", optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
+
+[features]
+default = []
+# Enable FFmpeg FFI integration (requires FFmpeg/libdca dev libraries)
+ffi-ffmpeg = []

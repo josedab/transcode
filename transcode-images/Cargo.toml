@@ -1,0 +1,24 @@
+[package]
+name = "transcode-images"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Image codec support (JPEG, PNG, GIF) for the transcode library"
+keywords = ["jpeg", "png", "gif", "image", "codec"]
+categories = ["multimedia", "encoding"]
+
+[features]
+default = ["jpeg", "png"]
+jpeg = []
+png = []
+gif = []
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+thiserror.workspace = true
+byteorder.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true

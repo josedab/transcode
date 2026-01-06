@@ -9,15 +9,18 @@ keywords = ["av1", "video", "codec", "rav1e", "encoding"]
 categories = ["multimedia::video", "encoding"]
 
 [features]
-default = ["encoder"]
+default = ["encoder", "decoder"]
 encoder = ["rav1e"]
-# decoder feature would use dav1d when available
+decoder = ["dav1d"]
 
 [dependencies]
 transcode-core = { path = "../transcode-core" }
 
 # AV1 encoder
 rav1e = { version = "0.7", optional = true }
+
+# AV1 decoder
+dav1d = { version = "0.10", optional = true }
 
 # Utilities
 log = "0.4"

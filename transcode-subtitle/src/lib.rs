@@ -100,6 +100,8 @@
 //! ```
 
 pub mod ass;
+pub mod cea608;
+pub mod cea708;
 pub mod convert;
 pub mod srt;
 pub mod types;

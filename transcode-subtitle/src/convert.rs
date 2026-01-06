@@ -3,16 +3,22 @@
 //! This module provides functions to convert between different subtitle formats
 //! (SRT, ASS/SSA, WebVTT) while preserving as much information as possible.
 
-use crate::types::{SubtitleFormat, SubtitleResult, SubtitleTrack};
+use crate::types::{SubtitleError, SubtitleFormat, SubtitleResult, SubtitleTrack};
 use crate::{ass, srt, vtt};
 
 /// Converts a subtitle track to the specified format string.
+///
+/// Note: CEA-608 and CEA-708 formats use binary data and cannot be
+/// converted to text strings. Use the dedicated cea608 and cea708
+/// modules for these formats.
 pub fn convert_to_format(track: &SubtitleTrack, format: SubtitleFormat) -> String {
     match format {
         SubtitleFormat::Srt => srt::write(track),
         SubtitleFormat::Ass => ass::write(track),
         SubtitleFormat::Ssa => ass::write_ssa(track),
         SubtitleFormat::WebVtt => vtt::write(track),
+        // CEA formats use binary data - convert to SRT as fallback
+        SubtitleFormat::Cea608 | SubtitleFormat::Cea708 => srt::write(track),
     }
 }
 
@@ -24,11 +30,18 @@ pub fn parse_auto(content: &str) -> SubtitleResult<(SubtitleTrack, SubtitleForma
 }
 
 /// Parses subtitle content with the specified format.
+///
+/// Note: CEA-608 and CEA-708 formats use binary data and cannot be
+/// parsed from text strings. Use the dedicated cea608 and cea708
+/// modules for these formats.
 pub fn parse_with_format(content: &str, format: SubtitleFormat) -> SubtitleResult<SubtitleTrack> {
     match format {
         SubtitleFormat::Srt => srt::parse(content),
         SubtitleFormat::Ass | SubtitleFormat::Ssa => ass::parse(content),
         SubtitleFormat::WebVtt => vtt::parse(content),
+        SubtitleFormat::Cea608 | SubtitleFormat::Cea708 => Err(SubtitleError::InvalidFormat(
+            "CEA-608/708 uses binary data; use cea608/cea708 modules directly".into(),
+        )),
     }
 }
 

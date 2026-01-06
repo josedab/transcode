@@ -1,0 +1,29 @@
+[package]
+name = "transcode-mpeg2"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "MPEG-2 video codec support via FFI wrapper"
+keywords = ["video", "mpeg2", "dvd", "broadcast", "codec"]
+categories = ["multimedia::video", "encoding"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+thiserror.workspace = true
+tracing.workspace = true
+byteorder.workspace = true
+bytes.workspace = true
+
+# FFmpeg/mpeg2dec FFI bindings (optional - user must have libraries installed)
+# mpeg2dec-sys = { version = "0.1", optional = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
+
+[features]
+default = []
+# Enable FFmpeg FFI integration (requires FFmpeg/libmpeg2 dev libraries)
+ffi-ffmpeg = []

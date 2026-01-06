@@ -13,6 +13,10 @@ pub enum Av1Error {
     #[error("Encoder error: {0}")]
     EncoderError(String),
 
+    /// Decoder error.
+    #[error("Decoder error: {0}")]
+    DecoderError(String),
+
     /// Invalid frame data.
     #[error("Invalid frame: {0}")]
     InvalidFrame(String),
@@ -28,6 +32,10 @@ pub enum Av1Error {
     /// Encoding not ready.
     #[error("Encoder needs more frames")]
     NeedsMoreFrames,
+
+    /// Decoding not ready (need more data).
+    #[error("Decoder needs more data")]
+    NeedsMoreData,
 
     /// End of stream reached.
     #[error("End of stream")]

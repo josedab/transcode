@@ -66,6 +66,40 @@ members = [
     "transcode-flv",
     # Spatial audio support
     "transcode-spatial",
+    # PCM audio codec
+    "transcode-pcm",
+    # Vorbis audio codec
+    "transcode-vorbis",
+    # Image codecs (JPEG, PNG, GIF)
+    "transcode-images",
+    # VP8 video codec
+    "transcode-vp8",
+    # ALAC audio codec
+    "transcode-alac",
+    # FFV1 lossless video codec
+    "transcode-ffv1",
+    # Theora video codec
+    "transcode-theora",
+    # DNxHD/DNxHR video codec
+    "transcode-dnxhd",
+    # CineForm video codec (GoPro)
+    "transcode-cineform",
+    # AVI container format
+    "transcode-avi",
+    # MXF container format
+    "transcode-mxf",
+    # OpenEXR image codec
+    "transcode-openexr",
+    # TIFF image codec
+    "transcode-tiff",
+    # AC-3/E-AC-3 audio codec (Dolby Digital)
+    "transcode-ac3",
+    # MPEG-2 video codec
+    "transcode-mpeg2",
+    # DTS/TrueHD audio codec
+    "transcode-dts",
+    # JPEG2000 codec (DCP/cinema)
+    "transcode-jpeg2000",
 ]
 resolver = "2"
 

@@ -1,0 +1,16 @@
+[package]
+name = "transcode-dnxhd"
+version = "0.1.0"
+edition = "2021"
+description = "DNxHD/DNxHR video codec implementation"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/anthropics/transcode"
+keywords = ["dnxhd", "dnxhr", "video", "codec", "avid"]
+categories = ["multimedia::video"]
+
+[dependencies]
+byteorder = "1.5"
+log = "0.4"
+
+[dev-dependencies]
+env_logger = "0.11"

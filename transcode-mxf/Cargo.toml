@@ -1,0 +1,17 @@
+[package]
+name = "transcode-mxf"
+version = "0.1.0"
+edition = "2021"
+description = "MXF (Material eXchange Format) container support"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/anthropics/transcode"
+keywords = ["mxf", "video", "container", "broadcast", "professional"]
+categories = ["multimedia::video"]
+
+[dependencies]
+byteorder = "1.5"
+log = "0.4"
+uuid = { version = "1.0", features = ["v4"] }
+
+[dev-dependencies]
+env_logger = "0.11"

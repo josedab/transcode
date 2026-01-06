@@ -1,16 +1,19 @@
 //! AV1 codec support for the transcode library.
 //!
-//! This crate provides AV1 video encoding capabilities using rav1e,
-//! the fastest and safest AV1 encoder written in Rust.
+//! This crate provides AV1 video encoding and decoding capabilities:
+//! - **Encoding**: Using rav1e, the fastest and safest AV1 encoder written in Rust
+//! - **Decoding**: Using dav1d, the fast and efficient AV1 decoder
 //!
 //! # Features
 //!
 //! - High-quality AV1 encoding with configurable speed/quality tradeoffs
-//! - Support for 8-bit and 10-bit encoding
+//! - Fast AV1 decoding with multi-threaded support
+//! - Support for 8-bit and 10-bit content
 //! - Multiple rate control modes (CQP, VBR, CBR)
+//! - Film grain synthesis support in decoder
 //! - Tile-based parallelism for faster encoding
 //!
-//! # Example
+//! # Encoding Example
 //!
 //! ```no_run
 //! use transcode_av1::{Av1Encoder, Av1Config, Av1Preset};
@@ -24,15 +27,41 @@
 //! // Encode frames...
 //! # Ok::<(), transcode_av1::Av1Error>(())
 //! ```
+//!
+//! # Decoding Example
+//!
+//! ```no_run
+//! use transcode_av1::{Av1Decoder, Av1DecoderConfig};
+//!
+//! let config = Av1DecoderConfig::new()
+//!     .with_frame_threads(4)
+//!     .with_film_grain(true);
+//!
+//! let mut decoder = Av1Decoder::with_config(config)?;
+//!
+//! // Send AV1 OBU data
+//! decoder.send_data(&av1_data, pts, duration)?;
+//!
+//! // Get decoded frames
+//! while let Some(frame) = decoder.get_frame()? {
+//!     // Process decoded frame...
+//! }
+//! # let av1_data: Vec<u8> = vec![];
+//! # let pts: i64 = 0;
+//! # let duration: i64 = 0;
+//! # Ok::<(), transcode_av1::Av1Error>(())
+//! ```
 
 #![allow(dead_code)]
 
 mod config;
 mod encoder;
+mod decoder;
 mod error;
 
 pub use config::{Av1Config, Av1Preset, RateControlMode};
-pub use encoder::Av1Encoder;
+pub use encoder::{Av1Encoder, Av1Packet, Av1FrameType, Av1EncoderStats};
+pub use decoder::{Av1Decoder, Av1DecoderConfig, Av1DecodedFrame, Av1DecoderStats};
 pub use error::Av1Error;
 
 /// Result type for AV1 operations.

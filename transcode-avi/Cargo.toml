@@ -1,0 +1,16 @@
+[package]
+name = "transcode-avi"
+version = "0.1.0"
+edition = "2021"
+description = "AVI container format support (demuxer and muxer)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/anthropics/transcode"
+keywords = ["avi", "riff", "video", "container", "demuxer"]
+categories = ["multimedia::video"]
+
+[dependencies]
+byteorder = "1.5"
+log = "0.4"
+
+[dev-dependencies]
+env_logger = "0.11"

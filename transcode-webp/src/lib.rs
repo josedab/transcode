@@ -1,17 +1,18 @@
 //! # transcode-webp
 //!
-//! A WebP decoder library supporting VP8 lossy, VP8L lossless, animation, and metadata extraction.
+//! A WebP codec library supporting VP8 lossy, VP8L lossless encoding and decoding,
+//! animation, and metadata extraction.
 //!
 //! ## Features
 //!
-//! - RIFF container parsing
-//! - VP8 lossy decoding (simplified implementation for common cases)
-//! - VP8L lossless decoding
+//! - RIFF container parsing and writing
+//! - VP8 lossy encoding and decoding
+//! - VP8L lossless encoding and decoding
 //! - Alpha channel support
 //! - Animation support (ANIM, ANMF chunks)
 //! - EXIF/XMP metadata extraction
 //!
-//! ## Example
+//! ## Decoding Example
 //!
 //! ```rust,no_run
 //! use transcode_webp::WebPDecoder;
@@ -23,6 +24,23 @@
 //! let decoder = WebPDecoder::new(reader).unwrap();
 //! let image = decoder.decode().unwrap();
 //! ```
+//!
+//! ## Encoding Example
+//!
+//! ```rust,no_run
+//! use transcode_webp::{WebPEncoder, EncodingMode};
+//!
+//! // RGBA image data (4 bytes per pixel)
+//! let rgba_data = vec![255u8; 100 * 100 * 4];
+//!
+//! // Lossless encoding
+//! let encoder = WebPEncoder::new().mode(EncodingMode::Lossless);
+//! let frame = encoder.encode_rgba(&rgba_data, 100, 100).unwrap();
+//!
+//! // Write to file
+//! let mut output = Vec::new();
+//! encoder.write_to_riff(&frame, &mut output).unwrap();
+//! ```
 
 pub mod error;
 pub mod riff;
@@ -31,6 +49,7 @@ pub mod vp8l;
 pub mod alpha;
 pub mod animation;
 pub mod metadata;
+pub mod encoder;
 mod bitreader;
 mod transform;
 
@@ -43,6 +62,10 @@ pub use vp8l::Vp8lDecoder;
 pub use alpha::AlphaDecoder;
 pub use animation::{AnimationDecoder, AnimationFrame, AnimationInfo};
 pub use metadata::{Metadata, ExifData, XmpData};
+pub use encoder::{
+    WebPEncoder, WebPEncoderConfig, EncodingMode, EncodedFrame,
+    encode_webp_lossless, encode_webp_lossy,
+};
 
 use image::DynamicImage;
 

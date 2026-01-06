@@ -1,0 +1,21 @@
+[package]
+name = "transcode-alac"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Apple Lossless Audio Codec (ALAC) implementation"
+keywords = ["audio", "codec", "alac", "apple", "lossless"]
+categories = ["multimedia", "encoding", "compression"]
+
+[features]
+default = []
+encoder = []
+simd = []
+
+[dependencies]
+thiserror.workspace = true
+byteorder.workspace = true
+
+[dev-dependencies]
+pretty_assertions.workspace = true
