@@ -29,16 +29,30 @@ A memory-safe, high-performance universal codec library written in Rust.
 | Codec | Decode | Encode | Status |
 |-------|--------|--------|--------|
 | H.264/AVC | ✅ | ✅ | Complete |
-| AV1 | ✅ | ✅ | Complete (via rav1e) |
-| H.265/HEVC | 🔄 | 🔄 | Planned |
-| VP9 | 🔄 | 🔄 | Planned |
+| AV1 | ✅ | ✅ | Complete (via rav1e/dav1d) |
+| H.265/HEVC | ✅ | ✅ | Complete |
+| VP9 | ✅ | ✅ | Complete |
+| VP8 | ✅ | ✅ | Complete |
+| ProRes | ✅ | ✅ | Complete |
+| DNxHD/DNxHR | ✅ | ✅ | Complete |
+| MPEG-2 | ✅ | ✅ | Complete |
+| FFV1 | ✅ | ✅ | Complete |
+| Theora | ✅ | ❌ | Decode only |
+| Cineform | ✅ | ✅ | Complete |
+| VVC/H.266 | 🔄 | 🔄 | In Progress |
 
 ### Audio Codecs
 | Codec | Decode | Encode | Status |
 |-------|--------|--------|--------|
 | AAC | ✅ | ✅ | Complete |
 | MP3 | ✅ | ❌ | Decode only |
-| Opus | 🔄 | 🔄 | Planned |
+| Opus | ✅ | ✅ | Complete |
+| FLAC | ✅ | ✅ | Complete |
+| AC3/E-AC3 | ✅ | ✅ | Complete |
+| DTS | ✅ | ✅ | Complete |
+| ALAC | ✅ | ✅ | Complete |
+| PCM | ✅ | ✅ | Complete |
+| Vorbis | ✅ | ✅ | Complete |
 
 ### Container Formats
 | Format | Demux | Mux | Status |
@@ -46,8 +60,12 @@ A memory-safe, high-performance universal codec library written in Rust.
 | MP4/MOV | ✅ | ✅ | Complete |
 | HLS | ❌ | ✅ | Mux only |
 | DASH | ❌ | ✅ | Mux only |
-| MKV/WebM | 🔄 | 🔄 | Planned |
-| MPEG-TS | 🔄 | 🔄 | Planned |
+| MKV | ✅ | ✅ | Complete |
+| WebM | ✅ | ✅ | Complete |
+| MPEG-TS | ✅ | ✅ | Complete |
+| AVI | ✅ | ✅ | Complete |
+| FLV | ✅ | ✅ | Complete |
+| MXF | ✅ | ✅ | Complete |
 
 ## Quick Start
 
@@ -131,25 +149,103 @@ print(f"Best SIMD level: {caps.best_level()}")
 
 ## Architecture
 
-Transcode is organized as a modular workspace with specialized crates:
+Transcode is organized as a modular workspace with 70+ specialized crates:
 
 ```
 transcode/
-├── transcode-core/         # Core types, traits, and utilities
-├── transcode-codecs/       # Video and audio codec implementations
-├── transcode-containers/   # Container format handling (MP4, MKV, etc.)
-├── transcode-pipeline/     # Transcoding pipeline orchestration
-├── transcode-av1/          # AV1 codec (rav1e encoder, dav1d decoder)
-├── transcode-streaming/    # HLS/DASH streaming output
-├── transcode-gpu/          # GPU compute via wgpu
-├── transcode-ai/           # AI enhancement (upscaling, denoising)
-├── transcode-quality/      # Quality metrics (PSNR, SSIM, VMAF)
-├── transcode-distributed/  # Distributed transcoding system
-├── transcode-intel/        # Content intelligence (scene detection)
-├── transcode-wasm/         # WebAssembly support
-├── transcode-cli/          # Command-line interface
-├── transcode-python/       # Python bindings (PyO3)
-└── transcode/              # Main library facade
+├── Core
+│   ├── transcode-core/           # Core types and utilities
+│   ├── transcode-codecs/         # Base codec implementations (H.264, AAC, MP3)
+│   ├── transcode-containers/     # Container formats (MP4)
+│   └── transcode-pipeline/       # Pipeline orchestration
+│
+├── Video Codecs
+│   ├── transcode-av1/            # AV1 (rav1e/dav1d)
+│   ├── transcode-hevc/           # H.265/HEVC
+│   ├── transcode-vp9/            # VP9
+│   ├── transcode-vp8/            # VP8
+│   ├── transcode-prores/         # Apple ProRes
+│   ├── transcode-dnxhd/          # Avid DNxHD/DNxHR
+│   ├── transcode-mpeg2/          # MPEG-2
+│   ├── transcode-ffv1/           # FFV1 lossless
+│   ├── transcode-cineform/       # GoPro Cineform
+│   ├── transcode-theora/         # Theora
+│   └── transcode-vvc/            # VVC/H.266 (in progress)
+│
+├── Audio Codecs
+│   ├── transcode-opus/           # Opus
+│   ├── transcode-flac/           # FLAC lossless
+│   ├── transcode-ac3/            # Dolby AC-3/E-AC-3
+│   ├── transcode-dts/            # DTS
+│   ├── transcode-alac/           # Apple Lossless
+│   ├── transcode-pcm/            # PCM audio
+│   └── transcode-vorbis/         # Vorbis
+│
+├── Containers
+│   ├── transcode-mkv/            # Matroska
+│   ├── transcode-webm/           # WebM
+│   ├── transcode-ts/             # MPEG-TS
+│   ├── transcode-avi/            # AVI
+│   ├── transcode-flv/            # Flash Video
+│   └── transcode-mxf/            # MXF
+│
+├── Image Formats
+│   ├── transcode-images/         # Image processing
+│   ├── transcode-webp/           # WebP
+│   ├── transcode-jpeg2000/       # JPEG 2000
+│   ├── transcode-openexr/        # OpenEXR
+│   └── transcode-tiff/           # TIFF
+│
+├── Processing
+│   ├── transcode-gpu/            # GPU compute via wgpu
+│   ├── transcode-ai/             # AI enhancement
+│   ├── transcode-quality/        # Quality metrics (PSNR, SSIM, VMAF)
+│   ├── transcode-deinterlace/    # Deinterlacing
+│   ├── transcode-framerate/      # Frame rate conversion
+│   ├── transcode-hdr/            # HDR processing
+│   ├── transcode-resample/       # Audio resampling
+│   ├── transcode-subtitle/       # Subtitle handling
+│   ├── transcode-caption/        # Closed captions
+│   └── transcode-watermark/      # Watermarking
+│
+├── Streaming & Distribution
+│   ├── transcode-streaming/      # HLS/DASH output
+│   ├── transcode-live/           # Live streaming
+│   ├── transcode-distributed/    # Distributed processing
+│   └── transcode-cloud/          # Cloud integration
+│
+├── Professional
+│   ├── transcode-dolby/          # Dolby technologies
+│   ├── transcode-spatial/        # Spatial audio
+│   ├── transcode-loudness/       # Loudness metering
+│   ├── transcode-timecode/       # Timecode handling
+│   ├── transcode-drm/            # DRM support
+│   └── transcode-pertitle/       # Per-title encoding
+│
+├── Intelligence
+│   ├── transcode-intel/          # Content intelligence
+│   ├── transcode-intelligence/   # Advanced analysis
+│   ├── transcode-neural/         # Neural processing
+│   └── transcode-analytics/      # Analytics
+│
+├── Platform Bindings
+│   ├── transcode-cli/            # CLI
+│   ├── transcode-python/         # Python bindings (PyO3)
+│   ├── transcode-node/           # Node.js bindings
+│   ├── transcode-wasm/           # WebAssembly
+│   └── transcode-capi/           # C API
+│
+├── Hardware
+│   ├── transcode-hwaccel/        # Hardware acceleration
+│   └── transcode-zerocopy/       # Zero-copy transfers
+│
+├── Testing & Compatibility
+│   ├── transcode-bench/          # Benchmarks
+│   ├── transcode-conformance/    # Conformance tests
+│   ├── transcode-compat/         # FFmpeg compatibility
+│   └── transcode-telemetry/      # Telemetry
+│
+└── transcode/                    # Main library facade
 ```
 
 ### SIMD Optimization
@@ -510,19 +606,27 @@ The Docker image uses [tini](https://github.com/krallin/tini) as an init process
 ## Roadmap
 
 ### Completed
-- [x] AV1 codec support (rav1e encoder)
+- [x] AV1 codec support (rav1e encoder, dav1d decoder)
+- [x] H.265/HEVC codec support
+- [x] VP9/VP8 codec support
+- [x] ProRes, DNxHD, MPEG-2, FFV1, Cineform, Theora codecs
+- [x] Opus, FLAC, AC3, DTS, ALAC, PCM, Vorbis audio codecs
+- [x] MKV/WebM container support
+- [x] MPEG-TS, AVI, FLV, MXF container support
 - [x] WebAssembly support with Web Workers
 - [x] HLS/DASH streaming output
 - [x] GPU acceleration (wgpu)
+- [x] Hardware acceleration (VAAPI, VideoToolbox, NVENC, QSV)
 - [x] AI enhancement pipeline
 - [x] Quality metrics (PSNR, SSIM, VMAF)
 - [x] Distributed transcoding
 - [x] Content intelligence
+- [x] HDR processing
+- [x] DRM support
+- [x] Per-title encoding optimization
+- [x] FFmpeg compatibility layer
 
 ### Planned
-- [ ] H.265/HEVC codec support
-- [ ] VP9 codec support
-- [ ] MKV/WebM container support
-- [ ] Hardware acceleration (VAAPI, VideoToolbox, NVENC)
-- [ ] Live streaming input
+- [ ] VVC/H.266 codec support (in progress)
+- [ ] Live streaming input (in progress)
 - [ ] Audio enhancement (noise reduction, normalization)
