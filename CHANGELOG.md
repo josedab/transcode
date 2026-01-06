@@ -26,18 +26,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ISOBMFF box parsing
   - MKV/WebM demuxer and muxer with full lacing support (Xiph, EBML, fixed-size)
   - MPEG-TS demuxer and muxer with PCR/PTS/DTS handling
+  - AVI container (`transcode-avi`)
+  - MXF professional container (`transcode-mxf`)
+  - FLV container (`transcode-flv`)
+  - WebM container (`transcode-webm`)
 - Additional video codecs
   - HEVC/H.265 decoder and encoder (`transcode-hevc`)
+  - VVC/H.266 decoder and encoder (`transcode-vvc`)
   - VP9 decoder and encoder (`transcode-vp9`)
+  - VP8 decoder and encoder (`transcode-vp8`)
   - AV1 codec via rav1e/dav1d (`transcode-av1`)
+  - MPEG-2 video with FFI wrapper (`transcode-mpeg2`)
+  - ProRes decoder (`transcode-prores`)
+  - DNxHD/DNxHR (`transcode-dnxhd`)
+  - FFV1 lossless (`transcode-ffv1`)
+  - Theora (`transcode-theora`)
+  - CineForm (`transcode-cineform`)
+- Image codecs
+  - JPEG, PNG, GIF (`transcode-images`)
+  - WebP (`transcode-webp`)
+  - JPEG2000 for DCP/cinema with FFI wrapper (`transcode-jpeg2000`)
+  - OpenEXR HDR images (`transcode-openexr`)
+  - TIFF (`transcode-tiff`)
 - Additional audio codecs
   - Opus decoder and encoder (`transcode-opus`)
+  - FLAC lossless audio (`transcode-flac`)
+  - AC-3/E-AC-3 (Dolby Digital) with FFI wrapper (`transcode-ac3`)
+  - DTS/DTS-HD/TrueHD with FFI wrapper (`transcode-dts`)
+  - Vorbis audio codec (`transcode-vorbis`)
+  - PCM audio variants (`transcode-pcm`)
+  - ALAC (Apple Lossless) (`transcode-alac`)
 - Video processing
   - Deinterlacing filters: bob, weave, yadif (`transcode-deinterlace`)
   - Frame rate conversion with motion interpolation (`transcode-framerate`)
   - HDR processing (`transcode-hdr`)
 - Audio processing
   - Loudness normalization (EBU R128, ATSC A/85) (`transcode-loudness`)
+  - Audio resampling (`transcode-resample`)
+  - Spatial/immersive audio (Atmos, Auro-3D) (`transcode-spatial`)
 - Content protection
   - DRM encryption support (Widevine, FairPlay, PlayReady) (`transcode-drm`)
 - Streaming
@@ -46,7 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Professional features
   - Timecode support (SMPTE, drop-frame, NDF) (`transcode-timecode`)
   - Closed captioning and subtitles (`transcode-caption`)
+  - Subtitle support (SRT, WebVTT, ASS/SSA) (`transcode-subtitle`)
   - Watermarking (`transcode-watermark`)
+  - Dolby Vision processing (`transcode-dolby`)
+  - Conformance testing (`transcode-conformance`)
 - AI/ML features
   - Neural network upscaling (`transcode-neural`, `transcode-ai`)
   - Audio AI processing (`transcode-audio-ai`)
