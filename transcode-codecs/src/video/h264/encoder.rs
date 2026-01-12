@@ -781,17 +781,17 @@ impl VideoEncoder for H264Encoder {
         // Fall back to single-threaded encoding
         if is_keyframe {
             // Prepend SPS and PPS for keyframes
-            let mut sps_packet = Packet::new(Vec::new());
-            sps_packet.pts = frame.pts;
             let mut sps_data = vec![0x00, 0x00, 0x00, 0x01];
             sps_data.extend_from_slice(&self.sps);
-            sps_packet = Packet::new(sps_data);
+            let mut sps_packet = Packet::new(sps_data);
             sps_packet.pts = frame.pts;
+            packets.push(sps_packet);
 
             let mut pps_data = vec![0x00, 0x00, 0x00, 0x01];
             pps_data.extend_from_slice(&self.pps);
             let mut pps_packet = Packet::new(pps_data);
             pps_packet.pts = frame.pts;
+            packets.push(pps_packet);
 
             // Encode IDR frame
             let idr_packet = self.encode_idr(frame)?;
