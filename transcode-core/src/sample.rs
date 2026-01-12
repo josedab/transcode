@@ -352,12 +352,20 @@ impl SampleBuffer {
     }
 
     /// Get typed sample data for S16 format.
+    ///
+    /// Returns `None` if the format is not S16/S16p or if the data is not properly aligned.
     pub fn as_s16(&self) -> Option<&[i16]> {
         if self.format == SampleFormat::S16 || self.format == SampleFormat::S16p {
             let data = &self.data[0];
+            let ptr = data.as_ptr();
+            // Check alignment before casting
+            if ptr.align_offset(std::mem::align_of::<i16>()) != 0 {
+                return None;
+            }
+            // SAFETY: We've verified the format is S16/S16p and the pointer is properly aligned
             Some(unsafe {
                 std::slice::from_raw_parts(
-                    data.as_ptr() as *const i16,
+                    ptr as *const i16,
                     data.len() / 2,
                 )
             })
@@ -367,12 +375,20 @@ impl SampleBuffer {
     }
 
     /// Get typed sample data for F32 format.
+    ///
+    /// Returns `None` if the format is not F32/F32p or if the data is not properly aligned.
     pub fn as_f32(&self) -> Option<&[f32]> {
         if self.format == SampleFormat::F32 || self.format == SampleFormat::F32p {
             let data = &self.data[0];
+            let ptr = data.as_ptr();
+            // Check alignment before casting
+            if ptr.align_offset(std::mem::align_of::<f32>()) != 0 {
+                return None;
+            }
+            // SAFETY: We've verified the format is F32/F32p and the pointer is properly aligned
             Some(unsafe {
                 std::slice::from_raw_parts(
-                    data.as_ptr() as *const f32,
+                    ptr as *const f32,
                     data.len() / 4,
                 )
             })
