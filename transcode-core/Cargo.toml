@@ -17,6 +17,7 @@ bitflags.workspace = true
 num-traits.workspace = true
 num-derive.workspace = true
 smallvec.workspace = true
+parking_lot.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true

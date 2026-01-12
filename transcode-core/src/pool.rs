@@ -6,8 +6,9 @@
 use crate::frame::{Frame, FrameBuffer, PixelFormat};
 use crate::sample::{ChannelLayout, SampleBuffer, SampleFormat};
 use crate::timestamp::TimeBase;
+use parking_lot::Mutex;
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// A pool of reusable frame buffers.
 pub struct FramePool {
@@ -98,22 +99,22 @@ impl SharedFramePool {
 
     /// Acquire a frame buffer from the pool.
     pub fn acquire(&self) -> FrameBuffer {
-        self.inner.lock().unwrap().acquire()
+        self.inner.lock().acquire()
     }
 
     /// Acquire a frame from the pool.
     pub fn acquire_frame(&self, time_base: TimeBase) -> Frame {
-        self.inner.lock().unwrap().acquire_frame(time_base)
+        self.inner.lock().acquire_frame(time_base)
     }
 
     /// Release a frame buffer back to the pool.
     pub fn release(&self, buffer: FrameBuffer) {
-        self.inner.lock().unwrap().release(buffer);
+        self.inner.lock().release(buffer);
     }
 
     /// Get the number of available buffers.
     pub fn available(&self) -> usize {
-        self.inner.lock().unwrap().available()
+        self.inner.lock().available()
     }
 }
 
@@ -222,17 +223,17 @@ impl SharedSamplePool {
 
     /// Acquire a sample buffer from the pool.
     pub fn acquire(&self) -> SampleBuffer {
-        self.inner.lock().unwrap().acquire()
+        self.inner.lock().acquire()
     }
 
     /// Release a sample buffer back to the pool.
     pub fn release(&self, buffer: SampleBuffer) {
-        self.inner.lock().unwrap().release(buffer);
+        self.inner.lock().release(buffer);
     }
 
     /// Get the number of available buffers.
     pub fn available(&self) -> usize {
-        self.inner.lock().unwrap().available()
+        self.inner.lock().available()
     }
 }
 

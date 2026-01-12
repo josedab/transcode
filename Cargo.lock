@@ -8845,6 +8845,7 @@ dependencies = [
  "bytes 1.11.0",
  "num-derive",
  "num-traits",
+ "parking_lot 0.12.5",
  "pretty_assertions",
  "proptest",
  "smallvec 1.15.1",
