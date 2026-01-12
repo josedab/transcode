@@ -31,7 +31,6 @@
 //! }
 //! ```
 
-#![allow(clippy::missing_safety_doc)]
 
 use std::ffi::{c_char, c_int, c_void, CStr};
 use std::ptr;
@@ -538,6 +537,11 @@ impl InternalContext {
 /// Get the version string of the transcode library.
 ///
 /// Returns a null-terminated string. The caller must not free this pointer.
+///
+/// # Safety
+///
+/// This function is safe to call from any context. The returned pointer is valid
+/// for the lifetime of the program and must not be freed by the caller.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_version() -> *const c_char {
     static VERSION: &[u8] = b"0.1.0\0";
@@ -547,6 +551,11 @@ pub unsafe extern "C" fn transcode_version() -> *const c_char {
 /// Get a human-readable error message for an error code.
 ///
 /// Returns a null-terminated string. The caller must not free this pointer.
+///
+/// # Safety
+///
+/// This function is safe to call from any context. The returned pointer is valid
+/// for the lifetime of the program and must not be freed by the caller.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_error_string(error: TranscodeError) -> *const c_char {
     let msg: &'static [u8] = match error {
@@ -581,6 +590,12 @@ pub unsafe extern "C" fn transcode_error_string(error: TranscodeError) -> *const
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `path` must be a valid pointer to a null-terminated C string, or null.
+/// - `ctx` must be a valid pointer to a `*mut TranscodeContext`, or null.
+/// - If successful, the caller is responsible for freeing the context with `transcode_close`.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_open_input(
     path: *const c_char,
@@ -675,6 +690,12 @@ pub unsafe extern "C" fn transcode_open_input(
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to a `TranscodeContext` previously created by `transcode_open_input`, or null.
+/// - `path` must be a valid pointer to a null-terminated C string, or null.
+/// - `config` may be null, or must be a valid pointer to a `TranscodeConfig`.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_open_output(
     ctx: *mut TranscodeContext,
@@ -724,6 +745,12 @@ pub unsafe extern "C" fn transcode_open_output(
 /// # Arguments
 ///
 /// * `ctx` - The context to close (may be null).
+///
+/// # Safety
+///
+/// - `ctx` must be null or a valid pointer to a `TranscodeContext` previously created by `transcode_open_input`.
+/// - After this call, `ctx` is invalid and must not be used.
+/// - It is safe to call this function with a null pointer (no-op).
 #[no_mangle]
 pub unsafe extern "C" fn transcode_close(ctx: *mut TranscodeContext) {
     if ctx.is_null() {
@@ -764,6 +791,12 @@ pub unsafe extern "C" fn transcode_close(ctx: *mut TranscodeContext) {
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to a `TranscodeContext`, or null.
+/// - `info` must be a valid pointer to a `TranscodeStreamInfo` with sufficient space, or null.
+/// - `stream_index` must be less than `ctx.num_streams`.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_get_stream_info(
     ctx: *const TranscodeContext,
@@ -798,6 +831,11 @@ pub unsafe extern "C" fn transcode_get_stream_info(
 /// # Returns
 ///
 /// A pointer to the allocated packet, or null on failure.
+///
+/// # Safety
+///
+/// This function is safe to call from any context.
+/// The caller is responsible for freeing the returned packet with `transcode_packet_free`.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_packet_alloc() -> *mut TranscodePacket {
     let packet = Box::new(TranscodePacket::default());
@@ -809,6 +847,12 @@ pub unsafe extern "C" fn transcode_packet_alloc() -> *mut TranscodePacket {
 /// # Arguments
 ///
 /// * `packet` - The packet to free (may be null).
+///
+/// # Safety
+///
+/// - `packet` must be null or a valid pointer previously returned by `transcode_packet_alloc`.
+/// - After this call, `packet` is invalid and must not be used.
+/// - It is safe to call this function with a null pointer (no-op).
 #[no_mangle]
 pub unsafe extern "C" fn transcode_packet_free(packet: *mut TranscodePacket) {
     if packet.is_null() {
@@ -831,6 +875,10 @@ pub unsafe extern "C" fn transcode_packet_free(packet: *mut TranscodePacket) {
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `packet` must be a valid pointer to a `TranscodePacket` previously allocated by `transcode_packet_alloc`, or null.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_packet_grow(
     packet: *mut TranscodePacket,
@@ -874,6 +922,11 @@ pub unsafe extern "C" fn transcode_packet_grow(
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, `TRANSCODE_ERROR_END_OF_STREAM` at end,
 /// or another error code on failure.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to a `TranscodeContext` that has been opened, or null.
+/// - `packet` must be a valid pointer to a `TranscodePacket`, or null.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_read_packet(
     ctx: *mut TranscodeContext,
@@ -940,6 +993,12 @@ pub unsafe extern "C" fn transcode_read_packet(
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to a `TranscodeContext` with an output opened, or null.
+/// - `packet` must be a valid pointer to a `TranscodePacket` with valid data, or null.
+/// - `packet.data` must point to at least `packet.size` readable bytes.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_write_packet(
     ctx: *mut TranscodeContext,
@@ -995,6 +1054,11 @@ pub unsafe extern "C" fn transcode_write_packet(
 /// # Returns
 ///
 /// A pointer to the allocated frame, or null on failure.
+///
+/// # Safety
+///
+/// This function is safe to call from any context.
+/// The caller is responsible for freeing the returned frame with `transcode_frame_free`.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_frame_alloc() -> *mut TranscodeFrame {
     let frame = Box::new(TranscodeFrame::default());
@@ -1013,6 +1077,11 @@ pub unsafe extern "C" fn transcode_frame_alloc() -> *mut TranscodeFrame {
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `frame` must be a valid pointer to a `TranscodeFrame` previously allocated by `transcode_frame_alloc`, or null.
+/// - Any existing buffer in the frame will be freed before allocating the new one.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_frame_alloc_buffer(
     frame: *mut TranscodeFrame,
@@ -1071,6 +1140,12 @@ pub unsafe extern "C" fn transcode_frame_alloc_buffer(
 /// # Arguments
 ///
 /// * `frame` - The frame whose buffer to free.
+///
+/// # Safety
+///
+/// - `frame` must be null or a valid pointer to a `TranscodeFrame`.
+/// - After this call, the frame's data pointers are invalidated but the frame structure remains valid.
+/// - It is safe to call this function with a null pointer (no-op).
 #[no_mangle]
 pub unsafe extern "C" fn transcode_frame_free_buffer(frame: *mut TranscodeFrame) {
     if frame.is_null() {
@@ -1095,6 +1170,12 @@ pub unsafe extern "C" fn transcode_frame_free_buffer(frame: *mut TranscodeFrame)
 /// # Arguments
 ///
 /// * `frame` - The frame to free (may be null).
+///
+/// # Safety
+///
+/// - `frame` must be null or a valid pointer previously returned by `transcode_frame_alloc`.
+/// - After this call, `frame` is invalid and must not be used.
+/// - It is safe to call this function with a null pointer (no-op).
 #[no_mangle]
 pub unsafe extern "C" fn transcode_frame_free(frame: *mut TranscodeFrame) {
     if frame.is_null() {
@@ -1115,6 +1196,12 @@ pub unsafe extern "C" fn transcode_frame_free(frame: *mut TranscodeFrame) {
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `dst` must be a valid pointer to a `TranscodeFrame` with an allocated buffer, or null.
+/// - `src` must be a valid pointer to a `TranscodeFrame` with valid data, or null.
+/// - Both frames must have the same dimensions and pixel format.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_frame_copy(
     dst: *mut TranscodeFrame,
@@ -1170,6 +1257,12 @@ pub unsafe extern "C" fn transcode_frame_copy(
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
 /// May return `TRANSCODE_ERROR_RESOURCE_EXHAUSTED` if more input is needed.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
+/// - `packet` must be a valid pointer to a `TranscodePacket` with valid data, or null.
+/// - `frame` must be a valid pointer to a `TranscodeFrame`, or null.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_decode_packet(
     ctx: *mut TranscodeContext,
@@ -1233,6 +1326,12 @@ pub unsafe extern "C" fn transcode_decode_packet(
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
 /// May return `TRANSCODE_ERROR_RESOURCE_EXHAUSTED` if no output is available yet.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
+/// - `frame` may be null (to flush the encoder), or must be a valid pointer to a `TranscodeFrame`.
+/// - `packet` must be a valid pointer to a `TranscodePacket`, or null.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_encode_frame(
     ctx: *mut TranscodeContext,
@@ -1311,6 +1410,10 @@ pub unsafe extern "C" fn transcode_encode_frame(
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_seek(
     ctx: *mut TranscodeContext,
@@ -1363,6 +1466,10 @@ pub unsafe extern "C" fn transcode_seek(
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_flush_decoder(ctx: *mut TranscodeContext) -> TranscodeError {
     if ctx.is_null() {
@@ -1394,6 +1501,10 @@ pub unsafe extern "C" fn transcode_flush_decoder(ctx: *mut TranscodeContext) -> 
 /// # Returns
 ///
 /// `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+///
+/// # Safety
+///
+/// - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
 #[no_mangle]
 pub unsafe extern "C" fn transcode_flush_encoder(ctx: *mut TranscodeContext) -> TranscodeError {
     if ctx.is_null() {

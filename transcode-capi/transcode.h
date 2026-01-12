@@ -520,6 +520,11 @@ extern "C" {
  * Get the version string of the transcode library.
  *
  * Returns a null-terminated string. The caller must not free this pointer.
+ *
+ * # Safety
+ *
+ * This function is safe to call from any context. The returned pointer is valid
+ * for the lifetime of the program and must not be freed by the caller.
  */
 const char *transcode_version(void);
 
@@ -527,6 +532,11 @@ const char *transcode_version(void);
  * Get a human-readable error message for an error code.
  *
  * Returns a null-terminated string. The caller must not free this pointer.
+ *
+ * # Safety
+ *
+ * This function is safe to call from any context. The returned pointer is valid
+ * for the lifetime of the program and must not be freed by the caller.
  */
 const char *transcode_error_string(enum TranscodeError error);
 
@@ -541,6 +551,12 @@ const char *transcode_error_string(enum TranscodeError error);
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `path` must be a valid pointer to a null-terminated C string, or null.
+ * - `ctx` must be a valid pointer to a `*mut TranscodeContext`, or null.
+ * - If successful, the caller is responsible for freeing the context with `transcode_close`.
  */
 enum TranscodeError transcode_open_input(const char *path, struct TranscodeContext **ctx);
 
@@ -556,6 +572,12 @@ enum TranscodeError transcode_open_input(const char *path, struct TranscodeConte
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to a `TranscodeContext` previously created by `transcode_open_input`, or null.
+ * - `path` must be a valid pointer to a null-terminated C string, or null.
+ * - `config` may be null, or must be a valid pointer to a `TranscodeConfig`.
  */
 enum TranscodeError transcode_open_output(struct TranscodeContext *ctx,
                                           const char *path,
@@ -567,6 +589,12 @@ enum TranscodeError transcode_open_output(struct TranscodeContext *ctx,
  * # Arguments
  *
  * * `ctx` - The context to close (may be null).
+ *
+ * # Safety
+ *
+ * - `ctx` must be null or a valid pointer to a `TranscodeContext` previously created by `transcode_open_input`.
+ * - After this call, `ctx` is invalid and must not be used.
+ * - It is safe to call this function with a null pointer (no-op).
  */
 void transcode_close(struct TranscodeContext *ctx);
 
@@ -582,6 +610,12 @@ void transcode_close(struct TranscodeContext *ctx);
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to a `TranscodeContext`, or null.
+ * - `info` must be a valid pointer to a `TranscodeStreamInfo` with sufficient space, or null.
+ * - `stream_index` must be less than `ctx.num_streams`.
  */
 enum TranscodeError transcode_get_stream_info(const struct TranscodeContext *ctx,
                                               uint32_t stream_index,
@@ -593,6 +627,11 @@ enum TranscodeError transcode_get_stream_info(const struct TranscodeContext *ctx
  * # Returns
  *
  * A pointer to the allocated packet, or null on failure.
+ *
+ * # Safety
+ *
+ * This function is safe to call from any context.
+ * The caller is responsible for freeing the returned packet with `transcode_packet_free`.
  */
 struct TranscodePacket *transcode_packet_alloc(void);
 
@@ -602,6 +641,12 @@ struct TranscodePacket *transcode_packet_alloc(void);
  * # Arguments
  *
  * * `packet` - The packet to free (may be null).
+ *
+ * # Safety
+ *
+ * - `packet` must be null or a valid pointer previously returned by `transcode_packet_alloc`.
+ * - After this call, `packet` is invalid and must not be used.
+ * - It is safe to call this function with a null pointer (no-op).
  */
 void transcode_packet_free(struct TranscodePacket *packet);
 
@@ -616,8 +661,13 @@ void transcode_packet_free(struct TranscodePacket *packet);
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `packet` must be a valid pointer to a `TranscodePacket` previously allocated by `transcode_packet_alloc`, or null.
  */
-enum TranscodeError transcode_packet_grow(struct TranscodePacket *packet, uintptr_t size);
+enum TranscodeError transcode_packet_grow(struct TranscodePacket *packet,
+                                          uintptr_t size);
 
 /**
  * Read the next packet from the input.
@@ -631,6 +681,11 @@ enum TranscodeError transcode_packet_grow(struct TranscodePacket *packet, uintpt
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, `TRANSCODE_ERROR_END_OF_STREAM` at end,
  * or another error code on failure.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to a `TranscodeContext` that has been opened, or null.
+ * - `packet` must be a valid pointer to a `TranscodePacket`, or null.
  */
 enum TranscodeError transcode_read_packet(struct TranscodeContext *ctx,
                                           struct TranscodePacket *packet);
@@ -646,6 +701,12 @@ enum TranscodeError transcode_read_packet(struct TranscodeContext *ctx,
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to a `TranscodeContext` with an output opened, or null.
+ * - `packet` must be a valid pointer to a `TranscodePacket` with valid data, or null.
+ * - `packet.data` must point to at least `packet.size` readable bytes.
  */
 enum TranscodeError transcode_write_packet(struct TranscodeContext *ctx,
                                            const struct TranscodePacket *packet);
@@ -656,6 +717,11 @@ enum TranscodeError transcode_write_packet(struct TranscodeContext *ctx,
  * # Returns
  *
  * A pointer to the allocated frame, or null on failure.
+ *
+ * # Safety
+ *
+ * This function is safe to call from any context.
+ * The caller is responsible for freeing the returned frame with `transcode_frame_free`.
  */
 struct TranscodeFrame *transcode_frame_alloc(void);
 
@@ -672,6 +738,11 @@ struct TranscodeFrame *transcode_frame_alloc(void);
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `frame` must be a valid pointer to a `TranscodeFrame` previously allocated by `transcode_frame_alloc`, or null.
+ * - Any existing buffer in the frame will be freed before allocating the new one.
  */
 enum TranscodeError transcode_frame_alloc_buffer(struct TranscodeFrame *frame,
                                                  uint32_t width,
@@ -684,6 +755,12 @@ enum TranscodeError transcode_frame_alloc_buffer(struct TranscodeFrame *frame,
  * # Arguments
  *
  * * `frame` - The frame whose buffer to free.
+ *
+ * # Safety
+ *
+ * - `frame` must be null or a valid pointer to a `TranscodeFrame`.
+ * - After this call, the frame's data pointers are invalidated but the frame structure remains valid.
+ * - It is safe to call this function with a null pointer (no-op).
  */
 void transcode_frame_free_buffer(struct TranscodeFrame *frame);
 
@@ -693,6 +770,12 @@ void transcode_frame_free_buffer(struct TranscodeFrame *frame);
  * # Arguments
  *
  * * `frame` - The frame to free (may be null).
+ *
+ * # Safety
+ *
+ * - `frame` must be null or a valid pointer previously returned by `transcode_frame_alloc`.
+ * - After this call, `frame` is invalid and must not be used.
+ * - It is safe to call this function with a null pointer (no-op).
  */
 void transcode_frame_free(struct TranscodeFrame *frame);
 
@@ -707,6 +790,12 @@ void transcode_frame_free(struct TranscodeFrame *frame);
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `dst` must be a valid pointer to a `TranscodeFrame` with an allocated buffer, or null.
+ * - `src` must be a valid pointer to a `TranscodeFrame` with valid data, or null.
+ * - Both frames must have the same dimensions and pixel format.
  */
 enum TranscodeError transcode_frame_copy(struct TranscodeFrame *dst,
                                          const struct TranscodeFrame *src);
@@ -724,6 +813,12 @@ enum TranscodeError transcode_frame_copy(struct TranscodeFrame *dst,
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
  * May return `TRANSCODE_ERROR_RESOURCE_EXHAUSTED` if more input is needed.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
+ * - `packet` must be a valid pointer to a `TranscodePacket` with valid data, or null.
+ * - `frame` must be a valid pointer to a `TranscodeFrame`, or null.
  */
 enum TranscodeError transcode_decode_packet(struct TranscodeContext *ctx,
                                             const struct TranscodePacket *packet,
@@ -742,6 +837,12 @@ enum TranscodeError transcode_decode_packet(struct TranscodeContext *ctx,
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
  * May return `TRANSCODE_ERROR_RESOURCE_EXHAUSTED` if no output is available yet.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
+ * - `frame` may be null (to flush the encoder), or must be a valid pointer to a `TranscodeFrame`.
+ * - `packet` must be a valid pointer to a `TranscodePacket`, or null.
  */
 enum TranscodeError transcode_encode_frame(struct TranscodeContext *ctx,
                                            const struct TranscodeFrame *frame,
@@ -760,6 +861,10 @@ enum TranscodeError transcode_encode_frame(struct TranscodeContext *ctx,
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
  */
 enum TranscodeError transcode_seek(struct TranscodeContext *ctx,
                                    int stream_index,
@@ -778,6 +883,10 @@ enum TranscodeError transcode_seek(struct TranscodeContext *ctx,
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
  */
 enum TranscodeError transcode_flush_decoder(struct TranscodeContext *ctx);
 
@@ -793,6 +902,10 @@ enum TranscodeError transcode_flush_decoder(struct TranscodeContext *ctx);
  * # Returns
  *
  * `TRANSCODE_ERROR_SUCCESS` on success, or an error code on failure.
+ *
+ * # Safety
+ *
+ * - `ctx` must be a valid pointer to an opened `TranscodeContext`, or null.
  */
 enum TranscodeError transcode_flush_encoder(struct TranscodeContext *ctx);
 
