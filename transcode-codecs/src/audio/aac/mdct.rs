@@ -14,7 +14,14 @@ pub struct Mdct {
 
 impl Mdct {
     /// Create a new MDCT processor.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size` is 0 or not divisible by 4.
     pub fn new(size: usize) -> Self {
+        assert!(size > 0, "MDCT size must be greater than 0");
+        assert!(size.is_multiple_of(4), "MDCT size must be divisible by 4");
+
         let n = size;
         let n4 = n / 4;
 

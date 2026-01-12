@@ -88,6 +88,18 @@ pub struct AacEncoder {
 impl AacEncoder {
     /// Create a new AAC encoder.
     pub fn new(config: AacEncoderConfig) -> Result<Self> {
+        // Validate sample rate to prevent division by zero
+        if config.sample_rate == 0 {
+            return Err(Error::InvalidParameter(
+                "sample_rate must be greater than 0".into(),
+            ));
+        }
+        if config.channels == 0 {
+            return Err(Error::InvalidParameter(
+                "channels must be greater than 0".into(),
+            ));
+        }
+
         let channels = config.channels as usize;
 
         let psy_config = PsyModelConfig {
@@ -107,7 +119,9 @@ impl AacEncoder {
             prev_input.push(vec![0.0; 1024]);
         }
 
-        let bits_per_frame = config.bitrate / (config.sample_rate / 1024);
+        // Calculate bits per frame, avoiding division by zero for low sample rates
+        let frames_per_second = config.sample_rate.max(1024) / 1024;
+        let bits_per_frame = config.bitrate / frames_per_second.max(1);
 
         // Compute extra data (AudioSpecificConfig)
         let sample_rate_index = SampleRateIndex::from_sample_rate(config.sample_rate) as u8;

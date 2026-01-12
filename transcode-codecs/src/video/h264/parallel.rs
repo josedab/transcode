@@ -226,6 +226,8 @@ impl ParallelMotionEstimator {
     }
 
     /// Perform parallel motion estimation for a frame.
+    ///
+    /// Returns an empty vector if the frame has zero dimensions.
     pub fn estimate_motion(
         &self,
         current_frame: &Frame,
@@ -233,6 +235,12 @@ impl ParallelMotionEstimator {
     ) -> Vec<MotionEstimationResult> {
         let width = current_frame.width() as usize;
         let height = current_frame.height() as usize;
+
+        // Handle zero-dimension frames gracefully
+        if width == 0 || height == 0 {
+            return Vec::new();
+        }
+
         let mb_width = width.div_ceil(16);
         let mb_height = height.div_ceil(16);
         let mb_count = mb_width * mb_height;
