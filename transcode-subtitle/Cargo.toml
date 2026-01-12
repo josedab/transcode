@@ -1,11 +1,11 @@
 [package]
 name = "transcode-subtitle"
-version = "0.1.0"
-edition = "2021"
-authors = ["Transcode Contributors"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "Subtitle parsing, writing, and conversion library supporting SRT, ASS/SSA, and WebVTT formats"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/transcode/transcode"
 keywords = ["subtitle", "srt", "ass", "ssa", "webvtt"]
 categories = ["multimedia", "parser-implementations", "encoding"]
 

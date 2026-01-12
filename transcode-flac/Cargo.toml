@@ -1,10 +1,11 @@
 [package]
 name = "transcode-flac"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "FLAC audio codec implementation with streaming support"
-license = "MIT"
-repository = "https://github.com/transcode/transcode-flac"
 keywords = ["audio", "flac", "codec", "decoder", "encoder"]
 categories = ["multimedia::audio", "encoding"]
 

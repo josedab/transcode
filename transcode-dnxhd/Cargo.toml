@@ -1,10 +1,11 @@
 [package]
 name = "transcode-dnxhd"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "DNxHD/DNxHR video codec implementation"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/anthropics/transcode"
 keywords = ["dnxhd", "dnxhr", "video", "codec", "avid"]
 categories = ["multimedia::video"]
 

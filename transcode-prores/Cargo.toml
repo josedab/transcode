@@ -1,10 +1,11 @@
 [package]
 name = "transcode-prores"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "ProRes video decoder with support for all profiles"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/transcode/transcode-prores"
 keywords = ["prores", "video", "decoder", "codec"]
 categories = ["multimedia::video"]
 

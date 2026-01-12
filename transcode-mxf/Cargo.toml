@@ -1,10 +1,11 @@
 [package]
 name = "transcode-mxf"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "MXF (Material eXchange Format) container support"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/anthropics/transcode"
 keywords = ["mxf", "video", "container", "broadcast", "professional"]
 categories = ["multimedia::video"]
 

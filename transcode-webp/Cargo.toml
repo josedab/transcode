@@ -1,11 +1,11 @@
 [package]
 name = "transcode-webp"
-version = "0.1.0"
-edition = "2021"
-authors = ["Transcode Team"]
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 description = "A WebP decoder library supporting VP8, VP8L, animation, and metadata"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/transcode/transcode-webp"
 keywords = ["webp", "image", "decoder", "vp8", "animation"]
 categories = ["multimedia::images", "encoding"]
 
