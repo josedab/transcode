@@ -4,7 +4,7 @@ use crate::channel::{ChannelList, PixelType};
 use crate::compression::{decompress_rle, Compression};
 use crate::error::{ExrError, Result};
 use crate::header::Header;
-use crate::types::{Box2i, Half};
+use crate::types::Half;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
 
@@ -81,9 +81,9 @@ impl ExrImage {
         for y in 0..self.height {
             for x in 0..self.width {
                 let rgba = self.get_rgba(x, y);
-                for c in 0..4 {
+                for &linear_raw in &rgba {
                     // Apply gamma correction and clamp
-                    let linear = rgba[c].max(0.0).min(1.0);
+                    let linear = linear_raw.clamp(0.0, 1.0);
                     let srgb = if linear <= 0.0031308 {
                         linear * 12.92
                     } else {
@@ -190,7 +190,7 @@ impl ExrDecoder {
         &self,
         data: &[u8],
         image: &mut ExrImage,
-        chunk_idx: usize,
+        _chunk_idx: usize,
         scanlines_per_chunk: usize,
         bytes_per_pixel: usize,
         compression: Compression,

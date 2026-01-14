@@ -3,7 +3,7 @@
 use crate::error::{ExrError, Result};
 
 /// OpenEXR compression types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Compression {
     /// No compression
     None,
@@ -12,6 +12,7 @@ pub enum Compression {
     /// ZIPS (per-scanline ZIP)
     ZipS,
     /// ZIP (multi-scanline, default 16 lines)
+    #[default]
     Zip,
     /// PIZ (wavelet-based lossless)
     Piz,
@@ -25,12 +26,6 @@ pub enum Compression {
     Dwaa,
     /// DWAB (lossy DWA in blocks)
     Dwab,
-}
-
-impl Default for Compression {
-    fn default() -> Self {
-        Compression::Zip
-    }
 }
 
 impl Compression {
@@ -113,7 +108,7 @@ pub fn compress_rle(data: &[u8]) -> Result<Vec<u8>> {
     let mut i = 0;
 
     while i < data.len() {
-        let mut run_start = i;
+        let run_start = i;
         let current = data[i];
 
         // Count run length
@@ -283,9 +278,9 @@ impl PizPredictor {
         let mut prev = self.tmp[0];
         data[0] = prev;
 
-        for i in 1..self.tmp.len() {
-            let current = self.tmp[i];
-            data[i] = current ^ prev;
+        for (d, &t) in data.iter_mut().zip(self.tmp.iter()).skip(1) {
+            let current = t;
+            *d = current ^ prev;
             prev = current;
         }
     }
@@ -297,9 +292,9 @@ impl PizPredictor {
         }
 
         let mut prev = data[0];
-        for i in 1..data.len() {
-            prev ^= data[i];
-            data[i] = prev;
+        for d in data.iter_mut().skip(1) {
+            prev ^= *d;
+            *d = prev;
         }
     }
 }

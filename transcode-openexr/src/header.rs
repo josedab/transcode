@@ -4,7 +4,7 @@ use crate::channel::{ChannelList, PixelType};
 use crate::compression::Compression;
 use crate::error::{ExrError, Result};
 use crate::types::{
-    Box2i, Chromaticities, DataWindow, DisplayWindow, LineOrder, Rational, TileDescription, V2f,
+    Box2i, Chromaticities, DataWindow, DisplayWindow, LineOrder, Rational, TileDescription,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::HashMap;

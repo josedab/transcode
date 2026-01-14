@@ -65,5 +65,19 @@ mod tests {
     #[test]
     fn test_version() {
         assert_eq!(TIFF_VERSION, 42);
+        assert_eq!(BIGTIFF_VERSION, 43);
+    }
+
+    #[test]
+    fn test_compression_enum() {
+        // Verify compression types can be used
+        let _none = Compression::None;
+        let _lzw = Compression::Lzw;
+    }
+
+    #[test]
+    fn test_error_display() {
+        let err = TiffError::UnsupportedFeature("test feature".into());
+        assert!(err.to_string().contains("test feature"));
     }
 }

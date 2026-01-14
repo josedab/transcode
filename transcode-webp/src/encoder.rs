@@ -210,7 +210,7 @@ fn write_simple_webp<W: Write>(writer: &mut W, frame: &EncodedFrame) -> Result<(
     writer.write_all(&frame.data)?;
 
     // Padding if needed
-    if chunk_size % 2 != 0 {
+    if !chunk_size.is_multiple_of(2) {
         writer.write_all(&[0])?;
     }
 
@@ -257,7 +257,7 @@ fn write_extended_webp<W: Write>(writer: &mut W, frame: &EncodedFrame) -> Result
 
     // RIFF header
     writer.write_all(b"RIFF")?;
-    writer.write_all(&(file_size as u32).to_le_bytes())?;
+    writer.write_all(&file_size.to_le_bytes())?;
     writer.write_all(b"WEBP")?;
 
     // VP8X chunk
@@ -271,7 +271,7 @@ fn write_extended_webp<W: Write>(writer: &mut W, frame: &EncodedFrame) -> Result
     writer.write_all(&frame.data)?;
 
     // Padding if needed
-    if image_chunk_size % 2 != 0 {
+    if !image_chunk_size.is_multiple_of(2) {
         writer.write_all(&[0])?;
     }
 
@@ -790,8 +790,8 @@ fn encode_vp8_macroblocks(
     height: u32,
     quality: u8,
 ) -> Result<()> {
-    let mb_width = (width + 15) / 16;
-    let mb_height = (height + 15) / 16;
+    let mb_width = width.div_ceil(16);
+    let mb_height = height.div_ceil(16);
 
     // Quantization based on quality
     let quant = 128 - (quality as i32).clamp(0, 100);

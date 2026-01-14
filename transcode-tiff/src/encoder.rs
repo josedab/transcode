@@ -91,7 +91,7 @@ impl TiffEncoder {
         };
 
         let bytes_per_row = image.bytes_per_row();
-        let num_strips = (image.height + rows_per_strip - 1) / rows_per_strip;
+        let num_strips = image.height.div_ceil(rows_per_strip);
 
         // Write strips
         let mut strip_offsets = Vec::with_capacity(num_strips as usize);

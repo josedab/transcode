@@ -4,7 +4,6 @@ use crate::channel::{ChannelList, PixelType};
 use crate::compression::{compress_rle, Compression};
 use crate::decoder::ExrImage;
 use crate::error::{ExrError, Result};
-use crate::header::Header;
 use crate::types::Half;
 use byteorder::{LittleEndian, WriteBytesExt};
 use std::io::{Cursor, Seek, SeekFrom, Write};
@@ -72,7 +71,7 @@ impl ExrEncoder {
 
     /// Encode to writer
     pub fn encode_to<W: Write + Seek>(&self, writer: &mut W, image: &ExrImage) -> Result<()> {
-        let width = image.width;
+        let _width = image.width;
         let height = image.height;
         let compression = self.config.compression;
         let scanlines_per_chunk = compression.scanlines_per_chunk();
@@ -85,7 +84,7 @@ impl ExrEncoder {
         header.write(writer)?;
 
         // Calculate chunk count
-        let chunk_count = ((height as usize) + scanlines_per_chunk - 1) / scanlines_per_chunk;
+        let chunk_count = (height as usize).div_ceil(scanlines_per_chunk);
 
         // Reserve space for offset table
         let offset_table_start = writer.stream_position()? as usize;
@@ -95,7 +94,7 @@ impl ExrEncoder {
 
         // Write chunks and record offsets
         let mut offsets = Vec::with_capacity(chunk_count);
-        let data_start = writer.stream_position()? as usize;
+        let _data_start = writer.stream_position()? as usize;
 
         for chunk_idx in 0..chunk_count {
             let offset = writer.stream_position()? as usize - offset_table_start;

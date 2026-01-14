@@ -3,20 +3,15 @@
 use std::fmt;
 
 /// Pixel data type
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PixelType {
     /// 32-bit unsigned integer
     Uint,
     /// 16-bit float (half)
+    #[default]
     Half,
     /// 32-bit float
     Float,
-}
-
-impl Default for PixelType {
-    fn default() -> Self {
-        PixelType::Half
-    }
 }
 
 impl PixelType {

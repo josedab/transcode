@@ -3,9 +3,10 @@
 use crate::error::{Result, TiffError};
 
 /// Compression methods
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Compression {
     /// No compression
+    #[default]
     None,
     /// CCITT Group 3 fax encoding
     CcittGroup3,
@@ -23,12 +24,6 @@ pub enum Compression {
     PackBits,
     /// Deflate compression
     Deflate,
-}
-
-impl Default for Compression {
-    fn default() -> Self {
-        Compression::None
-    }
 }
 
 impl Compression {
@@ -257,12 +252,7 @@ fn decompress_lzw(data: &[u8], expected_size: usize) -> Result<Vec<u8>> {
 
     let mut prev_code: Option<u16> = None;
 
-    loop {
-        let code = match read_code(data, &mut bit_pos, decoder.code_size) {
-            Some(c) => c,
-            None => break,
-        };
-
+    while let Some(code) = read_code(data, &mut bit_pos, decoder.code_size) {
         if code == decoder.eoi_code {
             break;
         }

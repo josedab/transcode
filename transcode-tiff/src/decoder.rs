@@ -124,7 +124,7 @@ impl TiffDecoder {
         // Read image data
         let data = if ifd.get_value(tag::TILE_WIDTH).is_some() {
             // Tiled image
-            self.read_tiled_data::<R, B>(
+            self.read_tiled_data(
                 reader,
                 &ifd,
                 width,
@@ -136,7 +136,7 @@ impl TiffDecoder {
             )?
         } else {
             // Strip-based image
-            self.read_strip_data::<R, B>(
+            self.read_strip_data(
                 reader,
                 &ifd,
                 width,
@@ -201,7 +201,8 @@ impl TiffDecoder {
     }
 
     /// Read strip-based image data
-    fn read_strip_data<R: Read + Seek, B: ByteOrder>(
+    #[allow(clippy::too_many_arguments)]
+    fn read_strip_data<R: Read + Seek>(
         &self,
         reader: &mut R,
         ifd: &Ifd,
@@ -228,7 +229,7 @@ impl TiffDecoder {
 
         // Calculate expected size per row
         let bits_per_pixel: usize = bits_per_sample.iter().map(|&b| b as usize).sum();
-        let bytes_per_row = (width as usize * bits_per_pixel + 7) / 8;
+        let bytes_per_row = (width as usize * bits_per_pixel).div_ceil(8);
         let total_size = bytes_per_row * height as usize;
 
         let mut output = Vec::with_capacity(total_size);
@@ -269,7 +270,8 @@ impl TiffDecoder {
     }
 
     /// Read tiled image data
-    fn read_tiled_data<R: Read + Seek, B: ByteOrder>(
+    #[allow(clippy::too_many_arguments)]
+    fn read_tiled_data<R: Read + Seek>(
         &self,
         reader: &mut R,
         ifd: &Ifd,
@@ -296,13 +298,13 @@ impl TiffDecoder {
 
         // Calculate dimensions
         let bits_per_pixel: usize = bits_per_sample.iter().map(|&b| b as usize).sum();
-        let bytes_per_pixel = (bits_per_pixel + 7) / 8;
+        let bytes_per_pixel = bits_per_pixel.div_ceil(8);
         let tile_bytes_per_row = tile_width as usize * bytes_per_pixel;
         let image_bytes_per_row = width as usize * bytes_per_pixel;
         let tile_size = tile_bytes_per_row * tile_height as usize;
 
-        let tiles_across = (width + tile_width - 1) / tile_width;
-        let tiles_down = (height + tile_height - 1) / tile_height;
+        let tiles_across = width.div_ceil(tile_width);
+        let tiles_down = height.div_ceil(tile_height);
 
         let total_size = image_bytes_per_row * height as usize;
         let mut output = vec![0u8; total_size];
@@ -392,7 +394,7 @@ impl TiffDecoder {
         }
 
         // Check magic number
-        let magic_ok = &data[0..2] == &TIFF_MAGIC_LE || &data[0..2] == &TIFF_MAGIC_BE;
+        let magic_ok = data[0..2] == TIFF_MAGIC_LE || data[0..2] == TIFF_MAGIC_BE;
         if !magic_ok {
             return false;
         }

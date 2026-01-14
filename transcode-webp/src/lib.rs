@@ -1,5 +1,10 @@
 //! # transcode-webp
 //!
+//! **⚠️ EXPERIMENTAL**: This implementation uses simplified VP8L distance mapping
+//! that may not match the WebP specification exactly. Image quality may vary compared
+//! to reference implementations. For production use cases requiring full compliance,
+//! consider using a binding to libwebp instead.
+//!
 //! A WebP codec library supporting VP8 lossy, VP8L lossless encoding and decoding,
 //! animation, and metadata extraction.
 //!
@@ -7,7 +12,7 @@
 //!
 //! - RIFF container parsing and writing
 //! - VP8 lossy encoding and decoding
-//! - VP8L lossless encoding and decoding
+//! - VP8L lossless encoding and decoding (simplified distance mapping)
 //! - Alpha channel support
 //! - Animation support (ANIM, ANMF chunks)
 //! - EXIF/XMP metadata extraction

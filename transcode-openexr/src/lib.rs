@@ -72,4 +72,26 @@ mod tests {
     fn test_version() {
         assert_eq!(EXR_VERSION, 2);
     }
+
+    #[test]
+    fn test_version_flags() {
+        assert_eq!(version_flags::TILED, 0x200);
+        assert_eq!(version_flags::LONG_NAMES, 0x400);
+        assert_eq!(version_flags::NON_IMAGE, 0x800);
+        assert_eq!(version_flags::MULTI_PART, 0x1000);
+    }
+
+    #[test]
+    fn test_compression_enum() {
+        // Verify compression types exist
+        let _none = Compression::None;
+        let _piz = Compression::Piz;
+    }
+
+    #[test]
+    fn test_pixel_type() {
+        // Verify pixel types exist
+        let _half = PixelType::Half;
+        let _float = PixelType::Float;
+    }
 }

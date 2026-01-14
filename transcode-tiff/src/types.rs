@@ -3,13 +3,14 @@
 use std::fmt;
 
 /// Color space
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ColorSpace {
     /// Grayscale (1 component)
     Grayscale,
     /// Grayscale with alpha (2 components)
     GrayscaleAlpha,
     /// RGB (3 components)
+    #[default]
     Rgb,
     /// RGBA (4 components)
     Rgba,
@@ -19,12 +20,6 @@ pub enum ColorSpace {
     Palette,
     /// YCbCr
     YCbCr,
-}
-
-impl Default for ColorSpace {
-    fn default() -> Self {
-        ColorSpace::Rgb
-    }
 }
 
 impl ColorSpace {
@@ -45,9 +40,10 @@ impl ColorSpace {
 }
 
 /// Sample format
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SampleFormat {
     /// Unsigned integer
+    #[default]
     Uint,
     /// Signed integer
     Int,
@@ -55,12 +51,6 @@ pub enum SampleFormat {
     Float,
     /// Undefined
     Undefined,
-}
-
-impl Default for SampleFormat {
-    fn default() -> Self {
-        SampleFormat::Uint
-    }
 }
 
 impl SampleFormat {
@@ -86,13 +76,14 @@ impl SampleFormat {
 }
 
 /// Photometric interpretation
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PhotometricInterpretation {
     /// WhiteIsZero - min value is white
     WhiteIsZero,
     /// BlackIsZero - min value is black
     BlackIsZero,
     /// RGB color
+    #[default]
     Rgb,
     /// Palette color (indexed)
     Palette,
@@ -104,12 +95,6 @@ pub enum PhotometricInterpretation {
     YCbCr,
     /// CIE L*a*b*
     CieLab,
-}
-
-impl Default for PhotometricInterpretation {
-    fn default() -> Self {
-        PhotometricInterpretation::Rgb
-    }
 }
 
 impl PhotometricInterpretation {
@@ -144,18 +129,13 @@ impl PhotometricInterpretation {
 }
 
 /// Planar configuration
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum PlanarConfig {
     /// Chunky format (RGBRGBRGB...)
+    #[default]
     Chunky,
     /// Planar format (RRR...GGG...BBB...)
     Planar,
-}
-
-impl Default for PlanarConfig {
-    fn default() -> Self {
-        PlanarConfig::Chunky
-    }
 }
 
 impl PlanarConfig {
@@ -177,20 +157,15 @@ impl PlanarConfig {
 }
 
 /// Resolution unit
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ResolutionUnit {
     /// No unit
     None,
     /// Inches
+    #[default]
     Inch,
     /// Centimeters
     Centimeter,
-}
-
-impl Default for ResolutionUnit {
-    fn default() -> Self {
-        ResolutionUnit::Inch
-    }
 }
 
 impl ResolutionUnit {
@@ -301,7 +276,7 @@ impl TiffImage {
 
     /// Bytes per pixel
     pub fn bytes_per_pixel(&self) -> usize {
-        self.bits_per_sample.iter().map(|b| (*b as usize + 7) / 8).sum()
+        self.bits_per_sample.iter().map(|b| (*b as usize).div_ceil(8)).sum()
     }
 
     /// Bytes per row

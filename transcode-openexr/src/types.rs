@@ -122,20 +122,15 @@ pub type DisplayWindow = Box2i;
 pub type DataWindow = Box2i;
 
 /// Line order for scanline images
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LineOrder {
     /// Scanlines stored top to bottom
+    #[default]
     IncreasingY,
     /// Scanlines stored bottom to top
     DecreasingY,
     /// Random order (typically for tiled images)
     RandomY,
-}
-
-impl Default for LineOrder {
-    fn default() -> Self {
-        LineOrder::IncreasingY
-    }
 }
 
 impl LineOrder {
@@ -158,9 +153,10 @@ impl LineOrder {
 }
 
 /// Tile level mode
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LevelMode {
     /// Single resolution level
+    #[default]
     OneLevel,
     /// Mipmap levels
     MipmapLevels,
@@ -168,23 +164,12 @@ pub enum LevelMode {
     RipmapLevels,
 }
 
-impl Default for LevelMode {
-    fn default() -> Self {
-        LevelMode::OneLevel
-    }
-}
-
 /// Tile rounding mode
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RoundingMode {
+    #[default]
     RoundDown,
     RoundUp,
-}
-
-impl Default for RoundingMode {
-    fn default() -> Self {
-        RoundingMode::RoundDown
-    }
 }
 
 /// Tile description
@@ -395,7 +380,7 @@ fn f32_to_half(value: f32) -> u16 {
         } else {
             // Denormalized number
             let mant = (mant | 0x800000) >> (1 - exp);
-            (sign | (mant >> 13) as u32) as u16
+            (sign | (mant >> 13)) as u16
         }
     } else if exp >= 31 {
         if exp == 128 && mant != 0 {
