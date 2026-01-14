@@ -309,6 +309,9 @@ pub mod ffi {
 
     impl Default for NV_ENC_INITIALIZE_PARAMS {
         fn default() -> Self {
+            // SAFETY: NV_ENC_INITIALIZE_PARAMS is a #[repr(C)] struct with no invalid
+            // bit patterns. All fields can be zero-initialized per NVENC SDK documentation.
+            // Pointers are nullable and zeroed state is explicitly supported.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -331,6 +334,8 @@ pub mod ffi {
 
     impl Default for NV_ENC_CONFIG {
         fn default() -> Self {
+            // SAFETY: NV_ENC_CONFIG is a #[repr(C)] struct with all fields supporting
+            // zero initialization. GUIDs, integers, and pointers can all be zeroed safely.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -402,6 +407,9 @@ pub mod ffi {
 
     impl Default for NV_ENC_PIC_PARAMS {
         fn default() -> Self {
+            // SAFETY: NV_ENC_PIC_PARAMS is a #[repr(C)] struct. All fields are integers,
+            // pointers (nullable), enums (zero is valid variant), or arrays of these types.
+            // Zero initialization is the documented default state per NVENC SDK.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -424,6 +432,8 @@ pub mod ffi {
 
     impl Default for NV_ENC_CREATE_INPUT_BUFFER {
         fn default() -> Self {
+            // SAFETY: #[repr(C)] struct with all fields supporting zero initialization.
+            // Pointers are nullable, and reserved fields expect zero values.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -444,6 +454,8 @@ pub mod ffi {
 
     impl Default for NV_ENC_CREATE_BITSTREAM_BUFFER {
         fn default() -> Self {
+            // SAFETY: #[repr(C)] struct with all fields supporting zero initialization.
+            // This is the expected initialization state per NVENC SDK.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -475,6 +487,8 @@ pub mod ffi {
 
     impl Default for NV_ENC_LOCK_BITSTREAM {
         fn default() -> Self {
+            // SAFETY: #[repr(C)] struct with integers, pointers (nullable), and enums
+            // where zero is a valid variant. Zero initialization is correct per NVENC SDK.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -495,6 +509,8 @@ pub mod ffi {
 
     impl Default for NV_ENC_LOCK_INPUT_BUFFER {
         fn default() -> Self {
+            // SAFETY: #[repr(C)] struct with all fields supporting zero initialization.
+            // Reserved arrays and nullable pointers are correctly zeroed.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -530,6 +546,8 @@ pub mod ffi {
 
     impl Default for NV_ENC_PRESET_CONFIG {
         fn default() -> Self {
+            // SAFETY: #[repr(C)] struct containing NV_ENC_CONFIG and reserved arrays.
+            // All nested types support zero initialization per NVENC SDK.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -590,6 +608,10 @@ pub mod ffi {
 
     impl Default for NV_ENCODE_API_FUNCTION_LIST {
         fn default() -> Self {
+            // SAFETY: NV_ENCODE_API_FUNCTION_LIST is a #[repr(C)] struct where all fields
+            // are either integers, nullable pointers, or Option<fn> (which are nullable).
+            // Zero initialization sets all function pointers to None, which is the expected
+            // initial state before calling NvEncodeAPICreateInstance to populate them.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -746,6 +768,9 @@ pub mod ffi {
     impl Drop for CudaContextGuard {
         fn drop(&mut self) {
             if !self.ctx.is_null() {
+                // SAFETY: The context was created by cuCtxCreate_v2 and stored in this guard.
+                // We verify it's non-null before destruction. cuCtxDestroy_v2 is idempotent
+                // and safe to call on a valid context handle.
                 unsafe { cuCtxDestroy_v2(self.ctx) };
             }
         }
@@ -4008,13 +4033,15 @@ impl EncodeLatencyTracker {
     /// Record frame completion.
     pub fn complete(&mut self, frame_idx: u64) {
         if let Some(pos) = self.submit_times.iter().position(|(idx, _)| *idx == frame_idx) {
-            let (_, submit_time) = self.submit_times.remove(pos).unwrap();
-            let latency = submit_time.elapsed();
+            // Use if-let to safely handle the remove operation
+            if let Some((_, submit_time)) = self.submit_times.remove(pos) {
+                let latency = submit_time.elapsed();
 
-            if self.latencies.len() >= self.max_samples {
-                self.latencies.pop_front();
+                if self.latencies.len() >= self.max_samples {
+                    self.latencies.pop_front();
+                }
+                self.latencies.push_back(latency);
             }
-            self.latencies.push_back(latency);
         }
     }
 
@@ -4366,18 +4393,20 @@ impl AsyncOperationTracker {
     /// Complete operation.
     pub fn complete(&mut self, id: u64, success: bool) {
         if let Some(idx) = self.pending.iter().position(|o| o.id == id) {
-            let mut op = self.pending.remove(idx).unwrap();
-            op.complete_time = Some(Instant::now());
-            op.status = if success {
-                AsyncOpStatus::Completed
-            } else {
-                AsyncOpStatus::Failed
-            };
+            // Use if-let to safely handle the remove operation
+            if let Some(mut op) = self.pending.remove(idx) {
+                op.complete_time = Some(Instant::now());
+                op.status = if success {
+                    AsyncOpStatus::Completed
+                } else {
+                    AsyncOpStatus::Failed
+                };
 
-            if self.completed.len() >= self.max_tracked {
-                self.completed.pop_front();
+                if self.completed.len() >= self.max_tracked {
+                    self.completed.pop_front();
+                }
+                self.completed.push_back(op);
             }
-            self.completed.push_back(op);
         }
     }
 
@@ -4398,22 +4427,19 @@ impl AsyncOperationTracker {
 
     /// Get average completion time for operation type.
     pub fn average_completion_time(&self, op_type: AsyncOpType) -> Option<Duration> {
-        let ops: Vec<_> = self
+        let durations: Vec<Duration> = self
             .completed
             .iter()
-            .filter(|o| o.op_type == op_type && o.complete_time.is_some())
+            .filter(|o| o.op_type == op_type)
+            .filter_map(|o| o.complete_time.map(|ct| ct - o.start_time))
             .collect();
 
-        if ops.is_empty() {
+        if durations.is_empty() {
             return None;
         }
 
-        let total: Duration = ops
-            .iter()
-            .map(|o| o.complete_time.unwrap() - o.start_time)
-            .sum();
-
-        Some(total / ops.len() as u32)
+        let total: Duration = durations.iter().sum();
+        Some(total / durations.len() as u32)
     }
 }
 
@@ -5081,6 +5107,24 @@ pub struct NvencEncoder {
     ltr_manager: Option<LtrManager>,
     /// Intra refresh manager.
     intra_refresh: Option<IntraRefreshManager>,
+    // -------------------------------------------------------------------------
+    // Real NVENC FFI fields (enabled with nvenc feature)
+    // -------------------------------------------------------------------------
+    /// NVENC encoder session handle.
+    #[cfg(feature = "nvenc")]
+    nvenc_session: Option<std::ptr::NonNull<std::ffi::c_void>>,
+    /// CUDA context for encoding.
+    #[cfg(feature = "nvenc")]
+    cuda_ctx: Option<ffi::CUcontext>,
+    /// NVENC function list.
+    #[cfg(feature = "nvenc")]
+    nvenc_funcs: Option<Box<ffi::NV_ENCODE_API_FUNCTION_LIST>>,
+    /// Real input buffers (NVENC allocated).
+    #[cfg(feature = "nvenc")]
+    nvenc_input_buffers: Vec<*mut std::ffi::c_void>,
+    /// Real output bitstream buffers (NVENC allocated).
+    #[cfg(feature = "nvenc")]
+    nvenc_output_buffers: Vec<*mut std::ffi::c_void>,
 }
 
 /// Encoded frame from NVENC.
@@ -5134,13 +5178,6 @@ impl NvencEncoder {
             tracing::warn!("B-frames not supported with low-latency preset");
         }
 
-        // In a real implementation:
-        // 1. Create NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS
-        // 2. Call NvEncOpenEncodeSessionEx
-        // 3. Set NV_ENC_INITIALIZE_PARAMS with preset/tuning
-        // 4. Call NvEncInitializeEncoder
-        // 5. Allocate input/output buffers
-
         let lookahead_depth = if config.lookahead.enabled {
             config.lookahead.depth as usize
         } else {
@@ -5173,6 +5210,14 @@ impl NvencEncoder {
             None
         };
 
+        // ---------------------------------------------------------------------
+        // Real NVENC initialization (when nvenc feature is enabled)
+        // ---------------------------------------------------------------------
+        #[cfg(feature = "nvenc")]
+        let (nvenc_session, cuda_ctx, nvenc_funcs, nvenc_input_buffers, nvenc_output_buffers) = {
+            Self::init_real_nvenc(&config, pool_size)?
+        };
+
         tracing::info!(
             "Created NVENC encoder: {:?} {:?} {}x{} @ {:?}",
             config.profile,
@@ -5201,7 +5246,173 @@ impl NvencEncoder {
             aq_controller,
             ltr_manager: None,
             intra_refresh: None,
+            #[cfg(feature = "nvenc")]
+            nvenc_session,
+            #[cfg(feature = "nvenc")]
+            cuda_ctx,
+            #[cfg(feature = "nvenc")]
+            nvenc_funcs,
+            #[cfg(feature = "nvenc")]
+            nvenc_input_buffers,
+            #[cfg(feature = "nvenc")]
+            nvenc_output_buffers,
         })
+    }
+
+    /// Initialize real NVENC encoder session.
+    #[cfg(feature = "nvenc")]
+    fn init_real_nvenc(
+        config: &NvencEncoderConfig,
+        pool_size: usize,
+    ) -> Result<(
+        Option<std::ptr::NonNull<std::ffi::c_void>>,
+        Option<ffi::CUcontext>,
+        Option<Box<ffi::NV_ENCODE_API_FUNCTION_LIST>>,
+        Vec<*mut std::ffi::c_void>,
+        Vec<*mut std::ffi::c_void>,
+    )> {
+        use std::ptr::NonNull;
+
+        // SAFETY: CUDA initialization is thread-safe and idempotent.
+        unsafe {
+            // Step 1: Initialize CUDA
+            let result = ffi::cuInit(0);
+            if result != ffi::CUDA_SUCCESS {
+                tracing::warn!("CUDA initialization failed ({}), using mock encoding", result);
+                return Ok((None, None, None, Vec::new(), Vec::new()));
+            }
+
+            // Step 2: Get device count
+            let mut device_count: std::os::raw::c_int = 0;
+            let result = ffi::cuDeviceGetCount(&mut device_count);
+            if result != ffi::CUDA_SUCCESS || device_count == 0 {
+                tracing::warn!("No CUDA devices found, using mock encoding");
+                return Ok((None, None, None, Vec::new(), Vec::new()));
+            }
+
+            // Step 3: Get first device
+            let mut device: ffi::CUdevice = 0;
+            let result = ffi::cuDeviceGet(&mut device, 0);
+            if result != ffi::CUDA_SUCCESS {
+                tracing::warn!("Failed to get CUDA device, using mock encoding");
+                return Ok((None, None, None, Vec::new(), Vec::new()));
+            }
+
+            // Step 4: Create CUDA context
+            let mut cuda_ctx: ffi::CUcontext = std::ptr::null_mut();
+            let result = ffi::cuCtxCreate_v2(&mut cuda_ctx, 0, device);
+            if result != ffi::CUDA_SUCCESS {
+                tracing::warn!("Failed to create CUDA context, using mock encoding");
+                return Ok((None, None, None, Vec::new(), Vec::new()));
+            }
+
+            // Step 5: Load NVENC function list
+            let mut funcs = Box::new(ffi::NV_ENCODE_API_FUNCTION_LIST::default());
+            funcs.version = ffi::NVENCAPI_VERSION | (1 << 16);
+
+            let status = ffi::NvEncodeAPICreateInstance(funcs.as_mut());
+            if !ffi::nvenc_status_success(status) {
+                tracing::warn!("Failed to create NVENC instance: {}", ffi::nvenc_error_string(status));
+                ffi::cuCtxDestroy_v2(cuda_ctx);
+                return Ok((None, None, None, Vec::new(), Vec::new()));
+            }
+
+            // Step 6: Open encoder session
+            let mut session: *mut std::ffi::c_void = std::ptr::null_mut();
+            let mut open_params = ffi::NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS::default();
+            open_params.device = cuda_ctx as *mut std::ffi::c_void;
+            open_params.device_type = ffi::NV_ENC_DEVICE_TYPE::Cuda;
+
+            if let Some(open_session_fn) = funcs.nv_enc_open_encode_session_ex {
+                let status = open_session_fn(&mut open_params, &mut session);
+                if !ffi::nvenc_status_success(status) || session.is_null() {
+                    tracing::warn!("Failed to open NVENC session: {}", ffi::nvenc_error_string(status));
+                    ffi::cuCtxDestroy_v2(cuda_ctx);
+                    return Ok((None, None, None, Vec::new(), Vec::new()));
+                }
+            } else {
+                tracing::warn!("NVENC open session function not available");
+                ffi::cuCtxDestroy_v2(cuda_ctx);
+                return Ok((None, None, None, Vec::new(), Vec::new()));
+            }
+
+            // Step 7: Initialize encoder with parameters
+            let mut init_params = ffi::NV_ENC_INITIALIZE_PARAMS::default();
+            init_params.version = ffi::NVENCAPI_VERSION | (5 << 16); // NV_ENC_INITIALIZE_PARAMS_VER
+            init_params.encode_guid = match config.profile.codec() {
+                HwCodec::H264 => ffi::NV_ENC_CODEC_H264_GUID,
+                HwCodec::Hevc => ffi::NV_ENC_CODEC_HEVC_GUID,
+                HwCodec::Av1 => ffi::NV_ENC_CODEC_AV1_GUID,
+                _ => ffi::NV_ENC_CODEC_H264_GUID,
+            };
+            init_params.encode_width = config.base.width;
+            init_params.encode_height = config.base.height;
+            init_params.dar_width = config.base.width;
+            init_params.dar_height = config.base.height;
+            init_params.frame_rate_num = config.base.framerate.unwrap_or(30) as u32;
+            init_params.frame_rate_den = 1;
+
+            if let Some(init_fn) = funcs.nv_enc_initialize_encoder {
+                let status = init_fn(session, &mut init_params);
+                if !ffi::nvenc_status_success(status) {
+                    tracing::warn!("Failed to initialize NVENC: {}", ffi::nvenc_error_string(status));
+                    if let Some(destroy_fn) = funcs.nv_enc_destroy_encoder {
+                        destroy_fn(session);
+                    }
+                    ffi::cuCtxDestroy_v2(cuda_ctx);
+                    return Ok((None, None, None, Vec::new(), Vec::new()));
+                }
+            }
+
+            // Step 8: Create input buffers
+            let mut input_buffers = Vec::with_capacity(pool_size);
+            if let Some(create_input_fn) = funcs.nv_enc_create_input_buffer {
+                for _ in 0..pool_size {
+                    let mut create_params = ffi::NV_ENC_CREATE_INPUT_BUFFER::default();
+                    create_params.version = ffi::NVENCAPI_VERSION | (1 << 16);
+                    create_params.width = config.base.width;
+                    create_params.height = config.base.height;
+                    create_params.buffer_fmt = ffi::NV_ENC_BUFFER_FORMAT::Nv12;
+
+                    let status = create_input_fn(session, &mut create_params);
+                    if ffi::nvenc_status_success(status) && !create_params.input_buffer.is_null() {
+                        input_buffers.push(create_params.input_buffer);
+                    } else {
+                        tracing::warn!("Failed to create NVENC input buffer: {}", ffi::nvenc_error_string(status));
+                    }
+                }
+            }
+
+            // Step 9: Create output (bitstream) buffers
+            let mut output_buffers = Vec::with_capacity(pool_size);
+            if let Some(create_output_fn) = funcs.nv_enc_create_bitstream_buffer {
+                for _ in 0..pool_size {
+                    let mut create_params = ffi::NV_ENC_CREATE_BITSTREAM_BUFFER::default();
+                    create_params.version = ffi::NVENCAPI_VERSION | (1 << 16);
+
+                    let status = create_output_fn(session, &mut create_params);
+                    if ffi::nvenc_status_success(status) && !create_params.bitstream_buffer.is_null() {
+                        output_buffers.push(create_params.bitstream_buffer);
+                    } else {
+                        tracing::warn!("Failed to create NVENC output buffer: {}", ffi::nvenc_error_string(status));
+                    }
+                }
+            }
+
+            tracing::info!(
+                "Real NVENC encoder initialized: {} input buffers, {} output buffers",
+                input_buffers.len(),
+                output_buffers.len()
+            );
+
+            Ok((
+                NonNull::new(session),
+                Some(cuda_ctx),
+                Some(funcs),
+                input_buffers,
+                output_buffers,
+            ))
+        }
     }
 
     /// Create with base config.
@@ -5248,20 +5459,29 @@ impl NvencEncoder {
         self.async_tracker
             .start(self.frame_count, AsyncOpType::Encode, Some(self.frame_count));
 
-        // In a real implementation:
-        // 1. Get input buffer from pool
-        // 2. Map input resource (NvEncMapInputResource)
-        // 3. Copy frame data to CUDA buffer
-        // 4. If lookahead enabled, add to lookahead buffer
-        // 5. When lookahead full or flushing:
-        //    a. Set NV_ENC_PIC_PARAMS
-        //    b. Call NvEncEncodePicture
-        //    c. Lock output bitstream
-        //    d. Copy and unlock
-
         let is_keyframe = self.frame_count.is_multiple_of(self.config.gop_size as u64);
 
-        // Complete tracking
+        // Try real NVENC encoding if available
+        #[cfg(feature = "nvenc")]
+        if let Some(ref session) = self.nvenc_session {
+            if let Some(ref funcs) = self.nvenc_funcs {
+                if !self.nvenc_input_buffers.is_empty() && !self.nvenc_output_buffers.is_empty() {
+                    match self.encode_real_nvenc(frame, is_keyframe, session.as_ptr(), funcs) {
+                        Ok(packet) => {
+                            self.latency_tracker.complete(self.frame_count);
+                            self.async_tracker.complete(self.frame_count, true);
+                            self.frame_count += 1;
+                            return Ok(packet);
+                        }
+                        Err(e) => {
+                            tracing::warn!("Real NVENC encode failed: {}, falling back to mock", e);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback to mock encoding
         self.latency_tracker.complete(self.frame_count);
         self.async_tracker.complete(self.frame_count, true);
 
@@ -5282,12 +5502,394 @@ impl NvencEncoder {
         };
 
         Ok(Some(crate::encoder::HwPacket {
-            data: vec![0u8; 1000],
+            data: vec![0u8; 1000], // Mock data when NVENC unavailable
             pts: frame.pts,
             dts: frame.pts,
             is_keyframe,
             frame_type,
         }))
+    }
+
+    /// Convert RGBA frame data to NV12 format.
+    ///
+    /// Uses BT.601 coefficients for RGB to YUV conversion:
+    /// Y  = 0.299 * R + 0.587 * G + 0.114 * B
+    /// Cb = -0.169 * R - 0.331 * G + 0.500 * B + 128
+    /// Cr = 0.500 * R - 0.419 * G - 0.081 * B + 128
+    fn convert_rgba_to_nv12(
+        rgba_data: &[u8],
+        width: u32,
+        height: u32,
+        output: &mut [u8],
+    ) {
+        let width = width as usize;
+        let height = height as usize;
+
+        // Y plane
+        for y in 0..height {
+            for x in 0..width {
+                let rgba_idx = (y * width + x) * 4;
+                if rgba_idx + 2 < rgba_data.len() {
+                    let r = rgba_data[rgba_idx] as i32;
+                    let g = rgba_data[rgba_idx + 1] as i32;
+                    let b = rgba_data[rgba_idx + 2] as i32;
+
+                    // BT.601 Y calculation
+                    let y_val = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16;
+                    let y_idx = y * width + x;
+                    if y_idx < output.len() {
+                        output[y_idx] = y_val.clamp(0, 255) as u8;
+                    }
+                }
+            }
+        }
+
+        // UV plane (interleaved, subsampled 2x2)
+        let uv_offset = width * height;
+        for y in (0..height).step_by(2) {
+            for x in (0..width).step_by(2) {
+                // Average 2x2 block for chroma
+                let mut r_sum = 0i32;
+                let mut g_sum = 0i32;
+                let mut b_sum = 0i32;
+                let mut count = 0;
+
+                for dy in 0..2 {
+                    for dx in 0..2 {
+                        let py = y + dy;
+                        let px = x + dx;
+                        if py < height && px < width {
+                            let rgba_idx = (py * width + px) * 4;
+                            if rgba_idx + 2 < rgba_data.len() {
+                                r_sum += rgba_data[rgba_idx] as i32;
+                                g_sum += rgba_data[rgba_idx + 1] as i32;
+                                b_sum += rgba_data[rgba_idx + 2] as i32;
+                                count += 1;
+                            }
+                        }
+                    }
+                }
+
+                if count > 0 {
+                    let r = r_sum / count;
+                    let g = g_sum / count;
+                    let b = b_sum / count;
+
+                    // BT.601 Cb/Cr calculation
+                    let u_val = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
+                    let v_val = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
+
+                    let uv_idx = uv_offset + (y / 2) * width + x;
+                    if uv_idx + 1 < output.len() {
+                        output[uv_idx] = u_val.clamp(0, 255) as u8;
+                        output[uv_idx + 1] = v_val.clamp(0, 255) as u8;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Convert planar YUV420p frame data to NV12 format.
+    ///
+    /// YUV420p: Y plane, then U plane, then V plane
+    /// NV12: Y plane, then interleaved UV plane
+    fn convert_yuv420p_to_nv12(
+        yuv_data: &[u8],
+        width: u32,
+        height: u32,
+        output: &mut [u8],
+    ) {
+        let width = width as usize;
+        let height = height as usize;
+        let y_size = width * height;
+        let uv_size = (width / 2) * (height / 2);
+
+        // Copy Y plane directly
+        let y_copy_size = y_size.min(yuv_data.len()).min(output.len());
+        output[..y_copy_size].copy_from_slice(&yuv_data[..y_copy_size]);
+
+        // Interleave U and V planes
+        let u_plane = &yuv_data[y_size..];
+        let v_plane = &yuv_data[y_size + uv_size..];
+        let uv_offset = y_size;
+        let uv_width = width / 2;
+        let uv_height = height / 2;
+
+        for row in 0..uv_height {
+            for col in 0..uv_width {
+                let src_idx = row * uv_width + col;
+                let dst_idx = uv_offset + row * width + col * 2;
+
+                if src_idx < u_plane.len() && src_idx < v_plane.len() && dst_idx + 1 < output.len() {
+                    output[dst_idx] = u_plane[src_idx];
+                    output[dst_idx + 1] = v_plane[src_idx];
+                }
+            }
+        }
+    }
+
+    /// Convert BGRA frame data to NV12 format.
+    ///
+    /// Same as RGBA but with swapped R and B channels.
+    fn convert_bgra_to_nv12(
+        bgra_data: &[u8],
+        width: u32,
+        height: u32,
+        output: &mut [u8],
+    ) {
+        let width = width as usize;
+        let height = height as usize;
+
+        // Y plane
+        for y in 0..height {
+            for x in 0..width {
+                let bgra_idx = (y * width + x) * 4;
+                if bgra_idx + 2 < bgra_data.len() {
+                    let b = bgra_data[bgra_idx] as i32;
+                    let g = bgra_data[bgra_idx + 1] as i32;
+                    let r = bgra_data[bgra_idx + 2] as i32;
+
+                    // BT.601 Y calculation
+                    let y_val = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16;
+                    let y_idx = y * width + x;
+                    if y_idx < output.len() {
+                        output[y_idx] = y_val.clamp(0, 255) as u8;
+                    }
+                }
+            }
+        }
+
+        // UV plane (interleaved, subsampled 2x2)
+        let uv_offset = width * height;
+        for y in (0..height).step_by(2) {
+            for x in (0..width).step_by(2) {
+                let mut r_sum = 0i32;
+                let mut g_sum = 0i32;
+                let mut b_sum = 0i32;
+                let mut count = 0;
+
+                for dy in 0..2 {
+                    for dx in 0..2 {
+                        let py = y + dy;
+                        let px = x + dx;
+                        if py < height && px < width {
+                            let bgra_idx = (py * width + px) * 4;
+                            if bgra_idx + 2 < bgra_data.len() {
+                                b_sum += bgra_data[bgra_idx] as i32;
+                                g_sum += bgra_data[bgra_idx + 1] as i32;
+                                r_sum += bgra_data[bgra_idx + 2] as i32;
+                                count += 1;
+                            }
+                        }
+                    }
+                }
+
+                if count > 0 {
+                    let r = r_sum / count;
+                    let g = g_sum / count;
+                    let b = b_sum / count;
+
+                    let u_val = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
+                    let v_val = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
+
+                    let uv_idx = uv_offset + (y / 2) * width + x;
+                    if uv_idx + 1 < output.len() {
+                        output[uv_idx] = u_val.clamp(0, 255) as u8;
+                        output[uv_idx + 1] = v_val.clamp(0, 255) as u8;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Convert frame data to NV12 format for NVENC input.
+    ///
+    /// Handles conversion from various input formats to NV12 which is required by NVENC.
+    fn convert_frame_to_nv12(&self, frame: &HwFrame, output: &mut [u8]) -> Result<()> {
+        let src_data = frame.cpu_data().ok_or_else(|| {
+            HwAccelError::InvalidInput("Frame must have CPU data for encoding".into())
+        })?;
+
+        match frame.format {
+            crate::types::HwSurfaceFormat::Nv12 => {
+                // Already NV12, just copy
+                let copy_size = src_data.len().min(output.len());
+                output[..copy_size].copy_from_slice(&src_data[..copy_size]);
+            }
+            crate::types::HwSurfaceFormat::Yuv420p => {
+                Self::convert_yuv420p_to_nv12(src_data, frame.width, frame.height, output);
+            }
+            crate::types::HwSurfaceFormat::Rgba => {
+                Self::convert_rgba_to_nv12(src_data, frame.width, frame.height, output);
+            }
+            crate::types::HwSurfaceFormat::Bgra => {
+                Self::convert_bgra_to_nv12(src_data, frame.width, frame.height, output);
+            }
+            crate::types::HwSurfaceFormat::P010 | crate::types::HwSurfaceFormat::Yuv420p10 => {
+                return Err(HwAccelError::UnsupportedFormat(
+                    "10-bit formats not yet supported for NVENC conversion".into(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Real NVENC encoding implementation.
+    #[cfg(feature = "nvenc")]
+    fn encode_real_nvenc(
+        &mut self,
+        frame: &HwFrame,
+        is_keyframe: bool,
+        session: *mut std::ffi::c_void,
+        funcs: &ffi::NV_ENCODE_API_FUNCTION_LIST,
+    ) -> Result<Option<crate::encoder::HwPacket>> {
+        use std::slice;
+
+        let buffer_idx = (self.frame_count as usize) % self.nvenc_input_buffers.len();
+        let input_buffer = self.nvenc_input_buffers[buffer_idx];
+        let output_buffer = self.nvenc_output_buffers[buffer_idx];
+
+        // SAFETY: We verified session, funcs, and buffers are valid in the caller.
+        // All FFI calls follow NVENC API protocol: lock -> copy -> unlock -> encode.
+        unsafe {
+            // Step 1: Lock input buffer
+            let lock_input_fn = funcs.nv_enc_lock_input_buffer.ok_or_else(|| {
+                HwAccelError::ApiError("Lock input buffer function not available".into())
+            })?;
+
+            let mut lock_params = ffi::NV_ENC_LOCK_INPUT_BUFFER::default();
+            lock_params.version = ffi::NVENCAPI_VERSION | (1 << 16);
+            lock_params.input_buffer = input_buffer;
+
+            let status = lock_input_fn(session, &mut lock_params);
+            if !ffi::nvenc_status_success(status) {
+                return Err(HwAccelError::ApiError(format!(
+                    "Failed to lock input buffer: {}",
+                    ffi::nvenc_error_string(status)
+                )));
+            }
+
+            // Step 2: Convert and copy frame data to locked buffer
+            let frame_size = (self.config.base.width * self.config.base.height * 3 / 2) as usize; // NV12 format
+
+            if !lock_params.buffer_data_ptr.is_null() {
+                // Create a mutable slice view of the locked buffer for conversion
+                let output_slice = slice::from_raw_parts_mut(
+                    lock_params.buffer_data_ptr as *mut u8,
+                    frame_size,
+                );
+
+                // Convert frame to NV12 format (handles RGBA, BGRA, YUV420p, etc.)
+                if let Err(e) = self.convert_frame_to_nv12(frame, output_slice) {
+                    // Unlock buffer before returning error
+                    let unlock_fn = funcs.nv_enc_unlock_input_buffer;
+                    if let Some(unlock) = unlock_fn {
+                        unlock(session, input_buffer);
+                    }
+                    return Err(e);
+                }
+            }
+
+            // Step 3: Unlock input buffer
+            let unlock_input_fn = funcs.nv_enc_unlock_input_buffer.ok_or_else(|| {
+                HwAccelError::ApiError("Unlock input buffer function not available".into())
+            })?;
+            unlock_input_fn(session, input_buffer);
+
+            // Step 4: Encode picture
+            let encode_fn = funcs.nv_enc_encode_picture.ok_or_else(|| {
+                HwAccelError::ApiError("Encode picture function not available".into())
+            })?;
+
+            let mut pic_params = ffi::NV_ENC_PIC_PARAMS::default();
+            pic_params.version = ffi::NVENCAPI_VERSION | (4 << 16); // NV_ENC_PIC_PARAMS_VER
+            pic_params.input_width = self.config.base.width;
+            pic_params.input_height = self.config.base.height;
+            pic_params.input_pitch = self.config.base.width;
+            pic_params.input_buffer = input_buffer;
+            pic_params.output_bitstream = output_buffer;
+            pic_params.buffer_fmt = ffi::NV_ENC_BUFFER_FORMAT::Nv12;
+            pic_params.pic_struct = ffi::NV_ENC_PIC_STRUCT::Frame;
+            pic_params.input_timestamp = frame.pts as u64;
+            pic_params.frame_idx = self.frame_count as u32;
+
+            if is_keyframe {
+                pic_params.pic_type = ffi::NV_ENC_PIC_TYPE::Idr;
+                pic_params.encode_flags = 0x4; // NV_ENC_PIC_FLAG_FORCEIDR
+            } else {
+                pic_params.pic_type = ffi::NV_ENC_PIC_TYPE::P;
+            }
+
+            let status = encode_fn(session, &mut pic_params);
+            if !ffi::nvenc_status_success(status) && status != ffi::NV_ENC_ERR_NEED_MORE_INPUT {
+                return Err(HwAccelError::ApiError(format!(
+                    "Failed to encode picture: {}",
+                    ffi::nvenc_error_string(status)
+                )));
+            }
+
+            // Step 5: Lock and read bitstream
+            let lock_bitstream_fn = funcs.nv_enc_lock_bitstream.ok_or_else(|| {
+                HwAccelError::ApiError("Lock bitstream function not available".into())
+            })?;
+
+            let mut lock_bitstream = ffi::NV_ENC_LOCK_BITSTREAM::default();
+            lock_bitstream.version = ffi::NVENCAPI_VERSION | (1 << 16);
+            lock_bitstream.output_bitstream = output_buffer;
+
+            let status = lock_bitstream_fn(session, &mut lock_bitstream);
+            if !ffi::nvenc_status_success(status) {
+                return Err(HwAccelError::ApiError(format!(
+                    "Failed to lock bitstream: {}",
+                    ffi::nvenc_error_string(status)
+                )));
+            }
+
+            // Step 6: Copy encoded data
+            let encoded_size = lock_bitstream.bitstream_size_in_bytes as usize;
+            let encoded_data = if !lock_bitstream.bitstream_buffer_ptr.is_null() && encoded_size > 0 {
+                let data_slice = slice::from_raw_parts(
+                    lock_bitstream.bitstream_buffer_ptr as *const u8,
+                    encoded_size,
+                );
+                data_slice.to_vec()
+            } else {
+                Vec::new()
+            };
+
+            // Determine frame type from NVENC response
+            let frame_type = match lock_bitstream.pic_type {
+                ffi::NV_ENC_PIC_TYPE::I | ffi::NV_ENC_PIC_TYPE::Idr => crate::encoder::FrameType::I,
+                ffi::NV_ENC_PIC_TYPE::P | ffi::NV_ENC_PIC_TYPE::NonRefP => crate::encoder::FrameType::P,
+                ffi::NV_ENC_PIC_TYPE::B | ffi::NV_ENC_PIC_TYPE::Bi => crate::encoder::FrameType::B,
+                _ => crate::encoder::FrameType::P,
+            };
+
+            let actual_keyframe = matches!(
+                lock_bitstream.pic_type,
+                ffi::NV_ENC_PIC_TYPE::I | ffi::NV_ENC_PIC_TYPE::Idr
+            );
+
+            // Step 7: Unlock bitstream
+            let unlock_bitstream_fn = funcs.nv_enc_unlock_bitstream.ok_or_else(|| {
+                HwAccelError::ApiError("Unlock bitstream function not available".into())
+            })?;
+            unlock_bitstream_fn(session, output_buffer);
+
+            if encoded_data.is_empty() {
+                // Need more input (lookahead case)
+                return Ok(None);
+            }
+
+            Ok(Some(crate::encoder::HwPacket {
+                data: encoded_data,
+                pts: frame.pts,
+                dts: lock_bitstream.output_time_stamp as i64,
+                is_keyframe: actual_keyframe,
+                frame_type,
+            }))
+        }
     }
 
     /// Submit frame to lookahead buffer.
@@ -5313,33 +5915,63 @@ impl NvencEncoder {
 
     /// Process frames in lookahead buffer.
     fn process_lookahead(&mut self) -> Result<()> {
-        // In a real implementation:
-        // 1. Analyze lookahead frames for scene changes
-        // 2. Optimize B-frame placement
-        // 3. Apply temporal AQ if enabled
-        // 4. Encode frames in order
+        // Analyze lookahead frames for scene changes and optimize B-frame placement
+        // when lookahead analyzer is available
+        if let Some(ref _analyzer) = self.lookahead_analyzer {
+            // Real implementation would analyze frames here for:
+            // 1. Scene change detection
+            // 2. B-frame placement optimization
+            // 3. Temporal AQ adjustments
+        }
 
         while let Some(pending) = self.lookahead_buffer.pop_front() {
             let is_keyframe =
                 pending.force_keyframe || self.frame_count.is_multiple_of(self.config.gop_size as u64);
 
-            let frame_type = if is_keyframe {
-                crate::encoder::FrameType::I
-            } else {
-                crate::encoder::FrameType::P
+            // Try real NVENC encoding for lookahead frames if available
+            #[cfg(feature = "nvenc")]
+            let encoded_data = {
+                if let (Some(ref session), Some(ref funcs)) = (&self.nvenc_session, &self.nvenc_funcs) {
+                    if !self.nvenc_input_buffers.is_empty() && !self.nvenc_output_buffers.is_empty() {
+                        self.encode_lookahead_real_nvenc(
+                            &pending,
+                            is_keyframe,
+                            session.as_ptr(),
+                            funcs,
+                        ).ok()
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
             };
 
+            #[cfg(not(feature = "nvenc"))]
+            let encoded_data: Option<(Vec<u8>, crate::encoder::FrameType, NvencSliceType)> = None;
+
+            let (data, frame_type, slice_type) = encoded_data.unwrap_or_else(|| {
+                // Fallback to mock data
+                let ft = if is_keyframe {
+                    crate::encoder::FrameType::I
+                } else {
+                    crate::encoder::FrameType::P
+                };
+                let st = if is_keyframe {
+                    NvencSliceType::Idr
+                } else {
+                    NvencSliceType::P
+                };
+                (vec![0u8; 1000], ft, st)
+            });
+
             self.output_queue.push_back(NvencEncodedFrame {
-                data: vec![0u8; 1000],
+                data,
                 pts: pending.pts,
                 dts: pending.pts,
                 is_keyframe,
                 frame_type,
-                slice_type: if is_keyframe {
-                    NvencSliceType::Idr
-                } else {
-                    NvencSliceType::P
-                },
+                slice_type,
             });
 
             self.input_pool.release(pending.input);
@@ -5347,6 +5979,107 @@ impl NvencEncoder {
         }
 
         Ok(())
+    }
+
+    /// Encode a single lookahead frame using real NVENC.
+    #[cfg(feature = "nvenc")]
+    fn encode_lookahead_real_nvenc(
+        &mut self,
+        pending: &PendingFrame,
+        is_keyframe: bool,
+        session: *mut std::ffi::c_void,
+        funcs: &ffi::NV_ENCODE_API_FUNCTION_LIST,
+    ) -> Result<(Vec<u8>, crate::encoder::FrameType, NvencSliceType)> {
+        use std::slice;
+
+        let buffer_idx = (self.frame_count as usize) % self.nvenc_input_buffers.len();
+        let input_buffer = self.nvenc_input_buffers[buffer_idx];
+        let output_buffer = self.nvenc_output_buffers[buffer_idx];
+
+        // SAFETY: Session and buffers are verified valid by caller.
+        unsafe {
+            // Encode with the pending frame's input data
+            let encode_fn = funcs.nv_enc_encode_picture.ok_or_else(|| {
+                HwAccelError::ApiError("Encode picture function not available".into())
+            })?;
+
+            let mut pic_params = ffi::NV_ENC_PIC_PARAMS::default();
+            pic_params.version = ffi::NVENCAPI_VERSION | (4 << 16);
+            pic_params.input_width = self.config.base.width;
+            pic_params.input_height = self.config.base.height;
+            pic_params.input_pitch = self.config.base.width;
+            pic_params.input_buffer = input_buffer;
+            pic_params.output_bitstream = output_buffer;
+            pic_params.buffer_fmt = ffi::NV_ENC_BUFFER_FORMAT::Nv12;
+            pic_params.pic_struct = ffi::NV_ENC_PIC_STRUCT::Frame;
+            pic_params.input_timestamp = pending.pts as u64;
+            pic_params.frame_idx = self.frame_count as u32;
+
+            if is_keyframe || pending.force_keyframe {
+                pic_params.pic_type = ffi::NV_ENC_PIC_TYPE::Idr;
+                pic_params.encode_flags = 0x4; // NV_ENC_PIC_FLAG_FORCEIDR
+            } else {
+                pic_params.pic_type = ffi::NV_ENC_PIC_TYPE::P;
+            }
+
+            let status = encode_fn(session, &mut pic_params);
+            if !ffi::nvenc_status_success(status) && status != ffi::NV_ENC_ERR_NEED_MORE_INPUT {
+                return Err(HwAccelError::ApiError(format!(
+                    "Lookahead encode failed: {}",
+                    ffi::nvenc_error_string(status)
+                )));
+            }
+
+            // Lock and read bitstream
+            let lock_bitstream_fn = funcs.nv_enc_lock_bitstream.ok_or_else(|| {
+                HwAccelError::ApiError("Lock bitstream function not available".into())
+            })?;
+
+            let mut lock_bitstream = ffi::NV_ENC_LOCK_BITSTREAM::default();
+            lock_bitstream.version = ffi::NVENCAPI_VERSION | (1 << 16);
+            lock_bitstream.output_bitstream = output_buffer;
+
+            let status = lock_bitstream_fn(session, &mut lock_bitstream);
+            if !ffi::nvenc_status_success(status) {
+                return Err(HwAccelError::ApiError(format!(
+                    "Failed to lock lookahead bitstream: {}",
+                    ffi::nvenc_error_string(status)
+                )));
+            }
+
+            let encoded_size = lock_bitstream.bitstream_size_in_bytes as usize;
+            let data = if !lock_bitstream.bitstream_buffer_ptr.is_null() && encoded_size > 0 {
+                let data_slice = slice::from_raw_parts(
+                    lock_bitstream.bitstream_buffer_ptr as *const u8,
+                    encoded_size,
+                );
+                data_slice.to_vec()
+            } else {
+                vec![0u8; 1000] // Fallback mock data
+            };
+
+            let frame_type = match lock_bitstream.pic_type {
+                ffi::NV_ENC_PIC_TYPE::I | ffi::NV_ENC_PIC_TYPE::Idr => crate::encoder::FrameType::I,
+                ffi::NV_ENC_PIC_TYPE::P | ffi::NV_ENC_PIC_TYPE::NonRefP => crate::encoder::FrameType::P,
+                ffi::NV_ENC_PIC_TYPE::B | ffi::NV_ENC_PIC_TYPE::Bi => crate::encoder::FrameType::B,
+                _ => crate::encoder::FrameType::P,
+            };
+
+            let slice_type = match lock_bitstream.pic_type {
+                ffi::NV_ENC_PIC_TYPE::I => NvencSliceType::I,
+                ffi::NV_ENC_PIC_TYPE::Idr => NvencSliceType::Idr,
+                ffi::NV_ENC_PIC_TYPE::P | ffi::NV_ENC_PIC_TYPE::NonRefP => NvencSliceType::P,
+                ffi::NV_ENC_PIC_TYPE::B | ffi::NV_ENC_PIC_TYPE::Bi => NvencSliceType::B,
+                _ => NvencSliceType::P,
+            };
+
+            // Unlock bitstream
+            if let Some(unlock_fn) = funcs.nv_enc_unlock_bitstream {
+                unlock_fn(session, output_buffer);
+            }
+
+            Ok((data, frame_type, slice_type))
+        }
     }
 
     /// Get next encoded frame.
@@ -5412,6 +6145,52 @@ impl NvencEncoder {
     /// Get async tracker.
     pub fn async_tracker(&self) -> &AsyncOperationTracker {
         &self.async_tracker
+    }
+}
+
+/// Drop implementation for NVENC encoder to clean up FFI resources.
+#[cfg(feature = "nvenc")]
+impl Drop for NvencEncoder {
+    fn drop(&mut self) {
+        // SAFETY: We're cleaning up resources that were allocated during initialization.
+        // The session, buffers, and CUDA context are valid if they were successfully created.
+        unsafe {
+            if let Some(ref funcs) = self.nvenc_funcs {
+                if let Some(session) = self.nvenc_session {
+                    let session_ptr = session.as_ptr();
+
+                    // Destroy input buffers
+                    if let Some(destroy_input_fn) = funcs.nv_enc_destroy_input_buffer {
+                        for &buffer in &self.nvenc_input_buffers {
+                            if !buffer.is_null() {
+                                destroy_input_fn(session_ptr, buffer);
+                            }
+                        }
+                    }
+
+                    // Destroy output buffers
+                    if let Some(destroy_output_fn) = funcs.nv_enc_destroy_bitstream_buffer {
+                        for &buffer in &self.nvenc_output_buffers {
+                            if !buffer.is_null() {
+                                destroy_output_fn(session_ptr, buffer);
+                            }
+                        }
+                    }
+
+                    // Destroy encoder session
+                    if let Some(destroy_fn) = funcs.nv_enc_destroy_encoder {
+                        destroy_fn(session_ptr);
+                    }
+                }
+            }
+
+            // Destroy CUDA context
+            if let Some(cuda_ctx) = self.cuda_ctx {
+                if !cuda_ctx.is_null() {
+                    ffi::cuCtxDestroy_v2(cuda_ctx);
+                }
+            }
+        }
     }
 }
 

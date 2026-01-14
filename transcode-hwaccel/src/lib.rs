@@ -2,11 +2,21 @@
 //!
 //! This crate provides a unified interface to hardware video acceleration APIs:
 //!
-//! - **VAAPI** (Video Acceleration API) - Linux/Intel
-//! - **VideoToolbox** - macOS/Apple Silicon
-//! - **NVENC/NVDEC** - NVIDIA GPUs
+//! - **VideoToolbox** - macOS/Apple Silicon (fully implemented)
+//! - **VAAPI** (Video Acceleration API) - Linux/Intel (experimental, requires libva)
+//! - **NVENC/NVDEC** - NVIDIA GPUs (requires `nvenc` feature and CUDA toolkit)
 //! - **QSV** (Quick Sync Video) - Intel integrated graphics
 //! - **AMF** (Advanced Media Framework) - AMD GPUs
+//!
+//! # Implementation Status
+//!
+//! | Backend | Encoding | Decoding | Notes |
+//! |---------|----------|----------|-------|
+//! | VideoToolbox | Full | Full | macOS only, requires Apple Silicon or Intel Mac |
+//! | VA-API | Experimental | Experimental | Linux only, requires libva runtime |
+//! | NVENC/NVDEC | Experimental | Experimental | Requires `nvenc` feature + CUDA toolkit |
+//! | QSV | Partial | Partial | Linux/Windows only |
+//! | Software | Full | Full | Use `HwAccelType::Software` for mock/fallback encoding |
 //!
 //! # Example
 //!

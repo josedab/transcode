@@ -4,12 +4,26 @@
 //! to platform-specific implementations:
 //!
 //! - **VideoToolbox** (macOS) - Apple Silicon hardware encoding
-//! - **VA-API** (Linux) - Intel/AMD hardware encoding
-//! - **NVENC** (Cross-platform) - NVIDIA GPU encoding
+//! - **VA-API** (Linux) - Intel/AMD hardware encoding via libva
+//! - **NVENC** (Cross-platform) - NVIDIA GPU encoding via CUDA
 //!
-//! When the corresponding feature is enabled (e.g., `videotoolbox`), real
-//! hardware encoding is performed. Otherwise, a mock implementation is used
-//! for testing and development.
+//! When the corresponding feature is enabled (e.g., `videotoolbox`, `nvenc`), real
+//! hardware encoding is performed. If a requested backend is not available,
+//! an error is returned. Use `HwAccelType::Software` explicitly if you want
+//! mock/fallback encoding for testing.
+//!
+//! # Architecture
+//!
+//! The [`HwEncoder`] struct wraps platform-specific encoder implementations
+//! behind a unified interface. Platform selection is automatic based on
+//! compile-time features and runtime hardware detection.
+//!
+//! # Building Block Pattern
+//!
+//! Some types in this module are marked with `#[allow(dead_code)]` because they
+//! form the foundation for hardware-accelerated encoding infrastructure. These
+//! types are used when their corresponding feature flags are enabled, but may
+//! appear unused in builds that don't include all platform features.
 
 use crate::error::{HwAccelError, Result};
 use crate::types::*;
@@ -17,6 +31,12 @@ use crate::{HwAccelType, HwCodec};
 
 #[cfg(target_os = "macos")]
 use crate::videotoolbox::{VTEncoder, VTEncoderConfig};
+
+#[cfg(target_os = "linux")]
+use crate::vaapi::{VaEncoderConfig, VaapiEncoder};
+
+#[cfg(feature = "nvenc")]
+use crate::nvenc::{NvencEncoder, NvencEncoderConfig};
 
 /// Hardware encoder configuration.
 #[derive(Debug, Clone)]
@@ -179,10 +199,23 @@ enum PlatformEncoder {
     /// VideoToolbox encoder (macOS).
     #[cfg(target_os = "macos")]
     VideoToolbox(Box<VTEncoder>),
-    /// VA-API encoder (Linux) - placeholder for future implementation.
+    /// VA-API encoder (Linux).
+    ///
+    /// Note: This encoder uses a stubbed VA-API workflow. While the API structure
+    /// is complete, it returns simulated encoded data. For production use, ensure
+    /// libva is available on the system and the `vaapi` feature is enabled.
     #[cfg(target_os = "linux")]
-    Vaapi,
-    /// NVENC encoder - placeholder for future implementation.
+    Vaapi(Box<VaapiEncoder>),
+    /// NVENC encoder (NVIDIA GPU).
+    ///
+    /// Note: This encoder uses a stubbed NVENC workflow. While the API structure
+    /// is complete (including lookahead, B-frames, AQ), it returns simulated
+    /// encoded data. For production use, ensure CUDA and NVENC SDK are available
+    /// and the `nvenc` feature is enabled.
+    #[cfg(feature = "nvenc")]
+    Nvenc(Box<NvencEncoder>),
+    /// NVENC encoder placeholder when feature is disabled.
+    #[cfg(not(feature = "nvenc"))]
     Nvenc,
 }
 
@@ -329,6 +362,13 @@ impl HwEncoder {
             HwAccelType::VideoToolbox => {
                 packets.extend(self.flush_videotoolbox()?);
             }
+            #[cfg(target_os = "linux")]
+            HwAccelType::Vaapi => {
+                packets.extend(self.flush_vaapi()?);
+            }
+            HwAccelType::Nvenc => {
+                packets.extend(self.flush_nvenc()?);
+            }
             _ => {}
         }
 
@@ -371,15 +411,74 @@ impl HwEncoder {
 
     #[cfg(target_os = "linux")]
     fn init_vaapi(&mut self) -> Result<()> {
-        tracing::info!("Initializing VA-API encoder");
-        // In a real implementation, this would initialize VA-API
+        tracing::info!(
+            "Initializing VA-API encoder for {:?} {}x{}",
+            self.config.codec,
+            self.config.width,
+            self.config.height
+        );
+
+        // Create VA-API encoder configuration from HwEncoderConfig
+        let va_config = VaEncoderConfig {
+            base: self.config.clone(),
+            ..Default::default()
+        };
+
+        // Create the VA-API encoder
+        let mut encoder = VaapiEncoder::new(va_config)?;
+
+        // Initialize and generate parameter sets
+        encoder.initialize()?;
+
+        // Cache parameter sets
+        self.parameter_sets = Some(ParameterSets {
+            sps: encoder.sps().map(|s| s.to_vec()),
+            pps: encoder.pps().map(|p| p.to_vec()),
+            vps: encoder.vps().map(|v| v.to_vec()),
+            sequence_header: None,
+        });
+
+        self.platform_encoder = PlatformEncoder::Vaapi(Box::new(encoder));
+
         Ok(())
     }
 
+    #[cfg(feature = "nvenc")]
     fn init_nvenc(&mut self) -> Result<()> {
-        tracing::info!("Initializing NVENC encoder");
-        // In a real implementation, this would initialize NVENC
+        tracing::info!(
+            "Initializing NVENC encoder for {:?} {}x{}",
+            self.config.codec,
+            self.config.width,
+            self.config.height
+        );
+
+        // Create NVENC encoder configuration from HwEncoderConfig
+        let nvenc_config = NvencEncoderConfig {
+            base: self.config.clone(),
+            ..Default::default()
+        };
+
+        // Create the NVENC encoder
+        let encoder = NvencEncoder::new(nvenc_config)?;
+
+        // Cache parameter sets
+        self.parameter_sets = Some(ParameterSets {
+            sps: encoder.get_sps().map(|s: &[u8]| s.to_vec()),
+            pps: encoder.get_pps().map(|p: &[u8]| p.to_vec()),
+            vps: encoder.get_vps().map(|v: &[u8]| v.to_vec()),
+            sequence_header: None,
+        });
+
+        self.platform_encoder = PlatformEncoder::Nvenc(Box::new(encoder));
+
         Ok(())
+    }
+
+    #[cfg(not(feature = "nvenc"))]
+    fn init_nvenc(&mut self) -> Result<()> {
+        Err(HwAccelError::NotSupported(
+            "NVENC encoder requires 'nvenc' feature to be enabled".to_string(),
+        ))
     }
 
     #[cfg(target_os = "macos")]
@@ -460,15 +559,53 @@ impl HwEncoder {
 
     #[cfg(target_os = "linux")]
     fn encode_vaapi(&mut self, frame: &HwFrame) -> Result<Option<HwPacket>> {
-        // TODO: Implement real VA-API encoding when feature is enabled
-        // For now, use mock encoding
-        self.encode_mock(frame)
+        // Use the VA-API encoder if available
+        if let PlatformEncoder::Vaapi(ref mut encoder) = self.platform_encoder {
+            // Encode through VaapiEncoder
+            match encoder.encode(&frame.data, frame.pts) {
+                Ok(Some(va_frame)) => {
+                    Ok(Some(HwPacket {
+                        data: va_frame.data,
+                        pts: va_frame.pts,
+                        dts: va_frame.dts,
+                        is_keyframe: va_frame.is_keyframe,
+                        frame_type: match va_frame.frame_type {
+                            crate::vaapi::VaFrameType::I => FrameType::I,
+                            crate::vaapi::VaFrameType::P => FrameType::P,
+                            crate::vaapi::VaFrameType::B => FrameType::B,
+                        },
+                    }))
+                }
+                Ok(None) => Ok(None),
+                Err(e) => Err(e),
+            }
+        } else {
+            // VA-API encoder not initialized - return error instead of silent mock
+            Err(HwAccelError::NotSupported(
+                "VA-API encoder not initialized".to_string(),
+            ))
+        }
     }
 
+    #[cfg(feature = "nvenc")]
     fn encode_nvenc(&mut self, frame: &HwFrame) -> Result<Option<HwPacket>> {
-        // TODO: Implement real NVENC encoding when feature is enabled
-        // For now, use mock encoding
-        self.encode_mock(frame)
+        // Use the NVENC encoder if available
+        if let PlatformEncoder::Nvenc(ref mut encoder) = self.platform_encoder {
+            // Encode through NvencEncoder
+            encoder.encode(frame)
+        } else {
+            // NVENC encoder not initialized - return error instead of silent mock
+            Err(HwAccelError::NotSupported(
+                "NVENC encoder not initialized".to_string(),
+            ))
+        }
+    }
+
+    #[cfg(not(feature = "nvenc"))]
+    fn encode_nvenc(&mut self, _frame: &HwFrame) -> Result<Option<HwPacket>> {
+        Err(HwAccelError::NotSupported(
+            "NVENC encoder requires 'nvenc' feature to be enabled".to_string(),
+        ))
     }
 
     fn encode_software(&mut self, frame: &HwFrame) -> Result<Option<HwPacket>> {
@@ -498,6 +635,50 @@ impl HwEncoder {
         } else {
             Ok(Vec::new())
         }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn flush_vaapi(&mut self) -> Result<Vec<HwPacket>> {
+        if let PlatformEncoder::Vaapi(ref mut encoder) = self.platform_encoder {
+            // Flush the VA-API encoder
+            let va_frames = encoder.flush()?;
+
+            // Convert VaEncodedFrames to HwPackets
+            let packets: Vec<HwPacket> = va_frames
+                .into_iter()
+                .map(|va_frame| HwPacket {
+                    data: va_frame.data,
+                    pts: va_frame.pts,
+                    dts: va_frame.dts,
+                    is_keyframe: va_frame.is_keyframe,
+                    frame_type: match va_frame.frame_type {
+                        crate::vaapi::VaFrameType::I => FrameType::I,
+                        crate::vaapi::VaFrameType::P => FrameType::P,
+                        crate::vaapi::VaFrameType::B => FrameType::B,
+                    },
+                })
+                .collect();
+
+            Ok(packets)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    #[cfg(feature = "nvenc")]
+    fn flush_nvenc(&mut self) -> Result<Vec<HwPacket>> {
+        if let PlatformEncoder::Nvenc(ref mut encoder) = self.platform_encoder {
+            // Flush the NVENC encoder - it already returns Vec<HwPacket>
+            encoder.flush()
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    #[cfg(not(feature = "nvenc"))]
+    fn flush_nvenc(&mut self) -> Result<Vec<HwPacket>> {
+        // NVENC feature not enabled, nothing to flush
+        Ok(Vec::new())
     }
 
     /// Get the cached parameter sets (SPS, PPS, VPS).

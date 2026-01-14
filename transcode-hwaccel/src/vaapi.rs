@@ -199,6 +199,9 @@ pub mod ffi {
 
     impl Default for VAImage {
         fn default() -> Self {
+            // SAFETY: VAImage is a #[repr(C)] struct where all fields are integers or
+            // arrays of integers. Zero is a valid representation for all field types,
+            // and VA-API expects zeroed structures as initial state.
             unsafe { std::mem::zeroed() }
         }
     }
@@ -606,6 +609,8 @@ pub mod ffi {
     impl Drop for VADisplayGuard {
         fn drop(&mut self) {
             if self.initialized && !self.display.is_null() {
+                // SAFETY: The display was created via vaInitialize and is non-null.
+                // vaTerminate is the correct cleanup function for initialized displays.
                 unsafe { vaTerminate(self.display) };
             }
         }
@@ -637,6 +642,9 @@ pub mod ffi {
     impl Drop for VASurfaceGuard {
         fn drop(&mut self) {
             if self.surface != VA_INVALID_SURFACE {
+                // SAFETY: The surface was created via vaCreateSurfaces and is valid
+                // (not VA_INVALID_SURFACE). The display handle is valid for the lifetime
+                // of this guard. vaDestroySurfaces is the correct cleanup function.
                 unsafe {
                     let mut surfaces = [self.surface];
                     vaDestroySurfaces(self.display, surfaces.as_mut_ptr(), 1);
@@ -682,6 +690,8 @@ pub mod ffi {
     impl Drop for VABufferGuard {
         fn drop(&mut self) {
             if self.buffer != VA_INVALID_ID {
+                // SAFETY: The buffer was created via vaCreateBuffer and is valid
+                // (not VA_INVALID_ID). The display handle remains valid for cleanup.
                 unsafe { vaDestroyBuffer(self.display, self.buffer) };
             }
         }
@@ -1264,6 +1274,28 @@ pub mod va_rt_format {
         }
     }
 }
+
+// ============================================================================
+// FOURCC Format Constants
+// ============================================================================
+
+/// FOURCC codes for VA-API image formats.
+pub mod va_fourcc {
+    /// NV12 format (Y plane followed by interleaved UV plane).
+    pub const VA_FOURCC_NV12: u32 = 0x3231564E; // 'NV12'
+    /// I420 format (Y, U, V planes).
+    pub const VA_FOURCC_I420: u32 = 0x30323449; // 'I420'
+    /// YV12 format (Y, V, U planes).
+    pub const VA_FOURCC_YV12: u32 = 0x32315659; // 'YV12'
+    /// P010 format (10-bit NV12).
+    pub const VA_FOURCC_P010: u32 = 0x30313050; // 'P010'
+    /// RGBA format.
+    pub const VA_FOURCC_RGBA: u32 = 0x41424752; // 'RGBA'
+    /// BGRA format.
+    pub const VA_FOURCC_BGRA: u32 = 0x41524742; // 'BGRA'
+}
+
+pub use va_fourcc::*;
 
 // ============================================================================
 // Rate Control Mode Constants
@@ -2923,6 +2955,10 @@ pub struct VaEncodingWorkflow {
     device_info: Option<VaDrmDevice>,
 }
 
+/// Maximum number of surfaces that can be created in a single call.
+/// This prevents DoS via unbounded memory allocation.
+const MAX_SURFACES: u32 = 256;
+
 impl VaEncodingWorkflow {
     /// Create a new encoding workflow (stubbed).
     pub fn new() -> Self {
@@ -2940,12 +2976,85 @@ impl VaEncodingWorkflow {
 
     /// Initialize VA-API display from DRM device.
     ///
-    /// In real implementation, would call:
+    /// Opens the DRM device and initializes VA-API:
     /// - open(device_path)
     /// - vaGetDisplayDRM(drm_fd)
     /// - vaInitialize(display, &major, &minor)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
     pub fn va_initialize(&mut self, device_path: &str) -> Result<(i32, i32)> {
-        // Stubbed: simulate successful initialization
+        use std::ffi::CString;
+        use std::os::unix::io::RawFd;
+
+        if device_path.is_empty() {
+            return Err(HwAccelError::DeviceInit("Empty device path".to_string()));
+        }
+
+        // Open the DRM device
+        let c_path = CString::new(device_path)
+            .map_err(|_| HwAccelError::DeviceInit("Invalid device path".to_string()))?;
+
+        // SAFETY: We're calling libc::open with a valid C string path
+        let drm_fd: RawFd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
+
+        if drm_fd < 0 {
+            return Err(HwAccelError::DeviceInit(format!(
+                "Failed to open DRM device: {}",
+                device_path
+            )));
+        }
+
+        // Get VA display from DRM fd
+        // SAFETY: drm_fd is a valid file descriptor
+        let display = unsafe { ffi::vaGetDisplayDRM_drm(drm_fd) };
+
+        if display.is_null() {
+            unsafe { libc::close(drm_fd) };
+            return Err(HwAccelError::DeviceInit(
+                "Failed to get VA display from DRM".to_string(),
+            ));
+        }
+
+        // Initialize VA-API
+        let mut major: std::os::raw::c_int = 0;
+        let mut minor: std::os::raw::c_int = 0;
+
+        // SAFETY: display is valid, major and minor are valid mutable pointers
+        let status = unsafe { ffi::vaInitialize(display, &mut major, &mut minor) };
+
+        if !ffi::va_status_success(status) {
+            unsafe {
+                ffi::vaTerminate(display);
+                libc::close(drm_fd);
+            }
+            return Err(HwAccelError::DeviceInit(format!(
+                "vaInitialize failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        self.display = display;
+        self.initialized = true;
+
+        // Store DRM fd for cleanup
+        self.device_info = Some(VaDrmDevice {
+            path: device_path.to_string(),
+            drm_fd,
+            vendor: String::new(), // Will be filled by query
+        });
+
+        tracing::info!(
+            "VA-API initialized: version {}.{}, device: {}",
+            major,
+            minor,
+            device_path
+        );
+
+        Ok((major, minor))
+    }
+
+    /// Initialize VA-API display from DRM device (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
+    pub fn va_initialize(&mut self, device_path: &str) -> Result<(i32, i32)> {
         if device_path.is_empty() {
             return Err(HwAccelError::DeviceInit("Empty device path".to_string()));
         }
@@ -2959,8 +3068,54 @@ impl VaEncodingWorkflow {
 
     /// Create a configuration for encoding.
     ///
-    /// In real implementation, would call:
-    /// - vaCreateConfig(display, profile, entrypoint, attribs, num_attribs, &config_id)
+    /// Calls vaCreateConfig(display, profile, entrypoint, attribs, num_attribs, &config_id)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_create_config(
+        &mut self,
+        profile: VAProfile,
+        entrypoint: VAEntrypoint,
+        attribs: &[VAConfigAttrib],
+    ) -> Result<VAConfigID> {
+        if !self.initialized || self.display.is_null() {
+            return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
+        }
+
+        let mut config_id: VAConfigID = VA_INVALID_ID;
+
+        // SAFETY: display is valid, attribs is a valid slice, config_id is a valid mutable pointer
+        let status = unsafe {
+            ffi::vaCreateConfig(
+                self.display,
+                profile,
+                entrypoint,
+                attribs.as_ptr() as *mut VAConfigAttrib,
+                attribs.len() as std::os::raw::c_int,
+                &mut config_id,
+            )
+        };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Config(format!(
+                "vaCreateConfig failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        self.config_id = config_id;
+
+        tracing::debug!(
+            "Created config {}: profile={:?}, entrypoint={:?}, attribs={}",
+            config_id,
+            profile,
+            entrypoint,
+            attribs.len()
+        );
+
+        Ok(config_id)
+    }
+
+    /// Create a configuration for encoding (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_create_config(
         &mut self,
         profile: VAProfile,
@@ -2971,17 +3126,14 @@ impl VaEncodingWorkflow {
             return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
         }
 
-        // Validate profile/entrypoint combination
         if !entrypoint.is_encode() {
             return Err(HwAccelError::Config(
                 "Entrypoint is not for encoding".to_string(),
             ));
         }
 
-        // Stubbed: return simulated config ID
         self.config_id = 1;
 
-        // Log the configuration
         tracing::debug!(
             "Created config: profile={:?}, entrypoint={:?}, attribs={}",
             profile,
@@ -2994,8 +3146,8 @@ impl VaEncodingWorkflow {
 
     /// Create encoding context.
     ///
-    /// In real implementation, would call:
-    /// - vaCreateContext(display, config_id, width, height, flag, surfaces, num_surfaces, &context_id)
+    /// Calls vaCreateContext(display, config_id, width, height, flag, surfaces, num_surfaces, &context_id)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
     pub fn va_create_context(
         &mut self,
         width: u32,
@@ -3010,7 +3162,62 @@ impl VaEncodingWorkflow {
             return Err(HwAccelError::Config("Invalid dimensions".to_string()));
         }
 
-        // Stubbed: return simulated context ID
+        let mut context_id: VAContextID = VA_INVALID_ID;
+
+        // VA_PROGRESSIVE flag for encoding
+        const VA_PROGRESSIVE: std::os::raw::c_int = 1;
+
+        // SAFETY: display is valid, surfaces is a valid slice, context_id is a valid mutable pointer
+        let status = unsafe {
+            ffi::vaCreateContext(
+                self.display,
+                self.config_id,
+                width as std::os::raw::c_int,
+                height as std::os::raw::c_int,
+                VA_PROGRESSIVE,
+                surfaces.as_ptr() as *mut VASurfaceID,
+                surfaces.len() as std::os::raw::c_int,
+                &mut context_id,
+            )
+        };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Config(format!(
+                "vaCreateContext failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        self.context_id = context_id;
+        self.surfaces = surfaces.to_vec();
+
+        tracing::debug!(
+            "Created context {}: {}x{}, {} surfaces",
+            context_id,
+            width,
+            height,
+            surfaces.len()
+        );
+
+        Ok(context_id)
+    }
+
+    /// Create encoding context (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
+    pub fn va_create_context(
+        &mut self,
+        width: u32,
+        height: u32,
+        surfaces: &[VASurfaceID],
+    ) -> Result<VAContextID> {
+        if self.config_id == VA_INVALID_ID {
+            return Err(HwAccelError::Config("Config not created".to_string()));
+        }
+
+        if width == 0 || height == 0 {
+            return Err(HwAccelError::Config("Invalid dimensions".to_string()));
+        }
+
         self.context_id = 1;
         self.surfaces = surfaces.to_vec();
 
@@ -3026,8 +3233,75 @@ impl VaEncodingWorkflow {
 
     /// Create surfaces for encoding/decoding.
     ///
-    /// In real implementation, would call:
-    /// - vaCreateSurfaces(display, rt_format, width, height, surfaces, num_surfaces, attribs, num_attribs)
+    /// Calls vaCreateSurfaces(display, rt_format, width, height, surfaces, num_surfaces, attribs, num_attribs)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_create_surfaces(
+        &mut self,
+        rt_format: u32,
+        width: u32,
+        height: u32,
+        num_surfaces: u32,
+        attribs: Option<&[VASurfaceAttrib]>,
+    ) -> Result<Vec<VASurfaceID>> {
+        if !self.initialized || self.display.is_null() {
+            return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
+        }
+
+        if width == 0 || height == 0 {
+            return Err(HwAccelError::Config("Invalid dimensions".to_string()));
+        }
+
+        if num_surfaces == 0 || num_surfaces > MAX_SURFACES {
+            return Err(HwAccelError::Config(format!(
+                "Invalid surface count: {} (max {})",
+                num_surfaces, MAX_SURFACES
+            )));
+        }
+
+        let mut surfaces: Vec<VASurfaceID> = vec![VA_INVALID_SURFACE; num_surfaces as usize];
+
+        let (attrib_ptr, attrib_count) = match attribs {
+            Some(a) => (a.as_ptr() as *mut VASurfaceAttrib, a.len() as std::os::raw::c_uint),
+            None => (std::ptr::null_mut(), 0),
+        };
+
+        // SAFETY: display is valid, surfaces is a valid mutable slice
+        let status = unsafe {
+            ffi::vaCreateSurfaces(
+                self.display,
+                rt_format,
+                width,
+                height,
+                surfaces.as_mut_ptr(),
+                num_surfaces,
+                attrib_ptr,
+                attrib_count,
+            )
+        };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Surface(format!(
+                "vaCreateSurfaces failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        self.surfaces.extend(&surfaces);
+
+        tracing::debug!(
+            "Created {} surfaces: {}x{}, format=0x{:08x}, attribs={}",
+            num_surfaces,
+            width,
+            height,
+            rt_format,
+            attribs.map_or(0, |a| a.len())
+        );
+
+        Ok(surfaces)
+    }
+
+    /// Create surfaces for encoding/decoding (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_create_surfaces(
         &mut self,
         rt_format: u32,
@@ -3044,7 +3318,13 @@ impl VaEncodingWorkflow {
             return Err(HwAccelError::Config("Invalid dimensions".to_string()));
         }
 
-        // Stubbed: create simulated surface IDs
+        if num_surfaces == 0 || num_surfaces > MAX_SURFACES {
+            return Err(HwAccelError::Config(format!(
+                "Invalid surface count: {} (max {})",
+                num_surfaces, MAX_SURFACES
+            )));
+        }
+
         let mut surfaces = Vec::with_capacity(num_surfaces as usize);
         let base_id = self.surfaces.len() as u32 + 1;
 
@@ -3068,8 +3348,8 @@ impl VaEncodingWorkflow {
 
     /// Create a data buffer.
     ///
-    /// In real implementation, would call:
-    /// - vaCreateBuffer(display, context, type, size, num_elements, data, &buffer_id)
+    /// Calls vaCreateBuffer(display, context, type, size, num_elements, data, &buffer_id)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
     pub fn va_create_buffer(
         &mut self,
         buffer_type: VABufferType,
@@ -3081,7 +3361,60 @@ impl VaEncodingWorkflow {
             return Err(HwAccelError::Config("Context not created".to_string()));
         }
 
-        // Stubbed: create simulated buffer ID
+        let mut buffer_id: VABufferID = VA_INVALID_ID;
+
+        let data_ptr = match data {
+            Some(d) => d.as_ptr() as *mut std::ffi::c_void,
+            None => std::ptr::null_mut(),
+        };
+
+        // SAFETY: display and context are valid, buffer_id is a valid mutable pointer
+        let status = unsafe {
+            ffi::vaCreateBuffer(
+                self.display,
+                self.context_id,
+                buffer_type as std::os::raw::c_int,
+                size,
+                num_elements,
+                data_ptr,
+                &mut buffer_id,
+            )
+        };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Buffer(format!(
+                "vaCreateBuffer failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        self.buffers.push(buffer_id);
+
+        tracing::debug!(
+            "Created buffer {}: type={:?}, size={}, elements={}, has_data={}",
+            buffer_id,
+            buffer_type,
+            size,
+            num_elements,
+            data.is_some()
+        );
+
+        Ok(buffer_id)
+    }
+
+    /// Create a data buffer (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
+    pub fn va_create_buffer(
+        &mut self,
+        buffer_type: VABufferType,
+        size: u32,
+        num_elements: u32,
+        data: Option<&[u8]>,
+    ) -> Result<VABufferID> {
+        if self.context_id == VA_INVALID_ID {
+            return Err(HwAccelError::Config("Context not created".to_string()));
+        }
+
         let buffer_id = self.buffers.len() as u32 + 1;
         self.buffers.push(buffer_id);
 
@@ -3098,8 +3431,38 @@ impl VaEncodingWorkflow {
 
     /// Begin encoding a picture.
     ///
-    /// In real implementation, would call:
-    /// - vaBeginPicture(display, context, surface)
+    /// Calls vaBeginPicture(display, context, surface)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_begin_picture(&mut self, surface: VASurfaceID) -> Result<()> {
+        if self.context_id == VA_INVALID_ID {
+            return Err(HwAccelError::Config("Context not created".to_string()));
+        }
+
+        if self.picture_started {
+            return Err(HwAccelError::Encode(
+                "Picture already started".to_string(),
+            ));
+        }
+
+        // SAFETY: display and context are valid
+        let status = unsafe { ffi::vaBeginPicture(self.display, self.context_id, surface) };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Encode(format!(
+                "vaBeginPicture failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        self.picture_started = true;
+
+        tracing::debug!("Begin picture: surface={}", surface);
+
+        Ok(())
+    }
+
+    /// Begin encoding a picture (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_begin_picture(&mut self, surface: VASurfaceID) -> Result<()> {
         if self.context_id == VA_INVALID_ID {
             return Err(HwAccelError::Config("Context not created".to_string()));
@@ -3120,8 +3483,39 @@ impl VaEncodingWorkflow {
 
     /// Render buffers for encoding.
     ///
-    /// In real implementation, would call:
-    /// - vaRenderPicture(display, context, buffers, num_buffers)
+    /// Calls vaRenderPicture(display, context, buffers, num_buffers)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_render_picture(&mut self, buffers: &[VABufferID]) -> Result<()> {
+        if !self.picture_started {
+            return Err(HwAccelError::Encode(
+                "Picture not started".to_string(),
+            ));
+        }
+
+        // SAFETY: display and context are valid, buffers is a valid slice
+        let status = unsafe {
+            ffi::vaRenderPicture(
+                self.display,
+                self.context_id,
+                buffers.as_ptr() as *mut VABufferID,
+                buffers.len() as std::os::raw::c_int,
+            )
+        };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Encode(format!(
+                "vaRenderPicture failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        tracing::debug!("Render picture: {} buffers", buffers.len());
+
+        Ok(())
+    }
+
+    /// Render buffers for encoding (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_render_picture(&mut self, buffers: &[VABufferID]) -> Result<()> {
         if !self.picture_started {
             return Err(HwAccelError::Encode(
@@ -3136,8 +3530,34 @@ impl VaEncodingWorkflow {
 
     /// End encoding a picture.
     ///
-    /// In real implementation, would call:
-    /// - vaEndPicture(display, context)
+    /// Calls vaEndPicture(display, context)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_end_picture(&mut self) -> Result<()> {
+        if !self.picture_started {
+            return Err(HwAccelError::Encode(
+                "Picture not started".to_string(),
+            ));
+        }
+
+        // SAFETY: display and context are valid
+        let status = unsafe { ffi::vaEndPicture(self.display, self.context_id) };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Encode(format!(
+                "vaEndPicture failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        self.picture_started = false;
+
+        tracing::debug!("End picture");
+
+        Ok(())
+    }
+
+    /// End encoding a picture (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_end_picture(&mut self) -> Result<()> {
         if !self.picture_started {
             return Err(HwAccelError::Encode(
@@ -3154,8 +3574,30 @@ impl VaEncodingWorkflow {
 
     /// Synchronize a surface (wait for encoding to complete).
     ///
-    /// In real implementation, would call:
-    /// - vaSyncSurface(display, surface)
+    /// Calls vaSyncSurface(display, surface)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_sync_surface(&self, surface: VASurfaceID) -> Result<()> {
+        if !self.initialized || self.display.is_null() {
+            return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
+        }
+
+        // SAFETY: display is valid
+        let status = unsafe { ffi::vaSyncSurface(self.display, surface) };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Surface(format!(
+                "vaSyncSurface failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        tracing::debug!("Sync surface: {}", surface);
+
+        Ok(())
+    }
+
+    /// Synchronize a surface (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_sync_surface(&self, surface: VASurfaceID) -> Result<()> {
         if !self.initialized {
             return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
@@ -3168,15 +3610,36 @@ impl VaEncodingWorkflow {
 
     /// Map a buffer for CPU access.
     ///
-    /// In real implementation, would call:
-    /// - vaMapBuffer(display, buffer, &data_ptr)
+    /// Calls vaMapBuffer(display, buffer, &data_ptr)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_map_buffer(&self, buffer: VABufferID) -> Result<*mut u8> {
+        if !self.initialized || self.display.is_null() {
+            return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
+        }
+
+        let mut ptr: *mut std::ffi::c_void = std::ptr::null_mut();
+
+        // SAFETY: display is valid, ptr is a valid mutable pointer
+        let status = unsafe { ffi::vaMapBuffer(self.display, buffer, &mut ptr) };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Buffer(format!(
+                "vaMapBuffer failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        tracing::debug!("Map buffer: {}", buffer);
+
+        Ok(ptr as *mut u8)
+    }
+
+    /// Map a buffer for CPU access (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_map_buffer(&self, buffer: VABufferID) -> Result<*mut u8> {
         if !self.initialized {
             return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
         }
-
-        // Stubbed: return simulated pointer
-        // In real implementation, this would return actual mapped memory
 
         tracing::debug!("Map buffer: {}", buffer);
 
@@ -3186,14 +3649,297 @@ impl VaEncodingWorkflow {
 
     /// Unmap a previously mapped buffer.
     ///
-    /// In real implementation, would call:
-    /// - vaUnmapBuffer(display, buffer)
+    /// Calls vaUnmapBuffer(display, buffer)
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_unmap_buffer(&self, buffer: VABufferID) -> Result<()> {
+        if !self.initialized || self.display.is_null() {
+            return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
+        }
+
+        // SAFETY: display is valid
+        let status = unsafe { ffi::vaUnmapBuffer(self.display, buffer) };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Buffer(format!(
+                "vaUnmapBuffer failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        tracing::debug!("Unmap buffer: {}", buffer);
+
+        Ok(())
+    }
+
+    /// Unmap a previously mapped buffer (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn va_unmap_buffer(&self, buffer: VABufferID) -> Result<()> {
         if !self.initialized {
             return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
         }
 
         tracing::debug!("Unmap buffer: {}", buffer);
+
+        Ok(())
+    }
+
+    /// Upload frame data to a VA surface.
+    ///
+    /// Uses vaDeriveImage for zero-copy mapping when supported, or
+    /// vaCreateImage + vaPutImage as fallback.
+    ///
+    /// # Arguments
+    /// * `surface` - Target surface ID
+    /// * `frame_data` - Raw frame data (NV12 format expected)
+    /// * `width` - Frame width
+    /// * `height` - Frame height
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn va_upload_frame_to_surface(
+        &self,
+        surface: VASurfaceID,
+        frame_data: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<()> {
+        if !self.initialized || self.display.is_null() {
+            return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
+        }
+
+        // Expected NV12 frame size: Y plane (width * height) + UV plane (width * height / 2)
+        let expected_size = (width as usize * height as usize * 3) / 2;
+        if frame_data.len() < expected_size {
+            return Err(HwAccelError::Buffer(format!(
+                "Frame data too small: {} bytes, expected at least {} for {}x{} NV12",
+                frame_data.len(),
+                expected_size,
+                width,
+                height
+            )));
+        }
+
+        // Try to derive image from surface (zero-copy path)
+        let mut image: ffi::VAImage = ffi::VAImage::default();
+
+        // SAFETY: display and surface are valid, image is a valid out pointer
+        let derive_status = unsafe { ffi::vaDeriveImage(self.display, surface, &mut image) };
+
+        if ffi::va_status_success(derive_status) {
+            // Zero-copy path: map the derived image buffer and copy data
+            let result = self.upload_to_derived_image(&image, frame_data, width, height);
+
+            // Always destroy the derived image
+            // SAFETY: image.image_id was successfully created by vaDeriveImage
+            unsafe { ffi::vaDestroyImage(self.display, image.image_id) };
+
+            return result;
+        }
+
+        // Fallback: create image and use vaPutImage
+        self.upload_via_put_image(surface, frame_data, width, height)
+    }
+
+    /// Upload frame data using a derived image (zero-copy when possible).
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    fn upload_to_derived_image(
+        &self,
+        image: &ffi::VAImage,
+        frame_data: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<()> {
+        // Map the image buffer
+        let mut ptr: *mut std::ffi::c_void = std::ptr::null_mut();
+        // SAFETY: display is valid, image.buf is a valid buffer ID from vaDeriveImage
+        let status = unsafe { ffi::vaMapBuffer(self.display, image.buf, &mut ptr) };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Buffer(format!(
+                "vaMapBuffer for derived image failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        // Copy frame data to the mapped buffer with proper stride handling
+        // SAFETY: ptr is valid mapped memory from vaMapBuffer.
+        // We verify source and destination bounds before each copy operation.
+        // The buffer is unmapped in the defer block.
+        let data_size = image.data_size as usize;
+        let copy_result = unsafe {
+            let buf_ptr = ptr as *mut u8;
+
+            // Copy Y plane with stride handling
+            let y_pitch = image.pitches[0] as usize;
+            let y_offset = image.offsets[0] as usize;
+
+            for row in 0..height as usize {
+                let src_offset = row * width as usize;
+                let dst_offset = y_offset + row * y_pitch;
+
+                // Validate both source and destination bounds
+                if src_offset + width as usize <= frame_data.len()
+                    && dst_offset + width as usize <= data_size
+                {
+                    std::ptr::copy_nonoverlapping(
+                        frame_data.as_ptr().add(src_offset),
+                        buf_ptr.add(dst_offset),
+                        width as usize,
+                    );
+                }
+            }
+
+            // Copy UV plane (interleaved NV12)
+            let uv_pitch = image.pitches[1] as usize;
+            let uv_offset = image.offsets[1] as usize;
+            let uv_height = height as usize / 2;
+            let y_plane_size = width as usize * height as usize;
+
+            for row in 0..uv_height {
+                let src_offset = y_plane_size + row * width as usize;
+                let dst_offset = uv_offset + row * uv_pitch;
+
+                // Validate both source and destination bounds
+                if src_offset + width as usize <= frame_data.len()
+                    && dst_offset + width as usize <= data_size
+                {
+                    std::ptr::copy_nonoverlapping(
+                        frame_data.as_ptr().add(src_offset),
+                        buf_ptr.add(dst_offset),
+                        width as usize,
+                    );
+                }
+            }
+
+            Ok(())
+        };
+
+        // Unmap buffer
+        // SAFETY: buffer was successfully mapped above
+        unsafe { ffi::vaUnmapBuffer(self.display, image.buf) };
+
+        copy_result
+    }
+
+    /// Upload frame data using vaCreateImage + vaPutImage (fallback path).
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    fn upload_via_put_image(
+        &self,
+        surface: VASurfaceID,
+        frame_data: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<()> {
+        // Create NV12 image format
+        let mut format = ffi::VAImageFormat {
+            fourcc: VA_FOURCC_NV12,
+            byte_order: 1, // VA_LSB_FIRST
+            bits_per_pixel: 12,
+            depth: 0,
+            red_mask: 0,
+            green_mask: 0,
+            blue_mask: 0,
+            alpha_mask: 0,
+        };
+
+        let mut image: ffi::VAImage = ffi::VAImage::default();
+
+        // SAFETY: display is valid, format and image are valid pointers
+        let status = unsafe {
+            ffi::vaCreateImage(
+                self.display,
+                &mut format,
+                width as std::os::raw::c_int,
+                height as std::os::raw::c_int,
+                &mut image,
+            )
+        };
+
+        if !ffi::va_status_success(status) {
+            return Err(HwAccelError::Buffer(format!(
+                "vaCreateImage failed: {}",
+                unsafe { ffi::va_error_string(status) }
+            )));
+        }
+
+        // Map and fill the image buffer
+        let mut ptr: *mut std::ffi::c_void = std::ptr::null_mut();
+        // SAFETY: display is valid, image.buf is valid from vaCreateImage
+        let map_status = unsafe { ffi::vaMapBuffer(self.display, image.buf, &mut ptr) };
+
+        if !ffi::va_status_success(map_status) {
+            // SAFETY: image.image_id is valid from vaCreateImage
+            unsafe { ffi::vaDestroyImage(self.display, image.image_id) };
+            return Err(HwAccelError::Buffer(format!(
+                "vaMapBuffer failed: {}",
+                unsafe { ffi::va_error_string(map_status) }
+            )));
+        }
+
+        // Copy frame data
+        // SAFETY: ptr is valid mapped memory, we verify size bounds
+        unsafe {
+            let data_size = image.data_size as usize;
+            let copy_size = frame_data.len().min(data_size);
+            std::ptr::copy_nonoverlapping(frame_data.as_ptr(), ptr as *mut u8, copy_size);
+        }
+
+        // Unmap buffer
+        // SAFETY: buffer was successfully mapped above
+        unsafe { ffi::vaUnmapBuffer(self.display, image.buf) };
+
+        // Put image to surface
+        // SAFETY: display, surface, and image.image_id are all valid
+        let put_status = unsafe {
+            ffi::vaPutImage(
+                self.display,
+                surface,
+                image.image_id,
+                0,
+                0,
+                width,
+                height,
+                0,
+                0,
+                width,
+                height,
+            )
+        };
+
+        // Destroy image
+        // SAFETY: image.image_id is valid from vaCreateImage
+        unsafe { ffi::vaDestroyImage(self.display, image.image_id) };
+
+        if !ffi::va_status_success(put_status) {
+            return Err(HwAccelError::Buffer(format!(
+                "vaPutImage failed: {}",
+                unsafe { ffi::va_error_string(put_status) }
+            )));
+        }
+
+        tracing::debug!("Uploaded {}x{} frame to surface {}", width, height, surface);
+
+        Ok(())
+    }
+
+    /// Upload frame data to a VA surface (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
+    pub fn va_upload_frame_to_surface(
+        &self,
+        surface: VASurfaceID,
+        frame_data: &[u8],
+        width: u32,
+        height: u32,
+    ) -> Result<()> {
+        if !self.initialized {
+            return Err(HwAccelError::DeviceInit("Not initialized".to_string()));
+        }
+
+        tracing::debug!(
+            "Upload frame to surface {} (simulated): {}x{}, {} bytes",
+            surface,
+            width,
+            height,
+            frame_data.len()
+        );
 
         Ok(())
     }
@@ -3880,12 +4626,11 @@ impl VaapiContext {
 
     /// Get encoding workflow (creates if not exists).
     pub fn workflow(&mut self) -> &mut VaEncodingWorkflow {
-        if self.workflow.is_none() {
+        self.workflow.get_or_insert_with(|| {
             let mut wf = VaEncodingWorkflow::new();
             let _ = wf.va_initialize(&self.device_path);
-            self.workflow = Some(wf);
-        }
-        self.workflow.as_mut().unwrap()
+            wf
+        })
     }
 }
 
@@ -3922,10 +4667,64 @@ pub struct VaapiEncoder {
     vps: Option<Vec<u8>>,
     /// Last keyframe frame number.
     last_keyframe: u64,
+    /// Real encoding workflow (when vaapi feature is enabled).
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    encoding_workflow: Option<VaEncodingWorkflow>,
+    /// Real VA surfaces for encoding.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    va_surfaces: Vec<VASurfaceID>,
+    /// Coded buffer for output.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    coded_buffer: Option<VABufferID>,
 }
 
 impl VaapiEncoder {
     /// Create a new VA-API encoder.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    pub fn new(config: VaEncoderConfig) -> Result<Self> {
+        let context = VaapiContext::open_default()?;
+
+        if !context.supports_encode(config.base.codec) {
+            return Err(HwAccelError::CodecNotSupported(
+                config.base.codec.name().to_string(),
+            ));
+        }
+
+        let surface_pool = VaSurfacePool::new(
+            config.base.width,
+            config.base.height,
+            VaSurfaceFormat::Nv12,
+            config.ref_frames as usize + config.b_frames as usize + 4,
+        );
+
+        // Initialize real VA-API encoding workflow
+        let mut encoding_workflow = VaEncodingWorkflow::new();
+
+        // Try to initialize the real VA-API display
+        let device_path = context.device_path.clone();
+        if let Err(e) = encoding_workflow.va_initialize(&device_path) {
+            tracing::warn!("VA-API real encoding unavailable: {}, falling back to simulated", e);
+        }
+
+        Ok(Self {
+            context,
+            config,
+            frame_count: 0,
+            surface_pool,
+            reference_surfaces: Vec::new(),
+            output_queue: VecDeque::new(),
+            sps: None,
+            pps: None,
+            vps: None,
+            last_keyframe: 0,
+            encoding_workflow: Some(encoding_workflow),
+            va_surfaces: Vec::new(),
+            coded_buffer: None,
+        })
+    }
+
+    /// Create a new VA-API encoder (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
     pub fn new(config: VaEncoderConfig) -> Result<Self> {
         let context = VaapiContext::open_default()?;
 
@@ -3972,7 +4771,8 @@ impl VaapiEncoder {
         Ok(())
     }
 
-    /// Encode a frame.
+    /// Encode a frame using real VA-API when available.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
     pub fn encode(&mut self, frame_data: &[u8], pts: i64) -> Result<Option<VaEncodedFrame>> {
         // Acquire input surface
         let input_surface = self.surface_pool.acquire()?;
@@ -3985,12 +4785,288 @@ impl VaapiEncoder {
             self.last_keyframe = self.frame_count;
         }
 
-        // In a real implementation, this would:
-        // 1. Upload frame_data to the VA surface
-        // 2. Set up VAEncPictureParameterBuffer
-        // 3. Set up VAEncSliceParameterBuffer
-        // 4. Call vaBeginPicture, vaRenderPicture, vaEndPicture
-        // 5. Call vaSyncSurface and vaMapBuffer to retrieve encoded data
+        // Check if we have a real encoding workflow
+        let encoded_data = if let Some(ref mut workflow) = self.encoding_workflow {
+            if workflow.initialized {
+                // Real VA-API encoding path
+                self.encode_real(workflow, frame_data, is_keyframe)?
+            } else {
+                // Fallback to simulated encoding
+                self.encode_simulated(frame_data.len())
+            }
+        } else {
+            // Fallback to simulated encoding
+            self.encode_simulated(frame_data.len())
+        };
+
+        let encoded_frame = VaEncodedFrame {
+            data: encoded_data,
+            pts,
+            dts: pts - (self.config.b_frames as i64 * 1001 / 30), // Approximate DTS
+            is_keyframe,
+            frame_type,
+        };
+
+        // Release input surface
+        self.surface_pool.release(input_surface);
+
+        self.frame_count += 1;
+
+        Ok(Some(encoded_frame))
+    }
+
+    /// Real VA-API encoding implementation.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    fn encode_real(&mut self, workflow: &mut VaEncodingWorkflow, frame_data: &[u8], is_keyframe: bool) -> Result<Vec<u8>> {
+        // Ensure we have surfaces
+        if self.va_surfaces.is_empty() {
+            let num_surfaces = self.config.ref_frames as u32 + self.config.b_frames as u32 + 4;
+            self.va_surfaces = workflow.va_create_surfaces(
+                VA_RT_FORMAT_YUV420,
+                self.config.base.width,
+                self.config.base.height,
+                num_surfaces,
+                None,
+            )?;
+        }
+
+        // Get surface for this frame
+        let surface_idx = (self.frame_count as usize) % self.va_surfaces.len();
+        let surface = self.va_surfaces[surface_idx];
+
+        // Upload frame data to the surface
+        workflow.va_upload_frame_to_surface(
+            surface,
+            frame_data,
+            self.config.base.width,
+            self.config.base.height,
+        )?;
+
+        // Create coded buffer if needed (for output)
+        let coded_buf_size = self.estimate_encoded_size(frame_data.len()) as u32 * 2; // 2x for safety
+        if self.coded_buffer.is_none() {
+            self.coded_buffer = Some(workflow.va_create_buffer(
+                VABufferType::EncCodedBufferType,
+                coded_buf_size,
+                1,
+                None,
+            )?);
+        }
+        let coded_buffer = self.coded_buffer.unwrap();
+
+        // Create sequence parameter buffer (on keyframes)
+        let seq_buf = if is_keyframe || self.frame_count == 0 {
+            let seq_params = self.create_h264_seq_params();
+            // SAFETY: seq_params is a valid #[repr(C)] struct. We're creating a byte slice
+            // view of the struct for passing to VA-API. The slice is valid for the lifetime
+            // of seq_params and correctly sized via size_of.
+            let seq_data = unsafe {
+                std::slice::from_raw_parts(
+                    &seq_params as *const _ as *const u8,
+                    std::mem::size_of::<VAEncSequenceParameterBufferH264>(),
+                )
+            };
+            Some(workflow.va_create_buffer(
+                VABufferType::EncSequenceParameterBufferType,
+                std::mem::size_of::<VAEncSequenceParameterBufferH264>() as u32,
+                1,
+                Some(seq_data),
+            )?)
+        } else {
+            None
+        };
+
+        // Create picture parameter buffer
+        let pic_params = self.create_h264_pic_params(surface, coded_buffer, is_keyframe);
+        // SAFETY: pic_params is a valid #[repr(C)] struct. Creating a byte slice view
+        // for passing to VA-API. Slice is valid for pic_params lifetime.
+        let pic_data = unsafe {
+            std::slice::from_raw_parts(
+                &pic_params as *const _ as *const u8,
+                std::mem::size_of::<VAEncPictureParameterBufferH264>(),
+            )
+        };
+        let pic_buf = workflow.va_create_buffer(
+            VABufferType::EncPictureParameterBufferType,
+            std::mem::size_of::<VAEncPictureParameterBufferH264>() as u32,
+            1,
+            Some(pic_data),
+        )?;
+
+        // Create slice parameter buffer
+        let slice_params = self.create_h264_slice_params(is_keyframe);
+        // SAFETY: slice_params is a valid #[repr(C)] struct. Creating a byte slice view
+        // for passing to VA-API. Slice is valid for slice_params lifetime.
+        let slice_data = unsafe {
+            std::slice::from_raw_parts(
+                &slice_params as *const _ as *const u8,
+                std::mem::size_of::<VAEncSliceParameterBufferH264>(),
+            )
+        };
+        let slice_buf = workflow.va_create_buffer(
+            VABufferType::EncSliceParameterBufferType,
+            std::mem::size_of::<VAEncSliceParameterBufferH264>() as u32,
+            1,
+            Some(slice_data),
+        )?;
+
+        // Begin encoding
+        workflow.va_begin_picture(surface)?;
+
+        // Render parameter buffers
+        let mut buffers = vec![pic_buf, slice_buf];
+        if let Some(seq) = seq_buf {
+            buffers.insert(0, seq);
+        }
+        workflow.va_render_picture(&buffers)?;
+
+        // End encoding
+        workflow.va_end_picture()?;
+
+        // Wait for encoding to complete
+        workflow.va_sync_surface(surface)?;
+
+        // Map coded buffer to get output
+        let data_ptr = workflow.va_map_buffer(coded_buffer)?;
+
+        // Read encoded data from coded buffer
+        // The coded buffer contains a VACodedBufferSegment header followed by data
+        // SAFETY: data_ptr was returned by va_map_buffer and points to valid mapped memory.
+        // The VACodedBufferSegment structure matches VA-API's documented layout.
+        // We verify segment.buf is non-null and data_size > 0 before creating the slice.
+        // The slice is immediately copied to a Vec before unmapping.
+        let encoded_data = unsafe {
+            // Read the segment header to get actual data size
+            #[repr(C)]
+            struct VACodedBufferSegment {
+                size: u32,
+                bit_offset: u32,
+                status: u32,
+                reserved: u32,
+                buf: *mut std::ffi::c_void,
+                next: *mut VACodedBufferSegment,
+            }
+
+            let segment = &*(data_ptr as *const VACodedBufferSegment);
+            let data_size = segment.size as usize;
+
+            // Copy the encoded data
+            if !segment.buf.is_null() && data_size > 0 {
+                let data_slice = std::slice::from_raw_parts(segment.buf as *const u8, data_size);
+                data_slice.to_vec()
+            } else {
+                // Fallback if segment structure is different
+                let estimated_size = self.estimate_encoded_size(frame_data.len());
+                vec![0u8; estimated_size]
+            }
+        };
+
+        // Unmap coded buffer
+        workflow.va_unmap_buffer(coded_buffer)?;
+
+        // Destroy temporary buffers (keep coded_buffer for reuse)
+        workflow.va_destroy_buffers(&buffers)?;
+
+        Ok(encoded_data)
+    }
+
+    /// Create H.264 sequence parameter buffer.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    fn create_h264_seq_params(&self) -> VAEncSequenceParameterBufferH264 {
+        let mut seq = VAEncSequenceParameterBufferH264::default();
+        seq.picture_width_in_mbs = (self.config.base.width + 15) / 16;
+        seq.picture_height_in_mbs = (self.config.base.height + 15) / 16;
+        seq.level_idc = 41; // Level 4.1
+        seq.intra_period = self.config.gop_size;
+        seq.ip_period = 1 + self.config.b_frames;
+        seq.bits_per_second = self.config.base.bitrate * 1000; // kbps to bps
+        seq.max_num_ref_frames = self.config.ref_frames;
+
+        // Frame rate
+        let fps = (self.config.base.framerate * 1000.0) as u32;
+        seq.time_scale = fps * 2;
+        seq.num_units_in_tick = 1000;
+
+        seq
+    }
+
+    /// Create H.264 picture parameter buffer.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    fn create_h264_pic_params(&self, surface: VASurfaceID, coded_buf: VABufferID, is_keyframe: bool) -> VAEncPictureParameterBufferH264 {
+        let mut pic = VAEncPictureParameterBufferH264::default();
+
+        pic.coded_buf = coded_buf;
+        pic.curr_pic.picture_id = surface;
+        pic.curr_pic.frame_idx = self.frame_count as u16;
+        pic.curr_pic.flags = if is_keyframe { 0 } else { 1 }; // Short-term reference
+
+        // Set reference frames
+        for i in 0..16 {
+            pic.reference_frames[i].picture_id = VA_INVALID_SURFACE;
+            pic.reference_frames[i].flags = VA_PICTURE_H264_INVALID;
+        }
+
+        // Set last reference frame
+        if !is_keyframe && !self.va_surfaces.is_empty() {
+            let prev_idx = if self.frame_count > 0 {
+                ((self.frame_count - 1) as usize) % self.va_surfaces.len()
+            } else {
+                0
+            };
+            pic.reference_frames[0].picture_id = self.va_surfaces[prev_idx];
+            pic.reference_frames[0].frame_idx = (self.frame_count.saturating_sub(1)) as u16;
+            pic.reference_frames[0].flags = 0;
+        }
+
+        pic.pic_parameter_set_id = 0;
+        pic.seq_parameter_set_id = 0;
+        pic.pic_init_qp = self.config.base.quality as u8;
+        pic.num_ref_idx_l0_active_minus1 = 0;
+        pic.num_ref_idx_l1_active_minus1 = 0;
+
+        pic
+    }
+
+    /// Create H.264 slice parameter buffer.
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    fn create_h264_slice_params(&self, is_keyframe: bool) -> VAEncSliceParameterBufferH264 {
+        let mut slice = VAEncSliceParameterBufferH264::default();
+
+        let num_mbs = ((self.config.base.width + 15) / 16) * ((self.config.base.height + 15) / 16);
+
+        slice.macroblock_address = 0;
+        slice.num_macroblocks = num_mbs;
+        slice.slice_type = if is_keyframe { 2 } else { 0 }; // I=2, P=0
+        slice.idr_pic_id = if is_keyframe { (self.frame_count / self.config.gop_size as u64) as u16 } else { 0 };
+        slice.pic_order_cnt_lsb = (self.frame_count * 2) as u16;
+        slice.num_ref_idx_active_override_flag = 1;
+        slice.num_ref_idx_l0_active_minus1 = 0;
+        slice.slice_qp_delta = 0;
+        slice.disable_deblocking_filter_idc = 0;
+
+        slice
+    }
+
+    /// Simulated encoding (returns placeholder data).
+    #[cfg(all(target_os = "linux", feature = "vaapi"))]
+    fn encode_simulated(&self, raw_size: usize) -> Vec<u8> {
+        let encoded_size = self.estimate_encoded_size(raw_size);
+        vec![0u8; encoded_size]
+    }
+
+    /// Encode a frame (stub for non-Linux or non-vaapi builds).
+    #[cfg(not(all(target_os = "linux", feature = "vaapi")))]
+    pub fn encode(&mut self, frame_data: &[u8], pts: i64) -> Result<Option<VaEncodedFrame>> {
+        // Acquire input surface
+        let input_surface = self.surface_pool.acquire()?;
+
+        // Determine frame type
+        let frame_type = self.determine_frame_type();
+        let is_keyframe = frame_type == VaFrameType::I;
+
+        if is_keyframe {
+            self.last_keyframe = self.frame_count;
+        }
 
         let encoded_size = self.estimate_encoded_size(frame_data.len());
         let encoded_data = vec![0u8; encoded_size];

@@ -769,8 +769,12 @@ pub mod ffi {
     }
 
     /// Create a CFString from a Rust string.
+    ///
+    /// # Panics
+    /// Panics if the input string contains a null byte.
     pub unsafe fn cf_string_create(s: &str) -> CFStringRef {
-        let c_str = std::ffi::CString::new(s).unwrap();
+        let c_str = std::ffi::CString::new(s)
+            .expect("String for CFString must not contain null bytes");
         CFStringCreateWithCString(kCFAllocatorDefault, c_str.as_ptr(), 0x08000100) // kCFStringEncodingUTF8
     }
 
@@ -880,7 +884,8 @@ use crate::error::{HwAccelError, Result};
 use crate::types::*;
 use crate::{HwCapabilities, HwCodec};
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex, Weak};
+use parking_lot::Mutex;
+use std::sync::{Arc, Weak};
 
 // =============================================================================
 // FFI Type Definitions (conditional on videotoolbox feature)
@@ -1336,31 +1341,31 @@ impl VTCompressionOutputContext {
 
     /// Push an encoded frame to the queue.
     pub fn push_frame(&self, frame: VTEncodedFrame) {
-        let mut queue = self.output_queue.lock().unwrap();
+        let mut queue = self.output_queue.lock();
         queue.push_back(frame);
     }
 
     /// Pop an encoded frame from the queue.
     pub fn pop_frame(&self) -> Option<VTEncodedFrame> {
-        let mut queue = self.output_queue.lock().unwrap();
+        let mut queue = self.output_queue.lock();
         queue.pop_front()
     }
 
     /// Set an error.
     pub fn set_error(&self, err: HwAccelError) {
-        let mut error = self.error.lock().unwrap();
+        let mut error = self.error.lock();
         *error = Some(err);
     }
 
     /// Take the error if present.
     pub fn take_error(&self) -> Option<HwAccelError> {
-        let mut error = self.error.lock().unwrap();
+        let mut error = self.error.lock();
         error.take()
     }
 
     /// Get pending frame count.
     pub fn pending_count(&self) -> usize {
-        self.output_queue.lock().unwrap().len()
+        self.output_queue.lock().len()
     }
 }
 
@@ -1393,25 +1398,25 @@ impl VTDecompressionOutputContext {
 
     /// Push a decoded frame to the queue.
     pub fn push_frame(&self, frame: VTDecodedFrame) {
-        let mut queue = self.output_queue.lock().unwrap();
+        let mut queue = self.output_queue.lock();
         queue.push_back(frame);
     }
 
     /// Pop a decoded frame from the queue.
     pub fn pop_frame(&self) -> Option<VTDecodedFrame> {
-        let mut queue = self.output_queue.lock().unwrap();
+        let mut queue = self.output_queue.lock();
         queue.pop_front()
     }
 
     /// Set an error.
     pub fn set_error(&self, err: HwAccelError) {
-        let mut error = self.error.lock().unwrap();
+        let mut error = self.error.lock();
         *error = Some(err);
     }
 
     /// Take the error if present.
     pub fn take_error(&self) -> Option<HwAccelError> {
-        let mut error = self.error.lock().unwrap();
+        let mut error = self.error.lock();
         error.take()
     }
 }
@@ -2021,32 +2026,32 @@ impl<T> BufferRecycler<T> {
 
     /// Try to get a buffer from the pool.
     pub fn try_get(&self) -> Option<T> {
-        let mut available = self.available.lock().unwrap();
+        let mut available = self.available.lock();
         available.pop_front()
     }
 
     /// Return a buffer to the pool for reuse.
     pub fn recycle(&self, buffer: T) {
-        let mut available = self.available.lock().unwrap();
+        let mut available = self.available.lock();
         if available.len() < self.max_size {
             available.push_back(buffer);
-            *self.recycled.lock().unwrap() += 1;
+            *self.recycled.lock() += 1;
         }
         // If pool is full, buffer is dropped
     }
 
     /// Record that a new buffer was created.
     pub fn record_creation(&self) {
-        *self.created.lock().unwrap() += 1;
+        *self.created.lock() += 1;
     }
 
     /// Get statistics.
     pub fn stats(&self) -> BufferRecyclerStats {
         BufferRecyclerStats {
-            available: self.available.lock().unwrap().len(),
+            available: self.available.lock().len(),
             max_size: self.max_size,
-            created: *self.created.lock().unwrap(),
-            recycled: *self.recycled.lock().unwrap(),
+            created: *self.created.lock(),
+            recycled: *self.recycled.lock(),
         }
     }
 }
@@ -2643,7 +2648,7 @@ impl CVPixelBufferPool {
 
     /// Get a buffer from the pool (or create a new one).
     pub fn get_buffer(&self) -> CVPixelBuffer {
-        let mut available = self.available.lock().unwrap();
+        let mut available = self.available.lock();
         if let Some(buffer) = available.pop_front() {
             buffer
         } else {
@@ -2654,7 +2659,7 @@ impl CVPixelBufferPool {
 
     /// Return a buffer to the pool.
     pub fn return_buffer(&self, buffer: CVPixelBuffer) {
-        let mut available = self.available.lock().unwrap();
+        let mut available = self.available.lock();
         if available.len() < self.max_size {
             available.push_back(buffer);
         }
@@ -2668,7 +2673,7 @@ impl CVPixelBufferPool {
 
     /// Flush all buffers from the pool.
     pub fn flush(&self) {
-        let mut available = self.available.lock().unwrap();
+        let mut available = self.available.lock();
         available.clear();
     }
 
@@ -2766,7 +2771,7 @@ impl CVPixelBuffer {
     /// Lock the buffer for CPU access.
     /// In real FFI, this would call CVPixelBufferLockBaseAddress.
     pub fn lock(&self) -> Result<()> {
-        let mut locked = self.locked.lock().unwrap();
+        let mut locked = self.locked.lock();
         if *locked {
             return Err(HwAccelError::BufferAlloc(
                 "Buffer already locked".to_string(),
@@ -2779,7 +2784,7 @@ impl CVPixelBuffer {
     /// Unlock the buffer.
     /// In real FFI, this would call CVPixelBufferUnlockBaseAddress.
     pub fn unlock(&self) -> Result<()> {
-        let mut locked = self.locked.lock().unwrap();
+        let mut locked = self.locked.lock();
         if !*locked {
             return Err(HwAccelError::BufferAlloc("Buffer not locked".to_string()));
         }
@@ -2789,7 +2794,7 @@ impl CVPixelBuffer {
 
     /// Check if buffer is locked.
     pub fn is_locked(&self) -> bool {
-        *self.locked.lock().unwrap()
+        *self.locked.lock()
     }
 }
 
@@ -2962,7 +2967,16 @@ impl VideoToolboxContext {
 
 impl Default for VideoToolboxContext {
     fn default() -> Self {
-        Self::new().expect("VideoToolbox should always be available on macOS")
+        // Return an "unavailable" context instead of panicking
+        // Callers should use new() and handle the Result for proper initialization
+        Self::new().unwrap_or_else(|_| Self {
+            _initialized: false,
+            encode_profiles: Vec::new(),
+            hardware_encoder: false,
+            prores_profiles: Vec::new(),
+            av1_encode_available: false,
+            av1_decode_available: false,
+        })
     }
 }
 
@@ -3241,7 +3255,7 @@ impl VTEncoder {
         }
 
         // Fall back to internal queue
-        let mut queue = self.output_queue.lock().unwrap();
+        let mut queue = self.output_queue.lock();
 
         if let Some(error) = queue.error.take() {
             return Err(error);
@@ -3816,7 +3830,7 @@ mod tests {
         let buffer = CVPixelBuffer::new(1920, 1080, CVPixelFormat::Nv12);
         assert!(!buffer.is_locked());
 
-        buffer.lock().unwrap();
+        buffer.lock();
         assert!(buffer.is_locked());
 
         // Double lock should fail

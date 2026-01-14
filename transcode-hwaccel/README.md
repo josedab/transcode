@@ -14,6 +14,30 @@ This crate provides a unified interface to hardware video acceleration APIs acro
 | Intel | Quick Sync Video | `qsv` |
 | AMD | Advanced Media Framework | `amf` |
 
+## Implementation Status
+
+> **Note:** Hardware encoder support is currently in preview mode.
+
+| Component | VA-API | NVENC | VideoToolbox | QSV | AMF |
+|-----------|--------|-------|--------------|-----|-----|
+| FFI Declarations | Complete | Complete | Complete | Partial | Stub |
+| Device Initialization | Works | Works | Works | Stub | Stub |
+| Frame Upload | Real | Real (with conversion) | Simulated | Stub | Stub |
+| Encoding | Real (Linux) | Real (when GPU available) | Mock output | Stub | Stub |
+| Parameter Sets (SPS/PPS) | Hardcoded | Hardcoded | Hardcoded | N/A | N/A |
+| Rate Control | Partial | Partial | Partial | N/A | N/A |
+| Format Conversion | NV12 native | RGBA/BGRA/YUV420p→NV12 | N/A | N/A | N/A |
+
+**Current Behavior:**
+- VA-API: Real frame upload using vaDeriveImage/vaPutImage on Linux with libva
+- NVENC: Frame format conversion (RGBA, BGRA, YUV420p → NV12) and real encoding when NVIDIA GPU available
+- Detection APIs work and report hardware availability
+- Configuration options are parsed but not all are applied to hardware
+
+**For Production Use:**
+- Use the software encoders in `transcode-codecs` (H.264, HEVC, AV1)
+- Hardware encoding with actual GPU offload is planned for a future release
+
 ## Supported Codecs
 
 - H.264/AVC
