@@ -1,0 +1,41 @@
+# cargo-audit configuration
+# These advisories come from vmaf-sys optional dependency which uses outdated deps
+# vmaf-sys is only included when the "vmaf" feature is explicitly enabled
+# These are not exploitable in our use case (local VMAF computation, no network exposure)
+
+[advisories]
+ignore = [
+    # ============================================================
+    # vmaf-sys transitive dependencies (optional feature "vmaf")
+    # All these come from vmaf-sys 0.0.10 using outdated reqwest 0.9, tokio 0.1, hyper 0.12
+    # ============================================================
+
+    # h2 vulnerabilities (vmaf-sys -> hyper 0.12 -> h2 0.1)
+    "RUSTSEC-2024-0332",  # CONTINUATION flood DoS
+    "RUSTSEC-2024-0003",  # Resource exhaustion DoS
+    "RUSTSEC-2023-0034",  # Resource exhaustion DoS
+
+    # hyper vulnerabilities (vmaf-sys -> hyper 0.12)
+    "RUSTSEC-2021-0079",  # Transfer-Encoding integer overflow
+    "RUSTSEC-2021-0078",  # Content-Length request smuggling
+    "RUSTSEC-2021-0124",  # hyper request smuggling
+
+    # time crate (vmaf-sys -> reqwest 0.9 -> time 0.1)
+    "RUSTSEC-2020-0071",  # time localtime_r unsound
+
+    # Other vmaf-sys transitive dependencies
+    "RUSTSEC-2024-0421",  # idna Punycode (vmaf-sys -> reqwest 0.9 -> idna 0.1)
+    "RUSTSEC-2023-0045",  # memoffset uninitialized memory (vmaf-sys -> tokio 0.1)
+    "RUSTSEC-2020-0016",  # net2 (vmaf-sys -> tokio 0.1)
+    "RUSTSEC-2020-0036",  # failure crate unmaintained (vmaf-sys -> reqwest 0.9)
+    "RUSTSEC-2021-0139",  # ansi_term unmaintained
+    "RUSTSEC-2024-0370",  # proc-macro-error unmaintained
+    "RUSTSEC-2022-0093",  # ed25519-dalek vulnerability
+    "RUSTSEC-2021-0059",  # aesni merged into aes
+    "RUSTSEC-2022-0006",  # thread_local unsound
+    "RUSTSEC-2023-0071",  # rsa marvin attack
+    "RUSTSEC-2024-0006",  # shlex split issues
+    "RUSTSEC-2024-0437",  # openssl-src (if present)
+    "RUSTSEC-2025-0009",  # various 2025 advisories
+    "RUSTSEC-2025-0020",
+]
