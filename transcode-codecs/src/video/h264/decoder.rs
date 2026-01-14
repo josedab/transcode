@@ -9,6 +9,12 @@ use super::sps::SequenceParameterSet;
 use super::pps::PictureParameterSet;
 use super::dpb::DecodedPictureBuffer;
 
+/// Maximum number of SPS entries allowed per stream (H.264 spec allows 0-31).
+const MAX_SPS_COUNT: usize = 32;
+
+/// Maximum number of PPS entries allowed per stream (H.264 spec allows 0-255).
+const MAX_PPS_COUNT: usize = 256;
+
 /// H.264 decoder configuration.
 #[derive(Debug, Clone)]
 pub struct H264DecoderConfig {
@@ -157,6 +163,10 @@ impl H264Decoder {
             NalUnitType::Sps => {
                 let sps = SequenceParameterSet::parse(&nal.data)?;
                 let sps_id = sps.sps_id;
+                // Enforce SPS count limit to prevent DoS via parameter set flooding
+                if !self.sps_map.contains_key(&sps_id) && self.sps_map.len() >= MAX_SPS_COUNT {
+                    return Err(CodecError::ResourceExhausted("SPS count limit exceeded".into()).into());
+                }
                 tracing::debug!("Parsed SPS {}: {}x{}", sps_id, sps.width(), sps.height());
                 self.sps_map.insert(sps_id, sps);
                 self.active_sps = Some(sps_id);
@@ -165,6 +175,10 @@ impl H264Decoder {
             NalUnitType::Pps => {
                 let pps = PictureParameterSet::parse(&nal.data)?;
                 let pps_id = pps.pps_id;
+                // Enforce PPS count limit to prevent DoS via parameter set flooding
+                if !self.pps_map.contains_key(&pps_id) && self.pps_map.len() >= MAX_PPS_COUNT {
+                    return Err(CodecError::ResourceExhausted("PPS count limit exceeded".into()).into());
+                }
                 tracing::debug!("Parsed PPS {}", pps_id);
                 self.pps_map.insert(pps_id, pps);
                 self.active_pps = Some(pps_id);
@@ -264,12 +278,20 @@ impl VideoDecoder for H264Decoder {
                 NalUnitType::Sps => {
                     let sps = SequenceParameterSet::parse(&nal.data)?;
                     let sps_id = sps.sps_id;
+                    // Enforce SPS count limit to prevent DoS via parameter set flooding
+                    if !self.sps_map.contains_key(&sps_id) && self.sps_map.len() >= MAX_SPS_COUNT {
+                        return Err(CodecError::ResourceExhausted("SPS count limit exceeded".into()).into());
+                    }
                     self.sps_map.insert(sps_id, sps);
                     self.active_sps = Some(sps_id);
                 }
                 NalUnitType::Pps => {
                     let pps = PictureParameterSet::parse(&nal.data)?;
                     let pps_id = pps.pps_id;
+                    // Enforce PPS count limit to prevent DoS via parameter set flooding
+                    if !self.pps_map.contains_key(&pps_id) && self.pps_map.len() >= MAX_PPS_COUNT {
+                        return Err(CodecError::ResourceExhausted("PPS count limit exceeded".into()).into());
+                    }
                     self.pps_map.insert(pps_id, pps);
                     self.active_pps = Some(pps_id);
                 }
