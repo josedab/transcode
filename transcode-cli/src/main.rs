@@ -1046,3 +1046,307 @@ fn print_header() {
         style("+---------------------------------------------------------+").cyan()
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ===== format_size tests =====
+
+    #[test]
+    fn test_format_size_bytes() {
+        assert_eq!(format_size(0), "0 B");
+        assert_eq!(format_size(512), "512 B");
+        assert_eq!(format_size(1023), "1023 B");
+    }
+
+    #[test]
+    fn test_format_size_kilobytes() {
+        assert_eq!(format_size(1024), "1.00 KB");
+        assert_eq!(format_size(1536), "1.50 KB");
+        assert_eq!(format_size(10240), "10.00 KB");
+    }
+
+    #[test]
+    fn test_format_size_megabytes() {
+        assert_eq!(format_size(1024 * 1024), "1.00 MB");
+        assert_eq!(format_size(5 * 1024 * 1024), "5.00 MB");
+        assert_eq!(format_size(100 * 1024 * 1024), "100.00 MB");
+    }
+
+    #[test]
+    fn test_format_size_gigabytes() {
+        assert_eq!(format_size(1024 * 1024 * 1024), "1.00 GB");
+        assert_eq!(format_size(2 * 1024 * 1024 * 1024), "2.00 GB");
+    }
+
+    // ===== format_duration tests =====
+
+    #[test]
+    fn test_format_duration_seconds() {
+        assert_eq!(format_duration(0.0), "0s");
+        // Rust uses banker's rounding (round half to even): 30.5 -> 30, 31.5 -> 32
+        assert_eq!(format_duration(30.5), "30s");
+        assert_eq!(format_duration(30.6), "31s");
+        assert_eq!(format_duration(59.9), "60s");
+    }
+
+    #[test]
+    fn test_format_duration_minutes() {
+        assert_eq!(format_duration(60.0), "1m0s");
+        assert_eq!(format_duration(90.0), "1m30s");
+        assert_eq!(format_duration(3599.0), "59m59s");
+    }
+
+    #[test]
+    fn test_format_duration_hours() {
+        assert_eq!(format_duration(3600.0), "1h0m0s");
+        assert_eq!(format_duration(7200.0), "2h0m0s");
+        assert_eq!(format_duration(3661.0), "1h1m1s");
+        assert_eq!(format_duration(7384.0), "2h3m4s");
+    }
+
+    // ===== OutputMode tests =====
+
+    #[test]
+    fn test_output_mode_default() {
+        let args = Args {
+            input: PathBuf::from("input.mp4"),
+            output: PathBuf::from("output.mp4"),
+            video_codec: "h264".to_string(),
+            audio_codec: "aac".to_string(),
+            video_bitrate: None,
+            audio_bitrate: None,
+            threads: None,
+            overwrite: false,
+            no_progress: false,
+            verbose: false,
+            quiet: false,
+            json: false,
+            progress_interval: 500,
+            video_filter: None,
+            audio_filter: None,
+            batch: None,
+            batch_output_dir: None,
+            jobs: 1,
+        };
+        assert_eq!(args.output_mode(), OutputMode::Normal);
+    }
+
+    #[test]
+    fn test_output_mode_json() {
+        let args = Args {
+            input: PathBuf::from("input.mp4"),
+            output: PathBuf::from("output.mp4"),
+            video_codec: "h264".to_string(),
+            audio_codec: "aac".to_string(),
+            video_bitrate: None,
+            audio_bitrate: None,
+            threads: None,
+            overwrite: false,
+            no_progress: false,
+            verbose: false,
+            quiet: false,
+            json: true,
+            progress_interval: 500,
+            video_filter: None,
+            audio_filter: None,
+            batch: None,
+            batch_output_dir: None,
+            jobs: 1,
+        };
+        assert_eq!(args.output_mode(), OutputMode::Json);
+    }
+
+    #[test]
+    fn test_output_mode_quiet() {
+        let args = Args {
+            input: PathBuf::from("input.mp4"),
+            output: PathBuf::from("output.mp4"),
+            video_codec: "h264".to_string(),
+            audio_codec: "aac".to_string(),
+            video_bitrate: None,
+            audio_bitrate: None,
+            threads: None,
+            overwrite: false,
+            no_progress: false,
+            verbose: false,
+            quiet: true,
+            json: false,
+            progress_interval: 500,
+            video_filter: None,
+            audio_filter: None,
+            batch: None,
+            batch_output_dir: None,
+            jobs: 1,
+        };
+        assert_eq!(args.output_mode(), OutputMode::Quiet);
+    }
+
+    #[test]
+    fn test_output_mode_verbose() {
+        let args = Args {
+            input: PathBuf::from("input.mp4"),
+            output: PathBuf::from("output.mp4"),
+            video_codec: "h264".to_string(),
+            audio_codec: "aac".to_string(),
+            video_bitrate: None,
+            audio_bitrate: None,
+            threads: None,
+            overwrite: false,
+            no_progress: false,
+            verbose: true,
+            quiet: false,
+            json: false,
+            progress_interval: 500,
+            video_filter: None,
+            audio_filter: None,
+            batch: None,
+            batch_output_dir: None,
+            jobs: 1,
+        };
+        assert_eq!(args.output_mode(), OutputMode::Verbose);
+    }
+
+    // ===== ProgressStats tests =====
+
+    #[test]
+    fn test_progress_stats_serialization() {
+        let stats = ProgressStats {
+            current_frame: 100,
+            total_frames: Some(1000),
+            percentage: 10.0,
+            fps: 30.0,
+            eta_seconds: Some(30.0),
+            bitrate_kbps: 5000.0,
+            output_size_bytes: 1024 * 1024,
+            elapsed_seconds: 3.33,
+            duration_processed_seconds: 3.33,
+            total_duration_seconds: Some(33.3),
+            speed: 1.0,
+        };
+        let json = serde_json::to_string(&stats).unwrap();
+        assert!(json.contains("\"current_frame\":100"));
+        assert!(json.contains("\"percentage\":10.0"));
+        assert!(json.contains("\"fps\":30.0"));
+    }
+
+    // ===== FinalStats tests =====
+
+    #[test]
+    fn test_final_stats_creation() {
+        let stats = FinalStats {
+            packets_processed: 1000,
+            frames_decoded: 900,
+            frames_encoded: 900,
+            input_size_bytes: 10 * 1024 * 1024,
+            output_size_bytes: 5 * 1024 * 1024,
+            compression_ratio: 2.0,
+            elapsed_seconds: 30.0,
+            average_fps: 30.0,
+            avg_video_bitrate_kbps: 4000.0,
+            avg_audio_bitrate_kbps: 128.0,
+        };
+        assert_eq!(stats.compression_ratio, 2.0);
+        assert_eq!(stats.frames_encoded, 900);
+    }
+
+    // ===== SharedProgress tests =====
+
+    #[test]
+    fn test_shared_progress_update() {
+        let progress = SharedProgress::default();
+        assert_eq!(progress.current_frame.load(Ordering::Relaxed), 0);
+        assert!(!progress.total_frames_known.load(Ordering::Relaxed));
+
+        progress.update(50.0, 500);
+        assert_eq!(progress.current_frame.load(Ordering::Relaxed), 500);
+        assert!(progress.total_frames_known.load(Ordering::Relaxed));
+        assert_eq!(progress.total_frames.load(Ordering::Relaxed), 1000);
+    }
+
+    #[test]
+    fn test_shared_progress_progress_calculation() {
+        let progress = SharedProgress::default();
+        assert_eq!(progress.progress(), 0.0);
+
+        progress.update(25.0, 250);
+        // After update with 25% and 250 frames, total should be 1000
+        // Progress should be 250/1000 = 25%
+        let p = progress.progress();
+        assert!((p - 25.0).abs() < 0.1);
+    }
+
+    // ===== format_progress_message tests =====
+
+    #[test]
+    fn test_format_progress_message_normal() {
+        let stats = ProgressStats {
+            current_frame: 100,
+            total_frames: Some(1000),
+            percentage: 10.0,
+            fps: 30.0,
+            eta_seconds: Some(30.0),
+            bitrate_kbps: 5000.0,
+            output_size_bytes: 1024 * 1024,
+            elapsed_seconds: 3.33,
+            duration_processed_seconds: 3.33,
+            total_duration_seconds: Some(33.3),
+            speed: 1.0,
+        };
+        let msg = format_progress_message(&stats, false);
+        assert!(msg.contains("30.0 fps"));
+        assert!(msg.contains("5000 kbps"));
+        assert!(msg.contains("1.00 MB"));
+    }
+
+    #[test]
+    fn test_format_progress_message_verbose() {
+        let stats = ProgressStats {
+            current_frame: 100,
+            total_frames: Some(1000),
+            percentage: 10.0,
+            fps: 30.0,
+            eta_seconds: Some(30.0),
+            bitrate_kbps: 5000.0,
+            output_size_bytes: 1024 * 1024,
+            elapsed_seconds: 3.33,
+            duration_processed_seconds: 3.33,
+            total_duration_seconds: Some(33.3),
+            speed: 1.0,
+        };
+        let msg = format_progress_message(&stats, true);
+        assert!(msg.contains("Frame: 100/1000"));
+        assert!(msg.contains("30.0 fps"));
+        assert!(msg.contains("1.0x speed"));
+        assert!(msg.contains("ETA:"));
+    }
+
+    // ===== BatchResult tests =====
+
+    #[test]
+    fn test_batch_result_success() {
+        let result = BatchResult {
+            input: PathBuf::from("input.mp4"),
+            output: PathBuf::from("output.mp4"),
+            success: true,
+            elapsed: Duration::from_secs(10),
+            error: None,
+        };
+        assert!(result.success);
+        assert!(result.error.is_none());
+    }
+
+    #[test]
+    fn test_batch_result_failure() {
+        let result = BatchResult {
+            input: PathBuf::from("input.mp4"),
+            output: PathBuf::from("output.mp4"),
+            success: false,
+            elapsed: Duration::from_secs(1),
+            error: Some("File not found".to_string()),
+        };
+        assert!(!result.success);
+        assert_eq!(result.error.as_deref(), Some("File not found"));
+    }
+}
