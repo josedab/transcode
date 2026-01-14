@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-01-12
+
 ### Added
 - Initial release of the Transcode codec library
 - Core types and utilities (`transcode-core`)
@@ -120,9 +122,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Security auditing with cargo-deny
   - Docker support for containerized deployment
 
+### Fixed
+- Improved error handling: Replaced `.expect()` calls with proper `Result` returns in thread pool creation (`transcode-codecs/parallel.rs`)
+- Enhanced CMAF security documentation for key management (`transcode-streaming/cmaf.rs`)
+- Implemented proper 6-tap sub-pixel interpolation for VP8 motion compensation (`transcode-vp8/prediction.rs`)
+- Wired up VA-API encoder to use `VaapiEncoder` instead of mock encoding (`transcode-hwaccel`)
+- Wired up NVENC encoder with proper feature gating (`transcode-hwaccel`)
+
+### Changed
+- Updated `deny.toml` to use `deny` instead of `warn` for yanked/unmaintained crates
+- Added `rust-version = "1.75"` to workspace Cargo.toml for MSRV enforcement
+- Upgraded `reqwest` dependency in `transcode-neural` to 0.12.x
+- Consolidated `rav1e` and `quick-xml` dependency versions in workspace
+
+### Documentation
+- Added architecture documentation to `transcode-pipeline`
+- Added trait system documentation to `transcode-codecs`
+- Enhanced MXF file structure documentation in `transcode-mxf`
+- Added building block pattern documentation to `transcode-hwaccel/encoder.rs`
+
 ## [0.1.0] - Unreleased
 
 Initial development release.
 
-[Unreleased]: https://github.com/transcode/transcode/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/transcode/transcode/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/transcode/transcode/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/transcode/transcode/releases/tag/v0.1.0
