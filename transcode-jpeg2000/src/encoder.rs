@@ -6,6 +6,11 @@ use crate::types::*;
 use crate::{Jpeg2000Error, MarkerType, Result};
 use byteorder::{BigEndian, ByteOrder};
 
+#[cfg(feature = "ffi-openjpeg")]
+use crate::ffi::{Jpeg2000EncoderConfigFfi, Jpeg2000FfiEncoder};
+
+use std::fmt;
+
 /// JPEG2000 encoder configuration.
 #[derive(Debug, Clone)]
 pub struct Jpeg2000EncoderConfig {
@@ -271,7 +276,6 @@ impl Default for Jpeg2000EncoderConfig {
 /// let mut encoder = Jpeg2000Encoder::new(config)?;
 /// let encoded = encoder.encode(&image_data)?;
 /// ```
-#[derive(Debug)]
 pub struct Jpeg2000Encoder {
     /// Encoder configuration.
     config: Jpeg2000EncoderConfig,
@@ -279,6 +283,21 @@ pub struct Jpeg2000Encoder {
     images_encoded: u64,
     /// Bytes output.
     bytes_output: u64,
+    /// FFI encoder (when available).
+    #[cfg(feature = "ffi-openjpeg")]
+    ffi_encoder: Option<Jpeg2000FfiEncoder>,
+}
+
+impl fmt::Debug for Jpeg2000Encoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct("Jpeg2000Encoder");
+        s.field("config", &self.config);
+        s.field("images_encoded", &self.images_encoded);
+        s.field("bytes_output", &self.bytes_output);
+        #[cfg(feature = "ffi-openjpeg")]
+        s.field("ffi_encoder", &self.ffi_encoder.is_some());
+        s.finish_non_exhaustive()
+    }
 }
 
 /// Encoded JPEG2000 packet.
@@ -291,7 +310,39 @@ pub struct EncodedPacket {
 }
 
 impl Jpeg2000Encoder {
-    /// Create a new encoder.
+    /// Create a new encoder with FFI support.
+    #[cfg(feature = "ffi-openjpeg")]
+    pub fn new(config: Jpeg2000EncoderConfig) -> Result<Self> {
+        config.validate()?;
+
+        // Create FFI encoder configuration
+        let ffi_config = Jpeg2000EncoderConfigFfi {
+            width: config.width,
+            height: config.height,
+            num_components: config.num_components,
+            bit_depth: config.bit_depth,
+            is_signed: config.is_signed,
+            tile_width: config.tile_width,
+            tile_height: config.tile_height,
+            num_decomposition_levels: config.num_decomposition_levels,
+            num_layers: config.num_layers,
+            compression_ratio: config.compression_ratio,
+            lossless: config.is_lossless(),
+            output_jp2: config.output_jp2,
+        };
+
+        let ffi_encoder = Jpeg2000FfiEncoder::new(ffi_config)?;
+
+        Ok(Self {
+            config,
+            images_encoded: 0,
+            bytes_output: 0,
+            ffi_encoder: Some(ffi_encoder),
+        })
+    }
+
+    /// Create a new encoder (without FFI).
+    #[cfg(not(feature = "ffi-openjpeg"))]
     pub fn new(config: Jpeg2000EncoderConfig) -> Result<Self> {
         config.validate()?;
 
@@ -303,34 +354,54 @@ impl Jpeg2000Encoder {
     }
 
     /// Check if FFI encoding is available.
+    #[cfg(feature = "ffi-openjpeg")]
     pub fn is_encoding_available(&self) -> bool {
-        cfg!(feature = "ffi-openjpeg")
+        self.ffi_encoder.is_some()
     }
 
-    /// Encode an image.
+    /// Check if FFI encoding is available (without FFI).
+    #[cfg(not(feature = "ffi-openjpeg"))]
+    pub fn is_encoding_available(&self) -> bool {
+        false
+    }
+
+    /// Encode an image using OpenJPEG.
     #[cfg(feature = "ffi-openjpeg")]
-    pub fn encode(&mut self, _data: &[u8]) -> Result<EncodedPacket> {
-        // With FFI, we would call OpenJPEG here
-        Err(Jpeg2000Error::FfiNotAvailable)
+    pub fn encode(&mut self, data: &[u8]) -> Result<EncodedPacket> {
+        // Use FFI encoder if available
+        if let Some(ref mut ffi) = self.ffi_encoder {
+            let packet = ffi.encode(data)?;
+            self.images_encoded += 1;
+            self.bytes_output += packet.data.len() as u64;
+            return Ok(packet);
+        }
+
+        // Fallback to minimal codestream
+        self.encode_minimal(data)
     }
 
     /// Encode an image (stub without FFI).
     #[cfg(not(feature = "ffi-openjpeg"))]
-    pub fn encode(&mut self, _data: &[u8]) -> Result<EncodedPacket> {
+    pub fn encode(&mut self, data: &[u8]) -> Result<EncodedPacket> {
+        self.encode_minimal(data)
+    }
+
+    /// Encode a minimal valid codestream (without actual compression).
+    fn encode_minimal(&mut self, _data: &[u8]) -> Result<EncodedPacket> {
         // Without FFI, we can only generate a minimal valid codestream
-        let mut data = Vec::new();
+        let mut output = Vec::new();
 
         if self.config.output_jp2 {
-            self.write_jp2_header(&mut data)?;
+            self.write_jp2_header(&mut output)?;
         }
 
-        self.write_codestream(&mut data)?;
+        self.write_codestream(&mut output)?;
 
         self.images_encoded += 1;
-        self.bytes_output += data.len() as u64;
+        self.bytes_output += output.len() as u64;
 
         Ok(EncodedPacket {
-            data,
+            data: output,
             is_jp2: self.config.output_jp2,
         })
     }

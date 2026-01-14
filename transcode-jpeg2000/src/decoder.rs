@@ -6,6 +6,11 @@ use crate::parser::{CodestreamInfo, Jpeg2000Parser};
 use crate::types::*;
 use crate::{Jpeg2000Error, Result};
 
+#[cfg(feature = "ffi-openjpeg")]
+use crate::ffi::Jpeg2000FfiDecoder;
+
+use std::fmt;
+
 /// Decoded JPEG2000 image.
 #[derive(Debug, Clone)]
 pub struct DecodedImage {
@@ -164,7 +169,6 @@ impl DecodedImage {
 /// let image = decoder.decode(&j2k_data)?;
 /// println!("Decoded: {}x{}", image.width, image.height);
 /// ```
-#[derive(Debug)]
 pub struct Jpeg2000Decoder {
     /// Parser for header extraction.
     parser: Jpeg2000Parser,
@@ -172,10 +176,37 @@ pub struct Jpeg2000Decoder {
     info: Option<CodestreamInfo>,
     /// Total images decoded.
     images_decoded: u64,
+    /// FFI decoder (when available).
+    #[cfg(feature = "ffi-openjpeg")]
+    ffi_decoder: Option<Jpeg2000FfiDecoder>,
+}
+
+impl fmt::Debug for Jpeg2000Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s = f.debug_struct("Jpeg2000Decoder");
+        s.field("info", &self.info);
+        s.field("images_decoded", &self.images_decoded);
+        #[cfg(feature = "ffi-openjpeg")]
+        s.field("ffi_decoder", &self.ffi_decoder.is_some());
+        s.finish_non_exhaustive()
+    }
 }
 
 impl Jpeg2000Decoder {
     /// Create a new decoder.
+    #[cfg(feature = "ffi-openjpeg")]
+    pub fn new() -> Result<Self> {
+        let ffi_decoder = Jpeg2000FfiDecoder::new()?;
+        Ok(Self {
+            parser: Jpeg2000Parser::new(),
+            info: None,
+            images_decoded: 0,
+            ffi_decoder: Some(ffi_decoder),
+        })
+    }
+
+    /// Create a new decoder (without FFI).
+    #[cfg(not(feature = "ffi-openjpeg"))]
     pub fn new() -> Result<Self> {
         Ok(Self {
             parser: Jpeg2000Parser::new(),
@@ -185,20 +216,52 @@ impl Jpeg2000Decoder {
     }
 
     /// Check if FFI decoding is available.
+    #[cfg(feature = "ffi-openjpeg")]
     pub fn is_decoding_available(&self) -> bool {
-        cfg!(feature = "ffi-openjpeg")
+        self.ffi_decoder.is_some()
     }
 
-    /// Decode a JPEG2000 image.
+    /// Check if FFI decoding is available (without FFI).
+    #[cfg(not(feature = "ffi-openjpeg"))]
+    pub fn is_decoding_available(&self) -> bool {
+        false
+    }
+
+    /// Decode a JPEG2000 image using OpenJPEG.
     #[cfg(feature = "ffi-openjpeg")]
     pub fn decode(&mut self, data: &[u8]) -> Result<DecodedImage> {
-        // With FFI, we would call OpenJPEG here
-        Err(Jpeg2000Error::FfiNotAvailable)
+        // Use FFI decoder if available
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            let image = ffi.decode(data)?;
+            self.images_decoded += 1;
+            self.info = Some(CodestreamInfo {
+                width: image.width,
+                height: image.height,
+                num_components: image.num_components,
+                bit_depth: image.bit_depth,
+                is_signed: image.is_signed,
+                tile_width: image.width,
+                tile_height: image.height,
+                num_tiles: 1,
+                num_decomposition_levels: 5,
+                progression_order: crate::types::ProgressionOrder::Lrcp,
+                profile: image.profile,
+            });
+            return Ok(image);
+        }
+
+        // Fallback to parsing only
+        self.decode_header_only(data)
     }
 
     /// Decode a JPEG2000 image (stub without FFI).
     #[cfg(not(feature = "ffi-openjpeg"))]
     pub fn decode(&mut self, data: &[u8]) -> Result<DecodedImage> {
+        self.decode_header_only(data)
+    }
+
+    /// Decode header only (no pixel data).
+    fn decode_header_only(&mut self, data: &[u8]) -> Result<DecodedImage> {
         // Without FFI, we can only parse headers
         let info = self.parser.parse_header(data)?;
         self.info = Some(info.clone());
@@ -244,6 +307,17 @@ impl Jpeg2000Decoder {
     }
 
     /// Reset the decoder.
+    #[cfg(feature = "ffi-openjpeg")]
+    pub fn reset(&mut self) {
+        self.parser.reset();
+        self.info = None;
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.reset();
+        }
+    }
+
+    /// Reset the decoder (without FFI).
+    #[cfg(not(feature = "ffi-openjpeg"))]
     pub fn reset(&mut self) {
         self.parser.reset();
         self.info = None;
