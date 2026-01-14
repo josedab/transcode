@@ -7,6 +7,10 @@
 //! Full decoding requires the `ffi-ffmpeg` feature. Without it, only parsing
 //! and metadata extraction is available.
 
+use std::fmt;
+
+#[cfg(feature = "ffi-ffmpeg")]
+use crate::ffi::{Ac3FfiDecoder, Eac3FfiDecoder};
 use crate::parser::{Ac3Parser, Eac3Parser};
 use crate::types::*;
 use crate::{Ac3Error, Result};
@@ -24,7 +28,6 @@ use crate::{Ac3Error, Result};
 /// let decoded = decoder.decode_frame(&ac3_frame)?;
 /// println!("Decoded {} samples", decoded.samples_per_channel);
 /// ```
-#[derive(Debug)]
 pub struct Ac3Decoder {
     /// Parser for extracting frame info.
     parser: Ac3Parser,
@@ -38,6 +41,21 @@ pub struct Ac3Decoder {
     frames_decoded: u64,
     /// Total samples decoded.
     samples_decoded: u64,
+    /// FFI decoder (when ffi-ffmpeg feature is enabled).
+    #[cfg(feature = "ffi-ffmpeg")]
+    ffi_decoder: Option<Ac3FfiDecoder>,
+}
+
+impl fmt::Debug for Ac3Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ac3Decoder")
+            .field("output_sample_rate", &self.output_sample_rate)
+            .field("output_layout", &self.output_layout)
+            .field("sample_format", &self.sample_format)
+            .field("frames_decoded", &self.frames_decoded)
+            .field("samples_decoded", &self.samples_decoded)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Sample format for decoded audio.
@@ -53,6 +71,22 @@ pub enum SampleFormat {
 
 impl Ac3Decoder {
     /// Create a new AC-3 decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn new() -> Result<Self> {
+        let ffi_decoder = Ac3FfiDecoder::new().ok();
+        Ok(Self {
+            parser: Ac3Parser::new(),
+            output_sample_rate: 48000,
+            output_layout: None,
+            sample_format: SampleFormat::F32,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            ffi_decoder,
+        })
+    }
+
+    /// Create a new AC-3 decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn new() -> Result<Self> {
         Ok(Self {
             parser: Ac3Parser::new(),
@@ -65,6 +99,22 @@ impl Ac3Decoder {
     }
 
     /// Create decoder with specific output format.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn with_format(sample_rate: u32, sample_format: SampleFormat) -> Result<Self> {
+        let ffi_decoder = Ac3FfiDecoder::new().ok();
+        Ok(Self {
+            parser: Ac3Parser::new(),
+            output_sample_rate: sample_rate,
+            output_layout: None,
+            sample_format,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            ffi_decoder,
+        })
+    }
+
+    /// Create decoder with specific output format.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn with_format(sample_rate: u32, sample_format: SampleFormat) -> Result<Self> {
         Ok(Self {
             parser: Ac3Parser::new(),
@@ -81,8 +131,24 @@ impl Ac3Decoder {
     /// Returns decoded PCM audio or an error if decoding fails.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn decode_frame(&mut self, data: &[u8]) -> Result<DecodedAudio> {
-        // FFI implementation would go here
-        Err(Ac3Error::FfiNotAvailable)
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            let decoded = ffi.decode(data)?;
+            self.frames_decoded += 1;
+            self.samples_decoded += decoded.samples_per_channel as u64;
+            Ok(decoded)
+        } else {
+            // Fall back to parsing only
+            let frame = self.parse_frame(data)?;
+            let layout = ChannelLayout::from_acmod(frame.acmod, frame.lfe_on);
+
+            Ok(DecodedAudio {
+                sample_rate: frame.sample_rate,
+                channels: frame.channels,
+                layout,
+                samples: Vec::new(),
+                samples_per_channel: 0,
+            })
+        }
     }
 
     /// Decode an AC-3 frame (stub without FFI).
@@ -120,11 +186,33 @@ impl Ac3Decoder {
     }
 
     /// Flush the decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn flush(&mut self) {
+        self.parser.reset();
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Flush the decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn flush(&mut self) {
         self.parser.reset();
     }
 
     /// Reset the decoder state.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn reset(&mut self) {
+        self.parser.reset();
+        self.frames_decoded = 0;
+        self.samples_decoded = 0;
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Reset the decoder state.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn reset(&mut self) {
         self.parser.reset();
         self.frames_decoded = 0;
@@ -152,8 +240,15 @@ impl Ac3Decoder {
     }
 
     /// Check if FFI decoding is available.
+    #[cfg(feature = "ffi-ffmpeg")]
     pub fn is_decoding_available(&self) -> bool {
-        cfg!(feature = "ffi-ffmpeg")
+        self.ffi_decoder.is_some()
+    }
+
+    /// Check if FFI decoding is available.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
+    pub fn is_decoding_available(&self) -> bool {
+        false
     }
 }
 
@@ -166,7 +261,6 @@ impl Default for Ac3Decoder {
 /// E-AC-3 decoder.
 ///
 /// Decodes E-AC-3 (Dolby Digital Plus) audio frames to PCM samples.
-#[derive(Debug)]
 pub struct Eac3Decoder {
     /// Parser for extracting frame info.
     parser: Eac3Parser,
@@ -182,10 +276,43 @@ pub struct Eac3Decoder {
     samples_decoded: u64,
     /// Substream to decode (for multi-program streams).
     target_substream: u8,
+    /// FFI decoder (when ffi-ffmpeg feature is enabled).
+    #[cfg(feature = "ffi-ffmpeg")]
+    ffi_decoder: Option<Eac3FfiDecoder>,
+}
+
+impl fmt::Debug for Eac3Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Eac3Decoder")
+            .field("output_sample_rate", &self.output_sample_rate)
+            .field("output_layout", &self.output_layout)
+            .field("sample_format", &self.sample_format)
+            .field("frames_decoded", &self.frames_decoded)
+            .field("samples_decoded", &self.samples_decoded)
+            .field("target_substream", &self.target_substream)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Eac3Decoder {
     /// Create a new E-AC-3 decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn new() -> Result<Self> {
+        let ffi_decoder = Eac3FfiDecoder::new().ok();
+        Ok(Self {
+            parser: Eac3Parser::new(),
+            output_sample_rate: 48000,
+            output_layout: None,
+            sample_format: SampleFormat::F32,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            target_substream: 0,
+            ffi_decoder,
+        })
+    }
+
+    /// Create a new E-AC-3 decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn new() -> Result<Self> {
         Ok(Self {
             parser: Eac3Parser::new(),
@@ -199,6 +326,23 @@ impl Eac3Decoder {
     }
 
     /// Create decoder with specific output format.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn with_format(sample_rate: u32, sample_format: SampleFormat) -> Result<Self> {
+        let ffi_decoder = Eac3FfiDecoder::new().ok();
+        Ok(Self {
+            parser: Eac3Parser::new(),
+            output_sample_rate: sample_rate,
+            output_layout: None,
+            sample_format,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            target_substream: 0,
+            ffi_decoder,
+        })
+    }
+
+    /// Create decoder with specific output format.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn with_format(sample_rate: u32, sample_format: SampleFormat) -> Result<Self> {
         Ok(Self {
             parser: Eac3Parser::new(),
@@ -219,8 +363,23 @@ impl Eac3Decoder {
     /// Decode an E-AC-3 frame.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn decode_frame(&mut self, data: &[u8]) -> Result<DecodedAudio> {
-        // FFI implementation would go here
-        Err(Ac3Error::FfiNotAvailable)
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            let decoded = ffi.decode(data)?;
+            self.frames_decoded += 1;
+            self.samples_decoded += decoded.samples_per_channel as u64;
+            Ok(decoded)
+        } else {
+            let frame = self.parse_frame(data)?;
+            let layout = ChannelLayout::from_acmod(frame.acmod, frame.lfe_on);
+
+            Ok(DecodedAudio {
+                sample_rate: frame.sample_rate,
+                channels: frame.channels,
+                layout,
+                samples: Vec::new(),
+                samples_per_channel: 0,
+            })
+        }
     }
 
     /// Decode an E-AC-3 frame (stub without FFI).
@@ -255,11 +414,33 @@ impl Eac3Decoder {
     }
 
     /// Flush the decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn flush(&mut self) {
+        self.parser.reset();
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Flush the decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn flush(&mut self) {
         self.parser.reset();
     }
 
     /// Reset the decoder state.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn reset(&mut self) {
+        self.parser.reset();
+        self.frames_decoded = 0;
+        self.samples_decoded = 0;
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Reset the decoder state.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn reset(&mut self) {
         self.parser.reset();
         self.frames_decoded = 0;
@@ -287,8 +468,15 @@ impl Eac3Decoder {
     }
 
     /// Check if FFI decoding is available.
+    #[cfg(feature = "ffi-ffmpeg")]
     pub fn is_decoding_available(&self) -> bool {
-        cfg!(feature = "ffi-ffmpeg")
+        self.ffi_decoder.is_some()
+    }
+
+    /// Check if FFI decoding is available.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
+    pub fn is_decoding_available(&self) -> bool {
+        false
     }
 
     /// Check if stream appears to be Dolby Atmos.

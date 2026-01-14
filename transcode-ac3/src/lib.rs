@@ -60,6 +60,8 @@
 
 pub mod decoder;
 pub mod encoder;
+#[cfg(feature = "ffi-ffmpeg")]
+pub mod ffi;
 pub mod parser;
 pub mod types;
 

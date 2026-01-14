@@ -7,6 +7,8 @@
 //! AC-3 and E-AC-3 encoding requires the `ffi-ffmpeg` feature and appropriate
 //! Dolby licensing for commercial use.
 
+#[cfg(feature = "ffi-ffmpeg")]
+use crate::ffi::{Ac3FfiEncoder, Eac3FfiEncoder};
 use crate::types::*;
 use crate::{Ac3Error, Result};
 
@@ -321,7 +323,6 @@ pub enum CompressionProfile {
 ///
 /// Encoding requires the `ffi-ffmpeg` feature and appropriate Dolby licensing
 /// for commercial use.
-#[derive(Debug)]
 pub struct Ac3Encoder {
     /// Encoder configuration.
     config: Ac3EncoderConfig,
@@ -331,10 +332,28 @@ pub struct Ac3Encoder {
     samples_encoded: u64,
     /// Initialized flag.
     initialized: bool,
+    /// FFI encoder (when ffi-ffmpeg feature is enabled).
+    #[cfg(feature = "ffi-ffmpeg")]
+    ffi_encoder: Option<Ac3FfiEncoder>,
 }
 
 impl Ac3Encoder {
     /// Create a new AC-3 encoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn new(config: Ac3EncoderConfig) -> Result<Self> {
+        config.validate()?;
+
+        Ok(Self {
+            config,
+            frames_encoded: 0,
+            samples_encoded: 0,
+            initialized: false,
+            ffi_encoder: None,
+        })
+    }
+
+    /// Create a new AC-3 encoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn new(config: Ac3EncoderConfig) -> Result<Self> {
         config.validate()?;
 
@@ -349,8 +368,14 @@ impl Ac3Encoder {
     /// Initialize the encoder.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn initialize(&mut self) -> Result<()> {
-        // FFI initialization would go here
-        Err(Ac3Error::FfiNotAvailable)
+        let ffi = Ac3FfiEncoder::new(
+            self.config.sample_rate,
+            self.config.channels,
+            self.config.bitrate,
+        )?;
+        self.ffi_encoder = Some(ffi);
+        self.initialized = true;
+        Ok(())
     }
 
     /// Initialize the encoder (stub without FFI).
@@ -364,8 +389,16 @@ impl Ac3Encoder {
     /// Input samples should be interleaved floats in range [-1.0, 1.0].
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn encode_frame(&mut self, samples: &[f32]) -> Result<Vec<u8>> {
-        // FFI encoding would go here
-        Err(Ac3Error::FfiNotAvailable)
+        if let Some(ref mut ffi) = self.ffi_encoder {
+            let encoded = ffi.encode(samples)?;
+            if !encoded.is_empty() {
+                self.frames_encoded += 1;
+                self.samples_encoded += samples.len() as u64 / self.config.channels as u64;
+            }
+            Ok(encoded)
+        } else {
+            Err(Ac3Error::FfiInitError("Encoder not initialized".into()))
+        }
     }
 
     /// Encode a frame (stub without FFI).
@@ -375,6 +408,17 @@ impl Ac3Encoder {
     }
 
     /// Flush remaining samples.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn flush(&mut self) -> Result<Vec<Vec<u8>>> {
+        if let Some(ref mut ffi) = self.ffi_encoder {
+            ffi.flush()
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    /// Flush remaining samples.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn flush(&mut self) -> Result<Vec<Vec<u8>>> {
         Ok(Vec::new())
     }
@@ -395,15 +439,21 @@ impl Ac3Encoder {
     }
 
     /// Check if encoding is available.
+    #[cfg(feature = "ffi-ffmpeg")]
     pub fn is_encoding_available(&self) -> bool {
-        cfg!(feature = "ffi-ffmpeg")
+        self.ffi_encoder.is_some() || self.initialized
+    }
+
+    /// Check if encoding is available.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
+    pub fn is_encoding_available(&self) -> bool {
+        false
     }
 }
 
 /// E-AC-3 encoder.
 ///
 /// Encodes PCM audio to E-AC-3 (Dolby Digital Plus) format.
-#[derive(Debug)]
 pub struct Eac3Encoder {
     /// Encoder configuration.
     config: Eac3EncoderConfig,
@@ -413,10 +463,28 @@ pub struct Eac3Encoder {
     samples_encoded: u64,
     /// Initialized flag.
     initialized: bool,
+    /// FFI encoder (when ffi-ffmpeg feature is enabled).
+    #[cfg(feature = "ffi-ffmpeg")]
+    ffi_encoder: Option<Eac3FfiEncoder>,
 }
 
 impl Eac3Encoder {
     /// Create a new E-AC-3 encoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn new(config: Eac3EncoderConfig) -> Result<Self> {
+        config.validate()?;
+
+        Ok(Self {
+            config,
+            frames_encoded: 0,
+            samples_encoded: 0,
+            initialized: false,
+            ffi_encoder: None,
+        })
+    }
+
+    /// Create a new E-AC-3 encoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn new(config: Eac3EncoderConfig) -> Result<Self> {
         config.validate()?;
 
@@ -431,8 +499,14 @@ impl Eac3Encoder {
     /// Initialize the encoder.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn initialize(&mut self) -> Result<()> {
-        // FFI initialization would go here
-        Err(Ac3Error::FfiNotAvailable)
+        let ffi = Eac3FfiEncoder::new(
+            self.config.sample_rate,
+            self.config.channels,
+            self.config.bitrate,
+        )?;
+        self.ffi_encoder = Some(ffi);
+        self.initialized = true;
+        Ok(())
     }
 
     /// Initialize the encoder (stub without FFI).
@@ -444,8 +518,16 @@ impl Eac3Encoder {
     /// Encode a frame of PCM samples.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn encode_frame(&mut self, samples: &[f32]) -> Result<Vec<u8>> {
-        // FFI encoding would go here
-        Err(Ac3Error::FfiNotAvailable)
+        if let Some(ref mut ffi) = self.ffi_encoder {
+            let encoded = ffi.encode(samples)?;
+            if !encoded.is_empty() {
+                self.frames_encoded += 1;
+                self.samples_encoded += samples.len() as u64 / self.config.channels as u64;
+            }
+            Ok(encoded)
+        } else {
+            Err(Ac3Error::FfiInitError("Encoder not initialized".into()))
+        }
     }
 
     /// Encode a frame (stub without FFI).
@@ -455,6 +537,17 @@ impl Eac3Encoder {
     }
 
     /// Flush remaining samples.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn flush(&mut self) -> Result<Vec<Vec<u8>>> {
+        if let Some(ref mut ffi) = self.ffi_encoder {
+            ffi.flush()
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    /// Flush remaining samples.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn flush(&mut self) -> Result<Vec<Vec<u8>>> {
         Ok(Vec::new())
     }
@@ -475,8 +568,15 @@ impl Eac3Encoder {
     }
 
     /// Check if encoding is available.
+    #[cfg(feature = "ffi-ffmpeg")]
     pub fn is_encoding_available(&self) -> bool {
-        cfg!(feature = "ffi-ffmpeg")
+        self.ffi_encoder.is_some() || self.initialized
+    }
+
+    /// Check if encoding is available.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
+    pub fn is_encoding_available(&self) -> bool {
+        false
     }
 }
 
