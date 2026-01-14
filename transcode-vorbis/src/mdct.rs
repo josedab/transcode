@@ -1,5 +1,7 @@
 //! Modified Discrete Cosine Transform (MDCT) for Vorbis.
 
+#![allow(clippy::needless_range_loop)]
+
 use std::f32::consts::PI;
 
 /// MDCT calculator for a specific block size.
@@ -10,8 +12,10 @@ pub struct Mdct {
     /// Half block size (N/2).
     n2: usize,
     /// Cosine lookup table.
+    #[allow(dead_code)]
     cos_table: Vec<f32>,
     /// Sine lookup table.
+    #[allow(dead_code)]
     sin_table: Vec<f32>,
     /// Window function (Vorbis window).
     window: Vec<f32>,
@@ -67,6 +71,7 @@ impl Mdct {
     }
 
     /// Get the block size.
+    #[allow(dead_code)]
     pub fn block_size(&self) -> usize {
         self.n
     }

@@ -160,7 +160,6 @@ impl AlacDecoder {
             self.decode_stereo(reader, num_samples, effective_bits, extra_bits)
         } else {
             self.decode_mono(reader, num_samples, effective_bits, extra_bits, 0)
-                .map(|ch| ch)
         }
     }
 
@@ -262,8 +261,8 @@ impl AlacDecoder {
         let predictor_coef_num = reader.read_bits(5)? as u16;
 
         let mut predictor_coef = [0i16; 32];
-        for i in 0..predictor_coef_num as usize {
-            predictor_coef[i] = reader.read_signed(16)? as i16;
+        for coef in predictor_coef.iter_mut().take(predictor_coef_num as usize) {
+            *coef = reader.read_signed(16)? as i16;
         }
 
         Ok(PredictorInfo {

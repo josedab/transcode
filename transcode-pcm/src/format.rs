@@ -237,6 +237,7 @@ impl PcmFormat {
     }
 
     /// Parse format from string (FFmpeg-compatible names).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<PcmFormat> {
         match s.to_lowercase().as_str() {
             "pcm_u8" | "u8" => Some(PcmFormat::U8),

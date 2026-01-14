@@ -49,7 +49,7 @@ impl PcmDecoder {
         let bytes_per_sample = self.format.bytes_per_sample() as usize;
         let total_samples = data.len() / bytes_per_sample;
 
-        if data.len() % bytes_per_sample != 0 {
+        if !data.len().is_multiple_of(bytes_per_sample) {
             return Err(PcmError::BufferSizeMismatch {
                 actual: data.len(),
                 expected: bytes_per_sample,

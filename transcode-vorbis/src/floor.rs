@@ -3,11 +3,14 @@
 //! Floors represent the spectral envelope in Vorbis.
 //! Floor type 0 uses LSP coefficients, floor type 1 uses piecewise linear curves.
 
+#![allow(clippy::needless_range_loop)]
+
 use crate::codebook::Codebook;
-use crate::error::{VorbisError, Result};
+use crate::error::Result;
 
 /// Floor type 0 configuration (LSP-based).
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Floor0Config {
     /// Order of the floor polynomial.
     pub order: u8,
@@ -27,6 +30,7 @@ pub struct Floor0Config {
 
 /// Floor type 1 configuration (piecewise linear).
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Floor1Config {
     /// Number of partitions.
     pub partitions: u8,
@@ -48,6 +52,7 @@ pub struct Floor1Config {
 
 /// Floor configuration.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum FloorConfig {
     /// Floor type 0 (LSP).
     Type0(Floor0Config),
@@ -57,10 +62,12 @@ pub enum FloorConfig {
 
 /// Floor decoder/encoder.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Floor {
     config: FloorConfig,
 }
 
+#[allow(dead_code)]
 impl Floor {
     /// Create a floor type 1 with default configuration.
     pub fn new_type1(block_size: usize) -> Self {
@@ -114,7 +121,7 @@ impl Floor {
     }
 
     /// Decode floor type 0 (LSP).
-    fn decode_type0(&self, config: &Floor0Config, output: &mut [f32]) -> Result<bool> {
+    fn decode_type0(&self, _config: &Floor0Config, output: &mut [f32]) -> Result<bool> {
         // Simplified: just fill with 1.0 (no floor)
         for sample in output.iter_mut() {
             *sample = 1.0;
@@ -223,6 +230,7 @@ impl Floor {
 }
 
 /// Render floor curve to linear domain.
+#[allow(dead_code)]
 pub fn render_floor(curve: &[f32], output: &mut [f32]) {
     assert_eq!(curve.len(), output.len());
 
@@ -237,6 +245,7 @@ pub fn render_floor(curve: &[f32], output: &mut [f32]) {
 }
 
 /// Apply floor curve to residue.
+#[allow(dead_code)]
 pub fn apply_floor(floor: &[f32], residue: &mut [f32]) {
     for (f, r) in floor.iter().zip(residue.iter_mut()) {
         *r *= *f;

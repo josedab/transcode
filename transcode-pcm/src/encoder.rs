@@ -216,7 +216,7 @@ impl PcmEncoder {
 
     /// Encode interleaved f32 samples to planar PCM data.
     pub fn encode_interleaved_to_planar(&mut self, samples: &[f32]) -> Result<Vec<Vec<u8>>> {
-        if samples.len() % self.channels as usize != 0 {
+        if !samples.len().is_multiple_of(self.channels as usize) {
             return Err(PcmError::InvalidData(
                 "Sample count must be divisible by channel count".to_string(),
             ));
@@ -261,7 +261,6 @@ impl PcmEncoder {
 /// Linear PCM to A-law conversion.
 fn linear_to_alaw(linear: i16) -> u8 {
     const ALAW_MAX: i16 = 0x0FFF;
-    const ALAW_BIAS: i16 = 0x84;
 
     let sign = if linear >= 0 { 0x80 } else { 0x00 };
     let mut pcm = if linear < 0 { (-linear).saturating_sub(1) } else { linear };
@@ -312,8 +311,7 @@ fn linear_to_mulaw(linear: i16) -> u8 {
     };
 
     let mantissa = (pcm >> (exponent + 3)) & 0x0F;
-    let mulaw = !(sign & (0x80 | (exponent << 4) | mantissa as u8));
-    mulaw
+    !(sign & (0x80 | (exponent << 4) | mantissa as u8))
 }
 
 #[cfg(test)]

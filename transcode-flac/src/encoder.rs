@@ -328,7 +328,10 @@ impl Md5Context {
 
             i = part_len;
             while i + 63 < input_len {
-                let block: [u8; 64] = input[i..i + 64].try_into().unwrap();
+                // Safe: loop condition ensures input[i..i+64] is exactly 64 bytes
+                let block: [u8; 64] = input[i..i + 64]
+                    .try_into()
+                    .expect("slice length is 64 by loop invariant");
                 self.transform(&block);
                 i += 64;
             }

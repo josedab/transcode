@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn test_all_formats() {
         for format in PcmFormat::all() {
-            let info = codec_info(format);
+            let info = codec_info(*format);
             assert!(info.bits_per_sample > 0);
         }
     }

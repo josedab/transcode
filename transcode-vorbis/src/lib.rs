@@ -1,12 +1,17 @@
 //! Vorbis audio codec support for the transcode library.
 //!
+//! **⚠️ EXPERIMENTAL**: This implementation uses simplified floor decoding and
+//! encoding algorithms. Output may not be bit-accurate with reference implementations.
+//! For production use cases requiring full specification compliance, consider using
+//! a binding to libvorbis instead.
+//!
 //! This crate provides a pure Rust implementation of the Vorbis audio codec,
 //! the royalty-free audio compression format commonly used with OGG containers.
 //!
 //! ## Features
 //!
-//! - **Decoding**: Full Vorbis I specification support
-//! - **Encoding**: VBR and ABR encoding modes
+//! - **Decoding**: Vorbis I specification support (simplified floor implementation)
+//! - **Encoding**: VBR and ABR encoding modes (simplified floor curves)
 //! - **Quality Levels**: -2 to 10 quality range
 //! - **Multi-channel**: Up to 8 channels with proper coupling
 //! - **Sample Rates**: 8kHz to 192kHz

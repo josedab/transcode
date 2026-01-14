@@ -3,10 +3,11 @@
 //! Residue encodes the spectral detail after the floor is removed.
 
 use crate::codebook::Codebook;
-use crate::error::{VorbisError, Result};
+use crate::error::Result;
 
 /// Residue type 0 (independent vector).
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Residue0Config {
     /// Begin position.
     pub begin: u32,
@@ -43,11 +44,13 @@ pub enum ResidueConfig {
 
 /// Residue encoder/decoder.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Residue {
     config: ResidueConfig,
     residue_type: u8,
 }
 
+#[allow(dead_code)]
 impl Residue {
     /// Create a new residue handler with default configuration.
     pub fn new(residue_type: u8, block_size: usize) -> Self {
@@ -145,14 +148,15 @@ impl Residue {
 
         // Decode as single vector, then split
         let n = channels[0].len();
-        let mut combined = vec![0.0f32; n * channels.len()];
+        let num_channels = channels.len();
+        let combined = vec![0.0f32; n * num_channels];
 
         // Would decode combined vector here
 
         // Split back to channels
         for (ch_idx, ch) in channels.iter_mut().enumerate() {
             for (i, sample) in ch.iter_mut().enumerate() {
-                *sample = combined[i * channels.len() + ch_idx];
+                *sample = combined[i * num_channels + ch_idx];
             }
         }
 
@@ -182,7 +186,7 @@ impl Residue {
     /// Encode residue type 0.
     fn encode_type0(
         &self,
-        config: &Residue0Config,
+        _config: &Residue0Config,
         channels: &[Vec<f32>],
         floors: &[Vec<f32>],
         _output: &mut Vec<u8>,
@@ -236,6 +240,7 @@ impl Residue {
 }
 
 /// Channel coupling for stereo (mid-side coding).
+#[allow(dead_code)]
 pub fn couple_channels(left: &[f32], right: &[f32]) -> (Vec<f32>, Vec<f32>) {
     let mid: Vec<f32> = left
         .iter()
@@ -253,6 +258,7 @@ pub fn couple_channels(left: &[f32], right: &[f32]) -> (Vec<f32>, Vec<f32>) {
 }
 
 /// Decouple channels from mid-side to left-right.
+#[allow(dead_code)]
 pub fn decouple_channels(mid: &[f32], side: &[f32]) -> (Vec<f32>, Vec<f32>) {
     let left: Vec<f32> = mid
         .iter()

@@ -228,7 +228,7 @@ impl VorbisDecoder {
         }
 
         let sample_rate = u32::from_le_bytes([data[12], data[13], data[14], data[15]]);
-        if sample_rate < 8000 || sample_rate > 192000 {
+        if !(8000..=192000).contains(&sample_rate) {
             return Err(VorbisError::UnsupportedSampleRate(sample_rate));
         }
 
@@ -241,7 +241,7 @@ impl VorbisDecoder {
         let block_size_1 = 1u16 << ((block_sizes >> 4) & 0x0F);
 
         // Validate block sizes
-        if block_size_0 < 64 || block_size_0 > 8192 || block_size_1 < block_size_0 {
+        if !(64..=8192).contains(&block_size_0) || block_size_1 < block_size_0 {
             return Err(VorbisError::InvalidIdHeader("Invalid block sizes".into()));
         }
 
@@ -344,7 +344,7 @@ impl VorbisDecoder {
     }
 
     /// Decode setup header.
-    fn decode_setup_header(&mut self, data: &[u8]) -> Result<()> {
+    fn decode_setup_header(&mut self, _data: &[u8]) -> Result<()> {
         if self.state != DecoderState::WaitingSetupHeader {
             return Err(VorbisError::InvalidSetupHeader(
                 "Unexpected setup header".into(),
@@ -403,7 +403,7 @@ impl VorbisDecoder {
         // A full implementation would decode from the bitstream
 
         // Apply inverse MDCT
-        for ch in 0..channels {
+        for ch_data in channel_data.iter_mut().take(channels) {
             let mut freq = vec![0.0f32; n2];
             let mut time = vec![0.0f32; block_size];
 
@@ -411,7 +411,7 @@ impl VorbisDecoder {
             freq.iter_mut().for_each(|f| *f = 0.0);
 
             mdct.inverse(&freq, &mut time);
-            channel_data[ch] = time;
+            *ch_data = time;
         }
 
         // Overlap-add with previous block

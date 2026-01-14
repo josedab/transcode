@@ -141,6 +141,7 @@ pub struct VorbisEncoder {
     /// Residue encoder.
     residues: Vec<Residue>,
     /// Codebooks.
+    #[allow(dead_code)]
     codebooks: Vec<Codebook>,
     /// Input sample buffer.
     input_buffer: Vec<Vec<f32>>,
@@ -483,7 +484,7 @@ impl VorbisEncoder {
             let padding = block_size - (remaining % block_size);
             if padding < block_size {
                 for ch in &mut self.input_buffer {
-                    ch.extend(std::iter::repeat(0.0).take(padding));
+                    ch.extend(std::iter::repeat_n(0.0, padding));
                 }
             }
 

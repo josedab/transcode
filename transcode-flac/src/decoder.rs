@@ -403,13 +403,32 @@ impl<R: Read> FlacDecoder<R> {
 
         let mime_len = u32::from_be_bytes([data[pos], data[pos+1], data[pos+2], data[pos+3]]) as usize;
         pos += 4;
+
+        // Bounds check for mime string
+        if pos + mime_len > data.len() {
+            return Err(FlacError::InvalidMetadata);
+        }
         let mime_type = String::from_utf8_lossy(&data[pos..pos+mime_len]).to_string();
         pos += mime_len;
 
+        // Bounds check for description length field
+        if pos + 4 > data.len() {
+            return Err(FlacError::InvalidMetadata);
+        }
         let desc_len = u32::from_be_bytes([data[pos], data[pos+1], data[pos+2], data[pos+3]]) as usize;
         pos += 4;
+
+        // Bounds check for description string
+        if pos + desc_len > data.len() {
+            return Err(FlacError::InvalidMetadata);
+        }
         let description = String::from_utf8_lossy(&data[pos..pos+desc_len]).to_string();
         pos += desc_len;
+
+        // Bounds check for remaining fixed fields (20 bytes: 5 x u32)
+        if pos + 20 > data.len() {
+            return Err(FlacError::InvalidMetadata);
+        }
 
         let width = u32::from_be_bytes([data[pos], data[pos+1], data[pos+2], data[pos+3]]);
         pos += 4;
@@ -422,6 +441,11 @@ impl<R: Read> FlacDecoder<R> {
 
         let data_len = u32::from_be_bytes([data[pos], data[pos+1], data[pos+2], data[pos+3]]) as usize;
         pos += 4;
+
+        // Bounds check for picture data
+        if pos + data_len > data.len() {
+            return Err(FlacError::InvalidMetadata);
+        }
         let picture_data = data[pos..pos+data_len].to_vec();
 
         Ok(Picture {

@@ -6,6 +6,7 @@ use crate::error::{VorbisError, Result};
 
 /// Vorbis codebook entry.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CodebookEntry {
     /// Codeword length in bits.
     pub length: u8,
@@ -17,6 +18,7 @@ pub struct CodebookEntry {
 
 /// Vorbis codebook.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Codebook {
     /// Codebook dimensions (for VQ).
     dimensions: u32,
@@ -38,6 +40,7 @@ pub struct Codebook {
     sequence_p: bool,
 }
 
+#[allow(dead_code)]
 impl Codebook {
     /// Create an empty codebook.
     pub fn new() -> Self {
@@ -150,7 +153,7 @@ impl Codebook {
         dimensions: u32,
         min_val: f32,
         delta: f32,
-        lookup_type: u8,
+        _lookup_type: u8,
     ) -> Vec<f32> {
         let mut values = Vec::with_capacity(dimensions as usize);
         let mut idx = entry;
@@ -167,12 +170,9 @@ impl Codebook {
     /// Decode a value using this codebook.
     pub fn decode(&self, bits: u32, bit_count: u8) -> Option<&CodebookEntry> {
         // Linear search (a real implementation would use lookup tables)
-        for entry in &self.entry_list {
-            if entry.length == bit_count && entry.codeword == bits {
-                return Some(entry);
-            }
-        }
-        None
+        self.entry_list
+            .iter()
+            .find(|entry| entry.length == bit_count && entry.codeword == bits)
     }
 
     /// Get codebook dimensions.
@@ -230,6 +230,7 @@ impl Default for Codebook {
 
 /// Codebook configuration for encoding.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct CodebookConfig {
     /// Number of dimensions.
     pub dimensions: u32,
@@ -243,6 +244,7 @@ pub struct CodebookConfig {
     pub delta_value: f32,
 }
 
+#[allow(dead_code)]
 impl CodebookConfig {
     /// Create a new codebook configuration.
     pub fn new(dimensions: u32, entries: u32) -> Self {

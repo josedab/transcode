@@ -224,7 +224,7 @@ impl ChannelLayout {
 }
 
 /// ALAC predictor coefficients.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PredictorInfo {
     /// Prediction type.
     pub prediction_type: u16,
@@ -236,18 +236,6 @@ pub struct PredictorInfo {
     pub predictor_coef_num: u16,
     /// Predictor coefficients.
     pub predictor_coef: [i16; 32],
-}
-
-impl Default for PredictorInfo {
-    fn default() -> Self {
-        Self {
-            prediction_type: 0,
-            quant_shift: 0,
-            rice_modifier: 0,
-            predictor_coef_num: 0,
-            predictor_coef: [0; 32],
-        }
-    }
 }
 
 #[cfg(test)]
