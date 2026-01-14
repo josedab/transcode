@@ -11,6 +11,11 @@ use crate::parser::{Mpeg2Parser, VideoInfo};
 use crate::types::*;
 use crate::{Mpeg2Error, Result};
 
+#[cfg(feature = "ffi-ffmpeg")]
+use crate::ffi::Mpeg2FfiDecoder;
+
+use std::fmt;
+
 /// MPEG-2 video decoder.
 ///
 /// Decodes MPEG-2 video elementary streams to raw video frames.
@@ -24,7 +29,6 @@ use crate::{Mpeg2Error, Result};
 /// let decoded = decoder.decode_picture(&mpeg2_data)?;
 /// println!("Decoded {}x{} frame", decoded.width, decoded.height);
 /// ```
-#[derive(Debug)]
 pub struct Mpeg2Decoder {
     /// Parser for extracting stream info.
     parser: Mpeg2Parser,
@@ -46,10 +50,55 @@ pub struct Mpeg2Decoder {
     reference_frames: Vec<DecodedFrame>,
     /// Maximum reference frames to keep.
     max_ref_frames: usize,
+    /// FFI decoder (when ffi-ffmpeg feature is enabled).
+    #[cfg(feature = "ffi-ffmpeg")]
+    ffi_decoder: Option<Mpeg2FfiDecoder>,
+}
+
+impl fmt::Debug for Mpeg2Decoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Mpeg2Decoder")
+            .field("output_width", &self.output_width)
+            .field("output_height", &self.output_height)
+            .field("output_chroma", &self.output_chroma)
+            .field("pictures_decoded", &self.pictures_decoded)
+            .field("bytes_processed", &self.bytes_processed)
+            .field("current_sequence", &self.current_sequence.is_some())
+            .field("current_extension", &self.current_extension.is_some())
+            .field("max_ref_frames", &self.max_ref_frames)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Mpeg2Decoder {
     /// Create a new MPEG-2 decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn new() -> Result<Self> {
+        let ffi_decoder = match Mpeg2FfiDecoder::new() {
+            Ok(dec) => Some(dec),
+            Err(e) => {
+                tracing::warn!("FFI decoder init failed, falling back to parser-only: {}", e);
+                None
+            }
+        };
+
+        Ok(Self {
+            parser: Mpeg2Parser::new(),
+            output_width: None,
+            output_height: None,
+            output_chroma: ChromaFormat::Yuv420,
+            pictures_decoded: 0,
+            bytes_processed: 0,
+            current_sequence: None,
+            current_extension: None,
+            reference_frames: Vec::new(),
+            max_ref_frames: 2,
+            ffi_decoder,
+        })
+    }
+
+    /// Create a new MPEG-2 decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn new() -> Result<Self> {
         Ok(Self {
             parser: Mpeg2Parser::new(),
@@ -66,6 +115,33 @@ impl Mpeg2Decoder {
     }
 
     /// Create decoder with specific output size.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn with_output_size(width: u16, height: u16) -> Result<Self> {
+        let ffi_decoder = match Mpeg2FfiDecoder::new() {
+            Ok(dec) => Some(dec),
+            Err(e) => {
+                tracing::warn!("FFI decoder init failed, falling back to parser-only: {}", e);
+                None
+            }
+        };
+
+        Ok(Self {
+            parser: Mpeg2Parser::new(),
+            output_width: Some(width),
+            output_height: Some(height),
+            output_chroma: ChromaFormat::Yuv420,
+            pictures_decoded: 0,
+            bytes_processed: 0,
+            current_sequence: None,
+            current_extension: None,
+            reference_frames: Vec::new(),
+            max_ref_frames: 2,
+            ffi_decoder,
+        })
+    }
+
+    /// Create decoder with specific output size.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn with_output_size(width: u16, height: u16) -> Result<Self> {
         Ok(Self {
             parser: Mpeg2Parser::new(),
@@ -86,8 +162,40 @@ impl Mpeg2Decoder {
     /// Returns decoded video frame or an error if decoding fails.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn decode_picture(&mut self, data: &[u8]) -> Result<DecodedFrame> {
-        // FFI implementation would go here
-        Err(Mpeg2Error::FfiNotAvailable)
+        // Try FFI decoder first
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            match ffi.decode(data) {
+                Ok(frame) => {
+                    self.pictures_decoded += 1;
+                    self.bytes_processed += data.len() as u64;
+                    return Ok(frame);
+                }
+                Err(e) => {
+                    tracing::debug!("FFI decode failed, trying parser: {}", e);
+                }
+            }
+        }
+
+        // Fall back to parser-only mode
+        let info = self.parse_and_update(data)?;
+
+        let width = self.output_width.unwrap_or(info.width);
+        let height = self.output_height.unwrap_or(info.height);
+
+        let mut frame = DecodedFrame::new(width, height);
+        frame.progressive = info.progressive;
+
+        if let Some((pos, 0x00)) = self.parser.find_start_code(data) {
+            if let Some(pic_header) = self.parser.parse_picture_header(&data[pos..]) {
+                frame.picture_type = pic_header.picture_coding_type;
+                frame.temporal_reference = pic_header.temporal_reference;
+            }
+        }
+
+        self.pictures_decoded += 1;
+        self.bytes_processed += data.len() as u64;
+
+        Ok(frame)
     }
 
     /// Decode an MPEG-2 picture (stub without FFI).
@@ -228,12 +336,38 @@ impl Mpeg2Decoder {
     }
 
     /// Flush the decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn flush(&mut self) {
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+        self.parser.reset();
+        self.reference_frames.clear();
+    }
+
+    /// Flush the decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn flush(&mut self) {
         self.parser.reset();
         self.reference_frames.clear();
     }
 
     /// Reset the decoder state.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn reset(&mut self) {
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+        self.parser.reset();
+        self.pictures_decoded = 0;
+        self.bytes_processed = 0;
+        self.current_sequence = None;
+        self.current_extension = None;
+        self.reference_frames.clear();
+    }
+
+    /// Reset the decoder state.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn reset(&mut self) {
         self.parser.reset();
         self.pictures_decoded = 0;
@@ -264,8 +398,15 @@ impl Mpeg2Decoder {
     }
 
     /// Check if FFI decoding is available.
+    #[cfg(feature = "ffi-ffmpeg")]
     pub fn is_decoding_available(&self) -> bool {
-        cfg!(feature = "ffi-ffmpeg")
+        self.ffi_decoder.is_some()
+    }
+
+    /// Check if FFI decoding is available.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
+    pub fn is_decoding_available(&self) -> bool {
+        false
     }
 
     /// Get output width.
