@@ -14,8 +14,6 @@ mod filter;
 pub use decoder::{PngDecoder, PngInfo};
 pub use encoder::{PngEncoder, PngConfig};
 
-use crate::error::{ImageError, Result};
-
 /// PNG signature bytes.
 pub const PNG_SIGNATURE: [u8; 8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
@@ -153,13 +151,14 @@ impl std::fmt::Display for ChunkType {
 }
 
 /// PNG compression level.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CompressionLevel {
     /// No compression (level 0).
     None,
     /// Fast compression (level 1).
     Fast,
     /// Default compression (level 6).
+    #[default]
     Default,
     /// Best compression (level 9).
     Best,
@@ -177,12 +176,6 @@ impl CompressionLevel {
             CompressionLevel::Best => 9,
             CompressionLevel::Custom(l) => *l,
         }
-    }
-}
-
-impl Default for CompressionLevel {
-    fn default() -> Self {
-        CompressionLevel::Default
     }
 }
 

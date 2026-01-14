@@ -67,22 +67,17 @@ impl JpegMarker {
 }
 
 /// JPEG chroma subsampling.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ChromaSubsampling {
     /// 4:4:4 - No subsampling.
     Yuv444,
     /// 4:2:2 - Horizontal subsampling.
     Yuv422,
     /// 4:2:0 - Horizontal and vertical subsampling.
+    #[default]
     Yuv420,
     /// Grayscale (no chroma).
     Gray,
-}
-
-impl Default for ChromaSubsampling {
-    fn default() -> Self {
-        ChromaSubsampling::Yuv420
-    }
 }
 
 /// Standard JPEG quantization tables.

@@ -189,8 +189,8 @@ impl Image {
         let h = height as usize;
 
         match format {
-            PixelFormat::Yuv420p => w * h + 2 * ((w + 1) / 2) * ((h + 1) / 2),
-            PixelFormat::Yuv422p => w * h + 2 * ((w + 1) / 2) * h,
+            PixelFormat::Yuv420p => w * h + 2 * w.div_ceil(2) * h.div_ceil(2),
+            PixelFormat::Yuv422p => w * h + 2 * w.div_ceil(2) * h,
             PixelFormat::Yuv444p => 3 * w * h,
             _ => w * h * format.bytes_per_pixel(),
         }

@@ -186,7 +186,7 @@ impl PngDecoder {
 
     /// Parse PLTE chunk.
     fn parse_plte(&mut self, data: &[u8]) -> Result<()> {
-        if data.len() % 3 != 0 || data.len() > 256 * 3 {
+        if !data.len().is_multiple_of(3) || data.len() > 256 * 3 {
             return Err(ImageError::DecoderError("Invalid PLTE chunk".into()));
         }
 
@@ -587,7 +587,7 @@ impl PngDecoder {
     /// Decode non-interlaced image.
     fn decode_non_interlaced(&self, data: &[u8], info: &PngInfo) -> Result<Vec<u8>> {
         let bytes_per_pixel = self.bytes_per_pixel(info);
-        let row_bytes = (info.width as usize * info.bit_depth as usize * info.color_type.channels() as usize + 7) / 8;
+        let row_bytes = (info.width as usize * info.bit_depth as usize * info.color_type.channels() as usize).div_ceil(8);
 
         let mut output = vec![0u8; info.height as usize * row_bytes];
         let mut pos = 0;
@@ -627,13 +627,12 @@ impl PngDecoder {
     /// Decode interlaced (Adam7) image.
     fn decode_interlaced(&self, data: &[u8], info: &PngInfo) -> Result<Vec<u8>> {
         let bytes_per_pixel = self.bytes_per_pixel(info);
-        let row_bytes = (info.width as usize * info.bit_depth as usize * info.color_type.channels() as usize + 7) / 8;
+        let row_bytes = (info.width as usize * info.bit_depth as usize * info.color_type.channels() as usize).div_ceil(8);
 
         let mut output = vec![0u8; info.height as usize * row_bytes];
         let mut pos = 0;
 
-        for pass in 0..7 {
-            let (start_x, start_y, step_x, step_y) = ADAM7_PASSES[pass];
+        for &(start_x, start_y, step_x, step_y) in &ADAM7_PASSES {
 
             let pass_width = (info.width as usize + step_x - 1 - start_x) / step_x;
             let pass_height = (info.height as usize + step_y - 1 - start_y) / step_y;
@@ -642,7 +641,7 @@ impl PngDecoder {
                 continue;
             }
 
-            let pass_row_bytes = (pass_width * info.bit_depth as usize * info.color_type.channels() as usize + 7) / 8;
+            let pass_row_bytes = (pass_width * info.bit_depth as usize * info.color_type.channels() as usize).div_ceil(8);
             let mut pass_data = vec![0u8; pass_height * pass_row_bytes];
             let mut prev_row: Option<Vec<u8>> = None;
 
@@ -695,7 +694,7 @@ impl PngDecoder {
     /// Get bytes per pixel.
     fn bytes_per_pixel(&self, info: &PngInfo) -> usize {
         let bits = info.bit_depth as usize * info.color_type.channels() as usize;
-        (bits + 7) / 8
+        bits.div_ceil(8)
     }
 
     /// Convert raw data to Image.
@@ -804,7 +803,7 @@ impl PngDecoder {
         let width = info.width as usize;
         let height = info.height as usize;
         let bit_depth = info.bit_depth as usize;
-        let row_bytes = (width * bit_depth + 7) / 8;
+        let row_bytes = (width * bit_depth).div_ceil(8);
 
         let mut output = Vec::with_capacity(width * height);
 

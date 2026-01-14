@@ -152,7 +152,7 @@ pub fn filter_row(
 pub fn paeth_predictor(a: u8, b: u8, c: u8) -> u8 {
     let pa = (b as i16 - c as i16).abs();
     let pb = (a as i16 - c as i16).abs();
-    let pc = ((a as i16 + b as i16 - 2 * c as i16)).abs();
+    let pc = (a as i16 + b as i16 - 2 * c as i16).abs();
 
     if pa <= pb && pa <= pc {
         a
@@ -207,14 +207,14 @@ fn calculate_filter_sum(
                     0
                 };
                 let filtered = current[i].wrapping_sub(left);
-                sum += (filtered as i8).abs() as u64;
+                sum += (filtered as i8).unsigned_abs() as u64;
             }
         }
         FilterType::Up => {
             if let Some(prev) = previous {
                 for i in 0..current.len() {
                     let filtered = current[i].wrapping_sub(prev[i]);
-                    sum += (filtered as i8).abs() as u64;
+                    sum += (filtered as i8).unsigned_abs() as u64;
                 }
             } else {
                 for &byte in current {
@@ -231,7 +231,7 @@ fn calculate_filter_sum(
                 };
                 let above = previous.map(|p| p[i] as u16).unwrap_or(0);
                 let filtered = current[i].wrapping_sub(((left + above) / 2) as u8);
-                sum += (filtered as i8).abs() as u64;
+                sum += (filtered as i8).unsigned_abs() as u64;
             }
         }
         FilterType::Paeth => {
@@ -248,7 +248,7 @@ fn calculate_filter_sum(
                     0
                 };
                 let filtered = current[i].wrapping_sub(paeth_predictor(a, b, c));
-                sum += (filtered as i8).abs() as u64;
+                sum += (filtered as i8).unsigned_abs() as u64;
             }
         }
     }

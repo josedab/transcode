@@ -4,7 +4,7 @@ use crate::error::{ImageError, Result};
 use crate::image::{Image, PixelFormat, ColorSpace};
 use super::huffman::{HuffmanTable, category_decode};
 use super::dct::fast_inverse_dct;
-use super::{JpegMarker, ZIGZAG};
+use super::ZIGZAG;
 
 /// JPEG image information.
 #[derive(Debug, Clone, Default)]
@@ -116,7 +116,7 @@ impl JpegDecoder {
                 }
                 0xDD => offset = self.parse_dri(data, offset)?,
                 0xFE => offset = self.skip_segment(data, offset)?, // COM
-                _ if marker >= 0xE0 && marker <= 0xEF => {
+                _ if (0xE0..=0xEF).contains(&marker) => {
                     offset = self.skip_segment(data, offset)?;
                 }
                 _ => {
@@ -311,7 +311,7 @@ impl JpegDecoder {
 
         // Parse component selector
         let mut pos = offset + 3;
-        for i in 0..num_components as usize {
+        for _i in 0..num_components as usize {
             let component_id = data[pos];
             let tables = data[pos + 1];
 
@@ -356,8 +356,8 @@ impl JpegDecoder {
 
         let mcu_width = max_h as usize * 8;
         let mcu_height = max_v as usize * 8;
-        let mcu_cols = (width + mcu_width - 1) / mcu_width;
-        let mcu_rows = (height + mcu_height - 1) / mcu_height;
+        let mcu_cols = width.div_ceil(mcu_width);
+        let mcu_rows = height.div_ceil(mcu_height);
 
         // Reset DC predictors
         for comp in &mut self.components {

@@ -3,7 +3,7 @@
 use crate::error::{ImageError, Result};
 use crate::image::{Image, PixelFormat};
 use super::{
-    ChunkType, ColorType, CompressionLevel, InterlaceMethod, PNG_SIGNATURE,
+    ChunkType, ColorType, CompressionLevel, PNG_SIGNATURE,
     crc32, write_u32_be,
 };
 use super::filter::{filter_row, select_filter, FilterType};

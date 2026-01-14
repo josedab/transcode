@@ -91,7 +91,7 @@ pub fn fast_forward_dct(block: &mut [i16; 64]) {
     const C1: f32 = 0.980785280;
     const C2: f32 = 0.923879533;
     const C3: f32 = 0.831469612;
-    const C4: f32 = 0.707106781;
+    const C4: f32 = std::f32::consts::FRAC_1_SQRT_2;
     const C5: f32 = 0.555570233;
     const C6: f32 = 0.382683433;
     const C7: f32 = 0.195090322;
@@ -206,10 +206,11 @@ pub fn fast_forward_dct(block: &mut [i16; 64]) {
 }
 
 /// Fast inverse DCT using AAN algorithm.
+#[allow(clippy::excessive_precision)]
 pub fn fast_inverse_dct(block: &mut [i16; 64]) {
-    const C4: f32 = 0.707106781;
-    const C2: f32 = 0.541196100;
-    const C6: f32 = 1.306562965;
+    const C4: f32 = std::f32::consts::FRAC_1_SQRT_2;
+    const C2: f32 = 0.541_196_1;
+    const C6: f32 = 1.306_563;
 
     let mut workspace = [0.0f32; 64];
 
@@ -342,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_dc_coefficient() {
-        let mut input = [128i16; 64];
+        let input = [128i16; 64];
         let dct = forward_dct(&input);
 
         // DC coefficient should be sum / 8

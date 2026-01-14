@@ -49,9 +49,12 @@ impl HuffmanTable {
         }
 
         // Generate code table
+        let mut last_size: u8 = 0;
         for &size in &huffsize {
-            while huffcode.len() > 0 && huffsize[huffcode.len() - 1] != size {
+            // Shift left for each increase in code length
+            while last_size < size {
                 code <<= 1;
+                last_size += 1;
             }
             huffcode.push(code);
             code += 1;
@@ -219,7 +222,7 @@ pub fn category_encode(value: i16) -> (u8, u16) {
     };
 
     let bits = if value < 0 {
-        (abs_value - 1) ^ ((1 << category) - 1)
+        abs_value ^ ((1 << category) - 1)
     } else {
         abs_value
     };
@@ -277,7 +280,7 @@ mod tests {
         let encoder = HuffmanEncoder::from_table(&table);
 
         // Check that symbol 0 has a valid encoding
-        let (code, len) = encoder.encode(0);
+        let (_code, len) = encoder.encode(0);
         assert!(len > 0);
     }
 }

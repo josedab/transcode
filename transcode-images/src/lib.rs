@@ -1,3 +1,9 @@
+// Allow common patterns in multimedia/DSP code
+#![allow(dead_code)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::too_many_arguments)]
+
 //! Image codec support for the transcode library.
 //!
 //! This crate provides image encoding and decoding for common formats:
@@ -17,6 +23,7 @@
 //! use transcode_images::{JpegDecoder, JpegEncoder, PngDecoder, PngEncoder};
 //! use transcode_images::{Image, PixelFormat};
 //!
+//! # let jpeg_data: Vec<u8> = vec![];
 //! // Decode a JPEG
 //! let mut decoder = JpegDecoder::new();
 //! let image = decoder.decode(&jpeg_data)?;
@@ -24,7 +31,6 @@
 //! // Encode as PNG
 //! let mut encoder = PngEncoder::new();
 //! let png_data = encoder.encode(&image)?;
-//! # let jpeg_data: Vec<u8> = vec![];
 //! # Ok::<(), transcode_images::ImageError>(())
 //! ```
 

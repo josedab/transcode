@@ -169,7 +169,7 @@ impl JpegEncoder {
             ChromaSubsampling::Yuv444 | ChromaSubsampling::Gray => plane.to_vec(),
             ChromaSubsampling::Yuv422 => {
                 // Horizontal 2:1
-                let new_width = (width + 1) / 2;
+                let new_width = width.div_ceil(2);
                 let mut result = vec![0u8; new_width * height];
                 for y in 0..height {
                     for x in 0..new_width {
@@ -183,8 +183,8 @@ impl JpegEncoder {
             }
             ChromaSubsampling::Yuv420 => {
                 // Horizontal and vertical 2:1
-                let new_width = (width + 1) / 2;
-                let new_height = (height + 1) / 2;
+                let new_width = width.div_ceil(2);
+                let new_height = height.div_ceil(2);
                 let mut result = vec![0u8; new_width * new_height];
                 for y in 0..new_height {
                     for x in 0..new_width {
@@ -352,8 +352,8 @@ impl JpegEncoder {
         let block_width = mcu_width * h_factor;
         let block_height = mcu_height * v_factor;
 
-        let mcus_x = (width + block_width - 1) / block_width;
-        let mcus_y = (height + block_height - 1) / block_height;
+        let mcus_x = width.div_ceil(block_width);
+        let mcus_y = height.div_ceil(block_height);
 
         // Downsample chroma if needed
         let (cb_ds, cr_ds, chr_width, chr_height) = if is_grayscale {
@@ -363,11 +363,11 @@ impl JpegEncoder {
             let cr = self.downsample_chroma(cr_plane, width, height);
             let cw = match self.config.subsampling {
                 ChromaSubsampling::Yuv444 | ChromaSubsampling::Gray => width,
-                ChromaSubsampling::Yuv422 | ChromaSubsampling::Yuv420 => (width + 1) / 2,
+                ChromaSubsampling::Yuv422 | ChromaSubsampling::Yuv420 => width.div_ceil(2),
             };
             let ch = match self.config.subsampling {
                 ChromaSubsampling::Yuv444 | ChromaSubsampling::Yuv422 | ChromaSubsampling::Gray => height,
-                ChromaSubsampling::Yuv420 => (height + 1) / 2,
+                ChromaSubsampling::Yuv420 => height.div_ceil(2),
             };
             (cb, cr, cw, ch)
         };
@@ -478,7 +478,7 @@ impl JpegEncoder {
                 }
 
                 let (ac_cat, ac_bits) = category_encode(coef);
-                let rs = ((zero_run << 4) | ac_cat) as u8;
+                let rs = (zero_run << 4) | ac_cat;
                 let (code, len) = ac_encoder.encode(rs);
                 bit_writer.write_bits(code as u32, len as u32);
                 bit_writer.write_bits(ac_bits as u32, ac_cat as u32);
