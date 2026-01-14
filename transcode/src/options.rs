@@ -29,6 +29,7 @@ impl Default for TranscodeOptions {
 
 impl TranscodeOptions {
     /// Create new transcoding options.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             input: None,
@@ -42,6 +43,7 @@ impl TranscodeOptions {
     }
 
     /// Set input file path.
+    #[must_use]
     pub fn input(mut self, path: impl Into<PathBuf>) -> Self {
         self.input = Some(InputConfig {
             path: path.into(),
@@ -53,12 +55,14 @@ impl TranscodeOptions {
     }
 
     /// Set input configuration.
+    #[must_use]
     pub fn input_config(mut self, config: InputConfig) -> Self {
         self.input = Some(config);
         self
     }
 
     /// Set output file path.
+    #[must_use]
     pub fn output(mut self, path: impl Into<PathBuf>) -> Self {
         self.output = Some(OutputConfig {
             path: path.into(),
@@ -68,12 +72,14 @@ impl TranscodeOptions {
     }
 
     /// Set output configuration.
+    #[must_use]
     pub fn output_config(mut self, config: OutputConfig) -> Self {
         self.output = Some(config);
         self
     }
 
     /// Set video codec.
+    #[must_use]
     pub fn video_codec(mut self, codec: impl Into<String>) -> Self {
         if let Some(ref mut video) = self.video {
             video.codec = Some(codec.into());
@@ -87,12 +93,14 @@ impl TranscodeOptions {
     }
 
     /// Set video configuration.
+    #[must_use]
     pub fn video_config(mut self, config: VideoConfig) -> Self {
         self.video = Some(config);
         self
     }
 
     /// Set audio codec.
+    #[must_use]
     pub fn audio_codec(mut self, codec: impl Into<String>) -> Self {
         if let Some(ref mut audio) = self.audio {
             audio.codec = Some(codec.into());
@@ -106,30 +114,35 @@ impl TranscodeOptions {
     }
 
     /// Set audio configuration.
+    #[must_use]
     pub fn audio_config(mut self, config: AudioConfig) -> Self {
         self.audio = Some(config);
         self
     }
 
     /// Set number of threads.
+    #[must_use]
     pub fn threads(mut self, threads: usize) -> Self {
         self.threads = Some(threads);
         self
     }
 
     /// Enable hardware acceleration.
+    #[must_use]
     pub fn hardware_acceleration(mut self, enable: bool) -> Self {
         self.hardware_accel = enable;
         self
     }
 
     /// Enable overwrite mode.
+    #[must_use]
     pub fn overwrite(mut self, enable: bool) -> Self {
         self.overwrite = enable;
         self
     }
 
     /// Set video bitrate.
+    #[must_use]
     pub fn video_bitrate(mut self, bitrate: u64) -> Self {
         if let Some(ref mut video) = self.video {
             video.bitrate = Some(bitrate);
@@ -143,6 +156,7 @@ impl TranscodeOptions {
     }
 
     /// Set video resolution.
+    #[must_use]
     pub fn video_resolution(mut self, width: u32, height: u32) -> Self {
         if let Some(ref mut video) = self.video {
             video.width = Some(width);
@@ -158,6 +172,7 @@ impl TranscodeOptions {
     }
 
     /// Set video frame rate.
+    #[must_use]
     pub fn video_framerate(mut self, fps: f64) -> Self {
         if let Some(ref mut video) = self.video {
             video.framerate = Some(fps);
@@ -171,6 +186,7 @@ impl TranscodeOptions {
     }
 
     /// Set audio bitrate.
+    #[must_use]
     pub fn audio_bitrate(mut self, bitrate: u64) -> Self {
         if let Some(ref mut audio) = self.audio {
             audio.bitrate = Some(bitrate);
@@ -184,6 +200,7 @@ impl TranscodeOptions {
     }
 
     /// Set audio sample rate.
+    #[must_use]
     pub fn audio_sample_rate(mut self, sample_rate: u32) -> Self {
         if let Some(ref mut audio) = self.audio {
             audio.sample_rate = Some(sample_rate);
@@ -197,6 +214,7 @@ impl TranscodeOptions {
     }
 
     /// Set audio channels.
+    #[must_use]
     pub fn audio_channels(mut self, channels: u32) -> Self {
         if let Some(ref mut audio) = self.audio {
             audio.channels = Some(channels);
@@ -236,6 +254,7 @@ pub struct InputConfig {
 
 impl InputConfig {
     /// Create new input configuration.
+    #[must_use]
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self {
             path: path.into(),
@@ -246,18 +265,21 @@ impl InputConfig {
     }
 
     /// Set start time.
+    #[must_use]
     pub fn start_time(mut self, seconds: f64) -> Self {
         self.start_time = Some(seconds);
         self
     }
 
     /// Set duration.
+    #[must_use]
     pub fn duration(mut self, seconds: f64) -> Self {
         self.duration = Some(seconds);
         self
     }
 
     /// Set stream index.
+    #[must_use]
     pub fn stream_index(mut self, index: usize) -> Self {
         self.stream_index = Some(index);
         self
@@ -275,6 +297,7 @@ pub struct OutputConfig {
 
 impl OutputConfig {
     /// Create new output configuration.
+    #[must_use]
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self {
             path: path.into(),
@@ -283,6 +306,7 @@ impl OutputConfig {
     }
 
     /// Set output format.
+    #[must_use]
     pub fn format(mut self, format: impl Into<String>) -> Self {
         self.format = Some(format.into());
         self
@@ -320,23 +344,27 @@ pub struct VideoConfig {
 
 impl VideoConfig {
     /// Create new video configuration.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set codec.
+    #[must_use]
     pub fn codec(mut self, codec: impl Into<String>) -> Self {
         self.codec = Some(codec.into());
         self
     }
 
     /// Set bitrate.
+    #[must_use]
     pub fn bitrate(mut self, bitrate: u64) -> Self {
         self.bitrate = Some(bitrate);
         self
     }
 
     /// Set resolution.
+    #[must_use]
     pub fn resolution(mut self, width: u32, height: u32) -> Self {
         self.width = Some(width);
         self.height = Some(height);
@@ -344,30 +372,35 @@ impl VideoConfig {
     }
 
     /// Set frame rate.
+    #[must_use]
     pub fn framerate(mut self, fps: f64) -> Self {
         self.framerate = Some(fps);
         self
     }
 
     /// Set pixel format.
+    #[must_use]
     pub fn pixel_format(mut self, format: impl Into<String>) -> Self {
         self.pixel_format = Some(format.into());
         self
     }
 
     /// Set encoder preset.
+    #[must_use]
     pub fn preset(mut self, preset: impl Into<String>) -> Self {
         self.preset = Some(preset.into());
         self
     }
 
     /// Set CRF value.
+    #[must_use]
     pub fn crf(mut self, crf: u32) -> Self {
         self.crf = Some(crf);
         self
     }
 
     /// Set GOP size.
+    #[must_use]
     pub fn gop_size(mut self, size: u32) -> Self {
         self.gop_size = Some(size);
         self
@@ -393,35 +426,41 @@ pub struct AudioConfig {
 
 impl AudioConfig {
     /// Create new audio configuration.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set codec.
+    #[must_use]
     pub fn codec(mut self, codec: impl Into<String>) -> Self {
         self.codec = Some(codec.into());
         self
     }
 
     /// Set bitrate.
+    #[must_use]
     pub fn bitrate(mut self, bitrate: u64) -> Self {
         self.bitrate = Some(bitrate);
         self
     }
 
     /// Set sample rate.
+    #[must_use]
     pub fn sample_rate(mut self, rate: u32) -> Self {
         self.sample_rate = Some(rate);
         self
     }
 
     /// Set number of channels.
+    #[must_use]
     pub fn channels(mut self, channels: u32) -> Self {
         self.channels = Some(channels);
         self
     }
 
     /// Set sample format.
+    #[must_use]
     pub fn sample_format(mut self, format: impl Into<String>) -> Self {
         self.sample_format = Some(format.into());
         self

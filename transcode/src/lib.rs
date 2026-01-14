@@ -38,6 +38,7 @@
 //! high-level API for simple use cases.
 
 mod options;
+pub mod prelude;
 mod presets;
 pub mod thumbnail;
 mod transcoder;
