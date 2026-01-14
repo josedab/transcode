@@ -2,6 +2,11 @@
 //!
 //! This module provides key ID and content key handling, key derivation,
 //! and key storage for multi-DRM encryption workflows.
+//!
+//! # Security
+//!
+//! All key material is zeroized on drop to prevent sensitive data from
+//! remaining in memory after use.
 
 use crate::error::{KeyError, Result};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
@@ -10,6 +15,7 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fmt;
 use uuid::Uuid;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Size of AES-128 key in bytes.
 pub const AES_128_KEY_SIZE: usize = 16;
@@ -21,7 +27,12 @@ pub const IV_SIZE: usize = 16;
 pub const CTR_COUNTER_SIZE: usize = 8;
 
 /// Content encryption key for DRM.
-#[derive(Clone, PartialEq, Eq)]
+///
+/// # Security
+///
+/// The key material is automatically zeroized when the struct is dropped
+/// to prevent sensitive data from remaining in memory.
+#[derive(Clone, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct ContentKey {
     /// Raw key bytes (16 bytes for AES-128).
     key: [u8; AES_128_KEY_SIZE],
@@ -250,7 +261,11 @@ impl fmt::Display for KeyId {
 }
 
 /// Initialization vector for encryption.
-#[derive(Clone, PartialEq, Eq)]
+///
+/// # Security
+///
+/// The IV bytes are automatically zeroized when the struct is dropped.
+#[derive(Clone, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct Iv {
     /// IV bytes (16 bytes).
     bytes: [u8; IV_SIZE],
@@ -340,14 +355,24 @@ impl Iv {
 
     /// Increment the IV counter (last 8 bytes as big-endian).
     pub fn increment(&mut self, amount: u64) {
-        let counter = u64::from_be_bytes(self.bytes[8..].try_into().unwrap());
+        // SAFETY: bytes[8..16] is always exactly 8 bytes
+        let counter_bytes: [u8; 8] = [
+            self.bytes[8], self.bytes[9], self.bytes[10], self.bytes[11],
+            self.bytes[12], self.bytes[13], self.bytes[14], self.bytes[15],
+        ];
+        let counter = u64::from_be_bytes(counter_bytes);
         let new_counter = counter.wrapping_add(amount);
         self.bytes[8..].copy_from_slice(&new_counter.to_be_bytes());
     }
 
     /// Get current counter value (last 8 bytes as big-endian u64).
     pub fn counter(&self) -> u64 {
-        u64::from_be_bytes(self.bytes[8..].try_into().unwrap())
+        // SAFETY: bytes[8..16] is always exactly 8 bytes
+        let counter_bytes: [u8; 8] = [
+            self.bytes[8], self.bytes[9], self.bytes[10], self.bytes[11],
+            self.bytes[12], self.bytes[13], self.bytes[14], self.bytes[15],
+        ];
+        u64::from_be_bytes(counter_bytes)
     }
 
     /// Set counter value (last 8 bytes).
@@ -363,9 +388,14 @@ impl fmt::Debug for Iv {
 }
 
 /// Key-value pair for encryption.
-#[derive(Clone)]
+///
+/// # Security
+///
+/// The content key is automatically zeroized when the struct is dropped.
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct KeyPair {
     /// Key identifier.
+    #[zeroize(skip)]
     pub key_id: KeyId,
     /// Content encryption key.
     pub key: ContentKey,
@@ -396,12 +426,24 @@ impl fmt::Debug for KeyPair {
 }
 
 /// Key store for managing multiple keys.
+///
+/// # Security
+///
+/// All keys are automatically zeroized when the store is dropped or cleared.
 #[derive(Default)]
 pub struct KeyStore {
     /// Keys indexed by key ID.
     keys: HashMap<KeyId, ContentKey>,
     /// Master key for key derivation.
     master_key: Option<ContentKey>,
+}
+
+impl Drop for KeyStore {
+    fn drop(&mut self) {
+        // Clear calls zeroize on each key via ContentKey's ZeroizeOnDrop
+        self.keys.clear();
+        // master_key's ZeroizeOnDrop handles cleanup
+    }
 }
 
 impl KeyStore {
@@ -432,7 +474,7 @@ impl KeyStore {
 
     /// Add a key pair to the store.
     pub fn add_key_pair(&mut self, pair: KeyPair) -> Result<()> {
-        self.add_key(pair.key_id, pair.key)
+        self.add_key(pair.key_id, pair.key.clone())
     }
 
     /// Get a key by its ID.
@@ -450,18 +492,23 @@ impl KeyStore {
     /// If the key exists in the store, returns it.
     /// If a master key is set and the key doesn't exist, derives it.
     pub fn get_or_derive(&mut self, key_id: &KeyId) -> Result<&ContentKey> {
-        if !self.keys.contains_key(key_id) {
-            if let Some(ref master_key) = self.master_key {
-                let derived = ContentKey::derive(key_id, master_key);
-                self.keys.insert(*key_id, derived);
-            } else {
-                return Err(KeyError::KeyNotFound {
-                    key_id: key_id.to_string(),
+        // Use entry API to avoid separate lookup and insert
+        use std::collections::hash_map::Entry;
+
+        match self.keys.entry(*key_id) {
+            Entry::Occupied(entry) => Ok(entry.into_mut()),
+            Entry::Vacant(entry) => {
+                if let Some(ref master_key) = self.master_key {
+                    let derived = ContentKey::derive(key_id, master_key);
+                    Ok(entry.insert(derived))
+                } else {
+                    Err(KeyError::KeyNotFound {
+                        key_id: key_id.to_string(),
+                    }
+                    .into())
                 }
-                .into());
             }
         }
-        Ok(self.keys.get(key_id).unwrap())
     }
 
     /// Check if a key exists.

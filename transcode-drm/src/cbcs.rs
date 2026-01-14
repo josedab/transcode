@@ -161,9 +161,14 @@ impl CbcsEncryptor {
                     *byte ^= iv_byte;
                 }
 
-                // Encrypt block
-                let block_array: &mut [u8; AES_BLOCK_SIZE] =
-                    block.try_into().expect("block size verified");
+                // Encrypt block - slice is guaranteed to be AES_BLOCK_SIZE from slicing above
+                let block_len = block.len();
+                let block_array: &mut [u8; AES_BLOCK_SIZE] = block.try_into().map_err(|_| {
+                    EncryptionError::BlockAlignment {
+                        size: block_len,
+                        block_size: AES_BLOCK_SIZE,
+                    }
+                })?;
                 self.cipher.encrypt_block(block_array.into());
             }
         }
@@ -262,9 +267,14 @@ impl CbcsDecryptor {
                 let end = start + AES_BLOCK_SIZE;
                 let block = &mut data[start..end];
 
-                // Decrypt block
-                let block_array: &mut [u8; AES_BLOCK_SIZE] =
-                    block.try_into().expect("block size verified");
+                // Decrypt block - slice is guaranteed to be AES_BLOCK_SIZE from slicing above
+                let block_len = block.len();
+                let block_array: &mut [u8; AES_BLOCK_SIZE] = block.try_into().map_err(|_| {
+                    EncryptionError::BlockAlignment {
+                        size: block_len,
+                        block_size: AES_BLOCK_SIZE,
+                    }
+                })?;
                 self.cipher.decrypt_block(block_array.into());
 
                 // XOR with IV
