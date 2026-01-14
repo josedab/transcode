@@ -4,6 +4,23 @@
 //! standard file format for professional video exchange, particularly in
 //! broadcast, post-production, and archival workflows.
 //!
+//! # MXF Structure
+//!
+//! MXF files are organized as a sequence of KLV (Key-Length-Value) triplets:
+//!
+//! ```text
+//! ┌──────────────────┐
+//! │  Header Partition │ ◄── File metadata, edit rates, track info
+//! ├──────────────────┤
+//! │  Header Metadata  │ ◄── SMPTE metadata sets
+//! ├──────────────────┤
+//! │  Body Partitions  │ ◄── Essence data (video, audio)
+//! │  (Content Package)│
+//! ├──────────────────┤
+//! │  Footer Partition │ ◄── Index tables, random access
+//! └──────────────────┘
+//! ```
+//!
 //! # Features
 //!
 //! - MXF file parsing (demuxing)
@@ -24,6 +41,15 @@
 //!
 //! println!("Tracks: {}", demuxer.track_count());
 //! ```
+//!
+//! # Public Types
+//!
+//! - [`MxfDemuxer`] - MXF file reading and essence extraction
+//! - [`MxfMuxer`] - MXF file writing and essence packaging
+//! - [`Klv`], [`KlvReader`] - KLV triplet parsing
+//! - [`UniversalLabel`], [`UL`] - SMPTE Universal Label handling
+//! - [`Partition`], [`PartitionKind`] - MXF partition structures
+//! - [`ContentPackage`], [`EssenceDescriptor`] - Essence descriptors and content packages
 
 mod demuxer;
 mod error;
@@ -42,3 +68,28 @@ pub use muxer::{MuxerConfig, MxfMuxer, TrackConfig};
 pub use partition::{Partition, PartitionKind};
 pub use types::{EditRate, MxfTimestamp, Rational, Umid};
 pub use ul::{UniversalLabel, UL};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exports() {
+        // Verify core types are exported
+        let _: fn() -> Result<()> = || Ok(());
+    }
+
+    #[test]
+    fn test_edit_rate() {
+        let rate = EditRate { numerator: 24, denominator: 1 };
+        assert_eq!(rate.numerator, 24);
+        assert_eq!(rate.denominator, 1);
+    }
+
+    #[test]
+    fn test_rational() {
+        let r = Rational { numerator: 30000, denominator: 1001 };
+        assert_eq!(r.numerator, 30000);
+        assert_eq!(r.denominator, 1001);
+    }
+}

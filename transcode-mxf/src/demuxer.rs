@@ -2,9 +2,9 @@
 
 use crate::error::{MxfError, Result};
 use crate::klv::KlvReader;
-use crate::metadata::{ContentPackage, EssenceDescriptor, Track};
+use crate::metadata::ContentPackage;
 use crate::partition::{Partition, PartitionKind, RandomIndexPack};
-use crate::types::{EditRate, EssenceCoding, Rational, TrackKind, Umid};
+use crate::types::{EditRate, EssenceCoding, Rational, TrackKind};
 use crate::ul::{labels, UniversalLabel};
 
 /// Track information
@@ -52,6 +52,7 @@ pub struct MxfDemuxer<'a> {
     /// Track information
     tracks: Vec<TrackInfo>,
     /// Content packages (material/source)
+    #[allow(dead_code)]
     packages: Vec<ContentPackage>,
     /// Current read position
     current_position: u64,

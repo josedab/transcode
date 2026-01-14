@@ -169,7 +169,7 @@ impl<W: Write + Seek> AviMuxer<W> {
 
         // Write JUNK chunk for padding (align to 2KB boundary)
         let current_pos = self.writer.stream_position()?;
-        let target_pos = ((current_pos + 2047) / 2048) * 2048;
+        let target_pos = current_pos.div_ceil(2048) * 2048;
         let junk_size = target_pos - current_pos - 8;
         if junk_size > 0 {
             self.writer.write_all(b"JUNK")?;

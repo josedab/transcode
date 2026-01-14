@@ -34,3 +34,28 @@ pub use demuxer::{AviDemuxer, AviPacket, StreamInfo};
 pub use error::{AviError, Result};
 pub use muxer::{AviMuxer, MuxerConfig, StreamConfig};
 pub use types::{AviHeader, StreamHeader, VideoFormat, AudioFormat};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_exports() {
+        // Verify core types are exported
+        let _: fn() -> Result<()> = || Ok(());
+    }
+
+    #[test]
+    fn test_fourcc() {
+        let fourcc = FourCC::new(*b"RIFF");
+        assert_eq!(fourcc.as_str(), "RIFF");
+    }
+
+    #[test]
+    fn test_chunk_ids() {
+        use chunks::chunk_ids;
+        assert_eq!(chunk_ids::RIFF.as_str(), "RIFF");
+        assert_eq!(chunk_ids::AVI.as_str(), "AVI ");
+        assert_eq!(chunk_ids::MOVI.as_str(), "movi");
+    }
+}

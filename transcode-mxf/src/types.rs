@@ -16,7 +16,7 @@ impl Rational {
     }
 
     /// Convert to f64
-    pub fn to_f64(&self) -> f64 {
+    pub fn to_f64(self) -> f64 {
         if self.denominator == 0 {
             0.0
         } else {
@@ -229,7 +229,7 @@ impl fmt::Display for MxfTimestamp {
 }
 
 /// Track kind
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TrackKind {
     /// Video track
     Video,
@@ -240,13 +240,8 @@ pub enum TrackKind {
     /// Timecode track
     Timecode,
     /// Unknown track type
+    #[default]
     Unknown,
-}
-
-impl Default for TrackKind {
-    fn default() -> Self {
-        TrackKind::Unknown
-    }
 }
 
 /// Video frame size
@@ -301,7 +296,7 @@ impl AspectRatio {
         AspectRatio::new(4, 3)
     }
 
-    pub fn to_f64(&self) -> f64 {
+    pub fn to_f64(self) -> f64 {
         if self.denominator == 0 {
             0.0
         } else {
@@ -317,23 +312,20 @@ impl Default for AspectRatio {
 }
 
 /// Color primaries
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ColorPrimaries {
     BT601,
+    #[default]
     BT709,
     BT2020,
     Unknown,
 }
 
-impl Default for ColorPrimaries {
-    fn default() -> Self {
-        ColorPrimaries::BT709
-    }
-}
-
 /// Transfer characteristics
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum TransferCharacteristic {
+    #[default]
     BT709,
     BT2020,
     PQ,   // Perceptual Quantizer (HDR)
@@ -341,14 +333,8 @@ pub enum TransferCharacteristic {
     Unknown,
 }
 
-impl Default for TransferCharacteristic {
-    fn default() -> Self {
-        TransferCharacteristic::BT709
-    }
-}
-
 /// Essence coding
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum EssenceCoding {
     /// Uncompressed video
     Uncompressed,
@@ -367,13 +353,8 @@ pub enum EssenceCoding {
     /// PCM audio
     Pcm,
     /// Unknown
+    #[default]
     Unknown,
-}
-
-impl Default for EssenceCoding {
-    fn default() -> Self {
-        EssenceCoding::Unknown
-    }
 }
 
 #[cfg(test)]

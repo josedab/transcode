@@ -579,6 +579,7 @@ pub fn video_codec_to_mkv_id(codec: VideoCodec) -> &'static str {
         VideoCodec::H265 => codec_ids::V_MPEGH_ISO_HEVC,
         VideoCodec::Mjpeg => codec_ids::V_MJPEG,
         VideoCodec::Raw => codec_ids::V_UNCOMPRESSED,
+        _ => codec_ids::V_UNCOMPRESSED, // Unknown codec treated as raw
     }
 }
 
@@ -619,6 +620,7 @@ pub fn audio_codec_to_mkv_id(codec: AudioCodec) -> &'static str {
         AudioCodec::Ac3 => codec_ids::A_AC3,
         AudioCodec::Eac3 => codec_ids::A_EAC3,
         AudioCodec::Pcm => codec_ids::A_PCM_INT_LIT,
+        _ => codec_ids::A_PCM_INT_LIT, // Unknown codec treated as PCM
     }
 }
 

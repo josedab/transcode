@@ -2,8 +2,8 @@
 
 use crate::error::Result;
 use crate::klv::{encode_ber_length, Klv};
-use crate::metadata::{ContentPackage, PrimerPack, Track};
-use crate::partition::{Partition, PartitionCompleteness, PartitionKind, PartitionStatus, RandomIndexPack};
+use crate::metadata::PrimerPack;
+use crate::partition::{Partition, PartitionCompleteness, PartitionStatus, RandomIndexPack};
 use crate::types::{EditRate, EssenceCoding, FrameSize, Rational, TrackKind, Umid};
 use crate::ul::labels;
 use byteorder::{BigEndian, WriteBytesExt};
@@ -90,6 +90,7 @@ impl Default for MuxerConfig {
 /// Stream state
 struct StreamState {
     config: TrackConfig,
+    #[allow(dead_code)]
     track_id: u32,
     frame_count: u64,
     total_bytes: u64,

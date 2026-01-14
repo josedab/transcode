@@ -15,6 +15,7 @@ impl FourCC {
     }
 
     /// Create from string (must be 4 bytes)
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         if s.len() == 4 {
             let mut bytes = [0u8; 4];
@@ -61,6 +62,7 @@ impl From<&[u8; 4]> for FourCC {
 }
 
 /// Well-known chunk IDs
+#[allow(dead_code)]
 pub mod chunk_ids {
     use super::FourCC;
 
@@ -244,7 +246,7 @@ impl RiffChunk {
         writer.write_all(&self.data)?;
 
         // Pad to word boundary
-        if self.data.len() % 2 != 0 {
+        if !self.data.len().is_multiple_of(2) {
             writer.write_all(&[0])?;
         }
 
@@ -302,6 +304,7 @@ impl AviChunk {
 
 /// LIST chunk (container for other chunks)
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ListChunk {
     /// List type
     pub list_type: FourCC,
@@ -309,6 +312,7 @@ pub struct ListChunk {
     pub chunks: Vec<RiffChunk>,
 }
 
+#[allow(dead_code)]
 impl ListChunk {
     /// Create new list chunk
     pub fn new(list_type: FourCC) -> Self {
@@ -368,7 +372,7 @@ impl ListChunk {
         }
 
         // Pad to word boundary if needed
-        if content_size % 2 != 0 {
+        if !content_size.is_multiple_of(2) {
             writer.write_all(&[0])?;
         }
 

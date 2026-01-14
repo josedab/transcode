@@ -8,7 +8,7 @@
 use crate::error::{MxfError, Result};
 use crate::ul::{UniversalLabel, UL};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Write};
 
 /// A KLV triplet
 #[derive(Debug, Clone)]
@@ -232,6 +232,7 @@ pub fn encode_ber_length(length: usize) -> Vec<u8> {
 }
 
 /// Decode BER length from bytes
+#[allow(dead_code)]
 pub fn decode_ber_length(data: &[u8]) -> Result<(usize, usize)> {
     if data.is_empty() {
         return Err(MxfError::BerError("No data".into()));
@@ -260,6 +261,7 @@ pub fn decode_ber_length(data: &[u8]) -> Result<(usize, usize)> {
 }
 
 /// Write a local set (2-byte tag, 2-byte length)
+#[allow(dead_code)]
 pub fn write_local_set<W: Write>(
     writer: &mut W,
     tag: u16,
@@ -272,6 +274,7 @@ pub fn write_local_set<W: Write>(
 }
 
 /// Read a local set entry
+#[allow(dead_code)]
 pub fn read_local_set(data: &[u8], offset: usize) -> Result<(u16, Vec<u8>, usize)> {
     if offset + 4 > data.len() {
         return Err(MxfError::InsufficientData {

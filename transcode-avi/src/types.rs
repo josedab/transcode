@@ -87,7 +87,7 @@ impl AviFlags {
         }
     }
 
-    pub fn to_u32(&self) -> u32 {
+    pub fn to_u32(self) -> u32 {
         let mut value = 0u32;
         if self.has_index {
             value |= 0x10;
@@ -186,13 +186,13 @@ impl StreamType {
         }
     }
 
-    pub fn to_fourcc(&self) -> [u8; 4] {
+    pub fn to_fourcc(self) -> [u8; 4] {
         match self {
             StreamType::Video => *b"vids",
             StreamType::Audio => *b"auds",
             StreamType::Text => *b"txts",
             StreamType::Midi => *b"mids",
-            StreamType::Unknown(fourcc) => *fourcc,
+            StreamType::Unknown(fourcc) => fourcc,
         }
     }
 }
@@ -324,6 +324,7 @@ impl AudioFormat {
 }
 
 /// Common AVI codec FourCCs
+#[allow(dead_code)]
 pub mod codec {
     /// Uncompressed RGB
     pub const DIB: [u8; 4] = *b"DIB ";

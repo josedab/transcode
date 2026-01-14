@@ -1,6 +1,5 @@
 //! MXF metadata structures
 
-use crate::error::{MxfError, Result};
 use crate::types::{
     AspectRatio, ColorPrimaries, EditRate, EssenceCoding, FrameSize, Rational, TrackKind,
     TransferCharacteristic, Umid,
@@ -201,9 +200,10 @@ impl Default for AudioDescriptor {
 }
 
 /// Field dominance
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FieldDominance {
     /// Progressive (non-interlaced)
+    #[default]
     Progressive,
     /// Field 1 dominant (top field first)
     Field1,
@@ -211,14 +211,9 @@ pub enum FieldDominance {
     Field2,
 }
 
-impl Default for FieldDominance {
-    fn default() -> Self {
-        FieldDominance::Progressive
-    }
-}
-
 /// Index table segment
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct IndexTableSegment {
     /// Instance ID
     pub instance_id: [u8; 16],
@@ -261,6 +256,7 @@ impl Default for IndexTableSegment {
 
 /// Delta entry (for multi-track essence)
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub struct DeltaEntry {
     /// Position offset
     pub pos_table_index: i8,
@@ -272,6 +268,7 @@ pub struct DeltaEntry {
 
 /// Index entry
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct IndexEntry {
     /// Temporal offset
     pub temporal_offset: i8,
@@ -287,6 +284,7 @@ pub struct IndexEntry {
     pub pos_table: Vec<Rational>,
 }
 
+#[allow(dead_code)]
 impl IndexEntry {
     /// Index entry flags
     pub const FLAG_RANDOM_ACCESS: u8 = 0x80;
@@ -313,6 +311,7 @@ impl Default for PrimerPack {
     }
 }
 
+#[allow(dead_code)]
 impl PrimerPack {
     /// Create new primer pack with standard mappings
     pub fn new() -> Self {
