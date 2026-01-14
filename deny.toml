@@ -7,11 +7,20 @@ db-path = "~/.cargo/advisory-db"
 # The url(s) of the advisory databases to use
 url = ["https://github.com/rustsec/advisory-db"]
 # How to handle unmaintained crates
-unmaintained = "warn"
+unmaintained = "deny"
 # How to handle yanked crates
-yanked = "warn"
-# How to handle advisories with no severity
-ignore = []
+yanked = "deny"
+# Ignore advisories from vmaf-sys optional dependency (uses outdated tokio 0.1, hyper 0.12)
+# vmaf-sys is only included when the "vmaf" feature is explicitly enabled
+# These are not exploitable in our use case (local VMAF computation, no network exposure)
+ignore = [
+    "RUSTSEC-2024-0332",  # h2 CONTINUATION flood (vmaf-sys -> hyper 0.12 -> h2 0.1)
+    "RUSTSEC-2024-0003",  # h2 resource exhaustion (vmaf-sys -> hyper 0.12 -> h2 0.1)
+    "RUSTSEC-2023-0034",  # h2 resource exhaustion (vmaf-sys -> hyper 0.12 -> h2 0.1)
+    "RUSTSEC-2021-0079",  # hyper Transfer-Encoding overflow (vmaf-sys -> hyper 0.12)
+    "RUSTSEC-2021-0078",  # hyper Content-Length smuggling (vmaf-sys -> hyper 0.12)
+    "RUSTSEC-2024-0421",  # idna Punycode (vmaf-sys -> reqwest 0.9 -> idna 0.1)
+]
 
 [licenses]
 # Confidence threshold for detecting a license

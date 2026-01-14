@@ -45,7 +45,7 @@ output-dir = "coverage"
 verbose = true
 
 # Fail if coverage is below threshold
-# fail-under = 50.0
+fail-under = 50.0
 
 [ci]
 # CI-specific settings
