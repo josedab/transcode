@@ -160,6 +160,10 @@ pub enum CodecError {
         max_height: u32,
     },
 
+    /// Resource limit exceeded (parameter sets, reference frames, etc.).
+    #[error("Resource exhausted: {0}")]
+    ResourceExhausted(String),
+
     /// Generic codec error message.
     #[error("{0}")]
     Other(String),
@@ -232,11 +236,13 @@ impl Error {
     }
 
     /// Check if this is an end-of-stream error.
+    #[must_use]
     pub fn is_eof(&self) -> bool {
         matches!(self, Error::EndOfStream)
     }
 
     /// Check if this error is recoverable (can continue processing).
+    #[must_use]
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
