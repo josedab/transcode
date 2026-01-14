@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "DRM and encryption support for transcode"
 keywords = ["video", "drm", "encryption", "widevine", "cenc"]
 categories = ["multimedia::video", "cryptography"]

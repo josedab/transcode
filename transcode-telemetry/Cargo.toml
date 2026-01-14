@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "OpenTelemetry-based observability for the transcode system"
 keywords = ["observability", "telemetry", "opentelemetry", "metrics", "tracing", "prometheus"]
 categories = ["development-tools::profiling", "web-programming"]

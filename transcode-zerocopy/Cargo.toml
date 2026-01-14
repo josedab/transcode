@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Zero-copy I/O optimizations for transcode"
 keywords = ["video", "io", "zero-copy", "performance", "mmap"]
 categories = ["multimedia", "filesystem"]

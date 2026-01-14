@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "MPEG-2 video codec support via FFI wrapper"
 keywords = ["video", "mpeg2", "dvd", "broadcast", "codec"]
 categories = ["multimedia::video", "encoding"]
@@ -16,8 +17,10 @@ tracing.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
 
-# FFmpeg/mpeg2dec FFI bindings (optional - user must have libraries installed)
-# mpeg2dec-sys = { version = "0.1", optional = true }
+# FFmpeg FFI bindings (optional - user must have FFmpeg installed)
+# Uncomment below when using ffi-ffmpeg feature.
+# Note: May conflict with vmaf-sys bindgen version.
+# ffmpeg-sys-next = { version = "7.0", optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true
@@ -25,5 +28,9 @@ tempfile.workspace = true
 
 [features]
 default = []
-# Enable FFmpeg FFI integration (requires FFmpeg/libmpeg2 dev libraries)
+# Enable FFmpeg FFI integration (requires FFmpeg dev libraries)
+# When enabled, users must:
+# 1. Uncomment the ffmpeg-sys-next dependency above
+# 2. Have FFmpeg development libraries installed
+# 3. Ensure no bindgen version conflicts in workspace
 ffi-ffmpeg = []

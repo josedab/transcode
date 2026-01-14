@@ -10,7 +10,7 @@ keywords = ["audio", "flac", "codec", "decoder", "encoder"]
 categories = ["multimedia::audio", "encoding"]
 
 [dependencies]
-thiserror = "1.0"
+thiserror.workspace = true
 bitstream-io = "2.0"
 crc = "3.0"
 

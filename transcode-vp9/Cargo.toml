@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "VP9 codec implementation for transcode"
 keywords = ["video", "codec", "vp9", "webm", "google"]
 categories = ["multimedia::video", "compression"]

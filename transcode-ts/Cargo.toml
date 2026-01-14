@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "MPEG Transport Stream container support for transcode"
 keywords = ["video", "container", "mpeg-ts", "transport-stream", "broadcast"]
 categories = ["multimedia::video", "parser-implementations"]

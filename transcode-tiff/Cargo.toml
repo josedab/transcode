@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "TIFF image codec for archival and professional imaging"
 keywords = ["tiff", "image", "archival", "lossless"]
 categories = ["multimedia::images", "compression"]

@@ -10,7 +10,7 @@ keywords = ["prores", "video", "decoder", "codec"]
 categories = ["multimedia::video"]
 
 [dependencies]
-thiserror = "1.0"
+thiserror.workspace = true
 byteorder = "1.5"
 bitreader = "0.3"
 log = "0.4"

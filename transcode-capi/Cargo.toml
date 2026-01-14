@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "C API bindings for the Transcode codec library"
 keywords = ["video", "audio", "codec", "transcoding", "ffi"]
 categories = ["multimedia", "api-bindings", "external-ffi-bindings"]
@@ -11,6 +12,8 @@ categories = ["multimedia", "api-bindings", "external-ffi-bindings"]
 [lib]
 name = "transcode"
 crate-type = ["cdylib", "staticlib"]
+# Disable docs to avoid collision with main transcode crate
+doc = false
 
 [dependencies]
 transcode-core = { workspace = true }

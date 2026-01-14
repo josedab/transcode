@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Cloud storage integration for transcode (S3, GCS, Azure)"
 keywords = ["video", "cloud", "s3", "gcs", "azure"]
 categories = ["multimedia", "web-programming"]

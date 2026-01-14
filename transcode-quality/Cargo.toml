@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Perceptual video quality metrics for transcode"
 keywords = ["video", "quality", "vmaf", "ssim", "psnr"]
 categories = ["multimedia", "science"]
@@ -19,7 +20,7 @@ ndarray = "0.16"
 num-traits = "0.2"
 
 # Parallel processing
-rayon = "1.8"
+rayon = "1.10"
 
 # Logging
 tracing.workspace = true

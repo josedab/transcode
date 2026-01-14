@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "HEVC/H.265 codec implementation for transcode"
 keywords = ["video", "codec", "hevc", "h265", "encoding"]
 categories = ["multimedia::video", "compression"]

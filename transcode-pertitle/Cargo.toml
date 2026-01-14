@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Per-title encoding optimization for transcode"
 keywords = ["video", "encoding", "optimization", "adaptive", "bitrate"]
 categories = ["multimedia"]
@@ -16,7 +17,7 @@ serde = { workspace = true, features = ["derive"] }
 tracing.workspace = true
 
 # Optimization
-rayon = "1.8"
+rayon = "1.10"
 
 [dev-dependencies]
 pretty_assertions.workspace = true

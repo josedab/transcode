@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Matroska/WebM container support for transcode"
 keywords = ["video", "container", "mkv", "webm", "matroska"]
 categories = ["multimedia::video", "parser-implementations"]

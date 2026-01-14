@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Dolby Vision support for transcode (RPU parsing, profile conversion, metadata)"
 keywords = ["video", "dolby-vision", "hdr", "rpu", "metadata"]
 categories = ["multimedia"]

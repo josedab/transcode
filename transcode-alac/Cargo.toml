@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Apple Lossless Audio Codec (ALAC) implementation"
 keywords = ["audio", "codec", "alac", "apple", "lossless"]
 categories = ["multimedia", "encoding", "compression"]

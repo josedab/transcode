@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Node.js bindings for the Transcode codec library"
 keywords = ["video", "audio", "codec", "transcoding", "nodejs", "napi"]
 categories = ["multimedia", "api-bindings"]
@@ -36,6 +37,4 @@ napi-build = "2"
 
 [features]
 default = []
-
-[profile.release]
-lto = true
+# Note: Release profile settings (lto, codegen-units, opt-level) are inherited from workspace root

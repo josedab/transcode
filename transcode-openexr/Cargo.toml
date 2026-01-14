@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "OpenEXR image codec for high dynamic range imaging"
 keywords = ["openexr", "hdr", "exr", "vfx", "image"]
 categories = ["multimedia::images", "compression"]

@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "SMPTE timecode support for transcode"
 keywords = ["video", "timecode", "smpte", "broadcast", "ltc"]
 categories = ["multimedia::video"]

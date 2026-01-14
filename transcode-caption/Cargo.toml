@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Automatic captioning and subtitle extraction for transcode"
 keywords = ["video", "captions", "subtitles", "speech-to-text", "whisper"]
 categories = ["multimedia", "text-processing"]

@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "DTS and TrueHD audio codec support via FFI wrapper"
 keywords = ["audio", "dts", "truehd", "surround", "codec"]
 categories = ["multimedia::audio", "encoding"]

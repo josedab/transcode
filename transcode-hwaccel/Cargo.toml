@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 description = "Hardware-accelerated encoding/decoding for transcode"
 keywords = ["video", "hardware", "nvenc", "vaapi", "videotoolbox"]
 categories = ["multimedia", "hardware-support"]
@@ -13,6 +14,9 @@ transcode-core = { path = "../transcode-core" }
 
 # Error handling
 thiserror.workspace = true
+
+# Thread-safe primitives (non-poisoning mutexes)
+parking_lot.workspace = true
 
 # Async support
 tokio = { workspace = true, optional = true }

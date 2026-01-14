@@ -49,7 +49,7 @@ web-sys = { version = "0.3", features = [
 serde = { version = "1.0", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 console_error_panic_hook = { version = "0.1", optional = true }
-rayon = { version = "1.8", optional = true }
+rayon = { version = "1.10", optional = true }
 wasm-bindgen-rayon = { version = "1.2", optional = true }
 
 [dev-dependencies]
