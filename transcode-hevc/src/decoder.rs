@@ -622,7 +622,7 @@ impl HevcDecoder {
         }
 
         // Initialize SAO parameters
-        self.init_sao_params(&sps);
+        self.init_sao_params(&sps)?;
 
         // Decode CTUs
         self.decode_ctus(&slice_header, &sps, &pps, rbsp)?;
@@ -694,9 +694,12 @@ impl HevcDecoder {
     }
 
     /// Initialize SAO parameters.
-    fn init_sao_params(&mut self, sps: &Sps) {
-        let num_ctbs = (sps.pic_width_in_ctbs() * sps.pic_height_in_ctbs()) as usize;
+    fn init_sao_params(&mut self, sps: &Sps) -> Result<()> {
+        let num_ctbs = (sps.pic_width_in_ctbs() as usize)
+            .checked_mul(sps.pic_height_in_ctbs() as usize)
+            .ok_or_else(|| HevcError::Sps("CTB dimensions overflow".to_string()))?;
         self.sao_params = vec![SaoParams::default(); num_ctbs];
+        Ok(())
     }
 
     /// Decode CTUs in the slice.

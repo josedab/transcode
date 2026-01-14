@@ -305,8 +305,8 @@ impl ProResEncoder {
         output.write_u8(0)?;
 
         // Slice info
-        let mb_width = (frame.width as u32 + 15) / 16;
-        let mb_height = (frame.height as u32 + 15) / 16;
+        let mb_width = frame.width.div_ceil(16);
+        let mb_height = frame.height.div_ceil(16);
         let slices_per_row = self.config.slices_per_row;
         let slice_rows = mb_height as u8;
 
@@ -340,8 +340,8 @@ impl ProResEncoder {
         luma_quant: &[u8; 64],
         chroma_quant: &[u8; 64],
     ) -> Result<()> {
-        let mb_width = (frame.width as u32 + 15) / 16;
-        let mb_height = (frame.height as u32 + 15) / 16;
+        let mb_width = frame.width.div_ceil(16);
+        let mb_height = frame.height.div_ceil(16);
 
         // Limit slices_per_row to actual macroblock width
         let slices_per_row = (self.config.slices_per_row as u32).min(mb_width).max(1);

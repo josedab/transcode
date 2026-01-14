@@ -74,23 +74,27 @@ impl DecodedFrame {
         self.frame_type == FrameType::Intra
     }
 
-    /// Get plane reference.
-    pub fn plane(&self, index: usize) -> &[u8] {
+    /// Get plane reference by index.
+    ///
+    /// Returns `Some` for valid plane indices (0=Y, 1=U, 2=V), `None` otherwise.
+    pub fn plane(&self, index: usize) -> Option<&[u8]> {
         match index {
-            0 => &self.y_plane,
-            1 => &self.u_plane,
-            2 => &self.v_plane,
-            _ => panic!("Invalid plane index"),
+            0 => Some(&self.y_plane),
+            1 => Some(&self.u_plane),
+            2 => Some(&self.v_plane),
+            _ => None,
         }
     }
 
-    /// Get plane mutable reference.
-    pub fn plane_mut(&mut self, index: usize) -> &mut [u8] {
+    /// Get plane mutable reference by index.
+    ///
+    /// Returns `Some` for valid plane indices (0=Y, 1=U, 2=V), `None` otherwise.
+    pub fn plane_mut(&mut self, index: usize) -> Option<&mut [u8]> {
         match index {
-            0 => &mut self.y_plane,
-            1 => &mut self.u_plane,
-            2 => &mut self.v_plane,
-            _ => panic!("Invalid plane index"),
+            0 => Some(&mut self.y_plane),
+            1 => Some(&mut self.u_plane),
+            2 => Some(&mut self.v_plane),
+            _ => None,
         }
     }
 }
@@ -267,7 +271,7 @@ impl TheoraDecoder {
             let dc_scale = DC_SCALE[qi] as i32;
 
             for i in 0..64 {
-                let scale = if i == 0 { dc_scale } else { dc_scale };
+                let scale = dc_scale;
                 matrix[0][i] = (scale * 16 / 100).max(1) as i16;
             }
 
@@ -331,8 +335,8 @@ impl TheoraDecoder {
         self.config.version_minor = vmin;
         self.config.version_subminor = vrev;
 
-        let fmbw = reader.read_bits(16)? as u32;
-        let fmbh = reader.read_bits(16)? as u32;
+        let fmbw = reader.read_bits(16)?;
+        let fmbh = reader.read_bits(16)?;
         self.config.frame_width = fmbw * 16;
         self.config.frame_height = fmbh * 16;
 
@@ -517,7 +521,9 @@ impl TheoraDecoder {
             _ => return Err(TheoraError::DecodeError("Invalid plane".into())),
         };
 
-        let plane = frame.plane_mut(plane_idx);
+        let plane = frame
+            .plane_mut(plane_idx)
+            .ok_or_else(|| TheoraError::DecodeError("Invalid plane index".into()))?;
 
         for by in 0..blocks_y {
             for bx in 0..blocks_x {

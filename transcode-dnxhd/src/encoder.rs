@@ -1,8 +1,8 @@
 //! DNxHD/DNxHR encoder
 
-use crate::error::{DnxError, Result};
-use crate::frame::{DnxFrame, FrameHeader, DNX_SIGNATURE};
-use crate::huffman::{AcHuffmanTable, BitWriter, DcHuffmanTable, HuffmanCode};
+use crate::error::Result;
+use crate::frame::{DnxFrame, DNX_SIGNATURE};
+use crate::huffman::{AcHuffmanTable, BitWriter, DcHuffmanTable};
 use crate::profile::{DnxProfile, ProfileInfo};
 use crate::tables::{
     get_quant_matrix, zigzag_block, WeightMatrix, BLOCK_COEFFS, BLOCK_SIZE, DCT_COS,
@@ -196,8 +196,8 @@ impl DnxEncoder {
         frame: &DnxFrame,
         info: &ProfileInfo,
     ) -> Result<()> {
-        let mb_width = ((frame.width + 15) / 16) as usize;
-        let mb_height = ((frame.height + 15) / 16) as usize;
+        let mb_width = frame.width.div_ceil(16) as usize;
+        let mb_height = frame.height.div_ceil(16) as usize;
         let slices_per_row = self.config.slices_per_row.min(mb_width).max(1);
 
         // DC predictor reset value
@@ -296,9 +296,10 @@ impl DnxEncoder {
     ) -> Result<()> {
         let width = frame.width as usize;
         let height = frame.height as usize;
-        let chroma_width = (width + 1) / 2;
+        let chroma_width = width.div_ceil(2);
 
         // Extract and encode luma blocks (4 per macroblock)
+        #[allow(clippy::needless_range_loop)]
         for i in 0..4 {
             let block_x = (i & 1) * BLOCK_SIZE;
             let block_y = (i >> 1) * BLOCK_SIZE;
@@ -421,9 +422,7 @@ impl DnxEncoder {
 
         // Encode AC coefficients using run-level coding
         let mut run = 0u8;
-        for i in 1..BLOCK_COEFFS {
-            let level = zigzag[i];
-
+        for &level in zigzag.iter().skip(1) {
             if level == 0 {
                 run += 1;
             } else {
@@ -534,6 +533,7 @@ fn dct_row(input: &[i16], output: &mut [i64]) {
 }
 
 /// 1D DCT on a column
+#[allow(clippy::erasing_op, clippy::identity_op)]
 fn dct_col(input: &[i64; BLOCK_COEFFS], output: &mut [i16; BLOCK_COEFFS], col: usize) {
     let mut col_data = [0i64; BLOCK_SIZE];
     for row in 0..BLOCK_SIZE {

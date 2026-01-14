@@ -288,8 +288,8 @@ impl Ffv1Config {
     /// Get symbol using range decoder.
     fn get_symbol(decoder: &mut RangeDecoder, state: &mut [u8], _context: usize) -> Result<u8> {
         let mut value = 0u8;
-        for i in 0..8 {
-            let bit = decoder.get_bit(&mut state[i])?;
+        for (i, s) in state.iter_mut().take(8).enumerate() {
+            let bit = decoder.get_bit(s)?;
             value |= (bit as u8) << i;
         }
         Ok(value)
@@ -338,9 +338,9 @@ impl Ffv1Config {
         let mut table = [0i8; 256];
 
         // Standard FFV1 quant table
-        for i in 0..256 {
+        for (i, entry) in table.iter_mut().enumerate() {
             let signed_i = i as i16 - 128;
-            table[i] = match signed_i.abs() {
+            *entry = match signed_i.abs() {
                 0 => 0,
                 1..=2 => signed_i.signum() as i8,
                 3..=6 => (signed_i.signum() * 2) as i8,

@@ -1,5 +1,7 @@
 //! Entropy coding tables for CineForm
 
+#![allow(dead_code)]
+
 /// Golomb-Rice parameter for coefficient encoding
 pub const GOLOMB_PARAM: u8 = 4;
 

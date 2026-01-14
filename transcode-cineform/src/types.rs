@@ -149,6 +149,7 @@ impl Quality {
 }
 
 /// CineForm codec tag values
+#[allow(dead_code)]
 pub mod tags {
     /// Sample type tag
     pub const SAMPLE_TYPE: u16 = 0x4001;

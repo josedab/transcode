@@ -1,6 +1,6 @@
 //! DNxHD/DNxHR decoder
 
-use crate::error::{DnxError, Result};
+use crate::error::Result;
 use crate::frame::{DnxFrame, FrameHeader, DNX_SIGNATURE};
 use crate::huffman::{AcHuffmanTable, BitReader, DcHuffmanTable};
 use crate::profile::DnxProfile;
@@ -11,7 +11,7 @@ use crate::tables::{
 use crate::types::BitDepth;
 
 /// DNxHD decoder configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DecoderConfig {
     /// Enable threading for slice decoding
     pub threaded: bool,
@@ -19,17 +19,9 @@ pub struct DecoderConfig {
     pub thread_count: usize,
 }
 
-impl Default for DecoderConfig {
-    fn default() -> Self {
-        DecoderConfig {
-            threaded: false,
-            thread_count: 0,
-        }
-    }
-}
-
 /// DNxHD decoder
 pub struct DnxDecoder {
+    #[allow(dead_code)]
     config: DecoderConfig,
     dc_table: DcHuffmanTable,
     ac_table: AcHuffmanTable,
@@ -236,7 +228,7 @@ impl DnxDecoder {
         header: &FrameHeader,
     ) {
         let width = header.width as usize;
-        let chroma_width = (width + 1) / 2;
+        let chroma_width = width.div_ceil(2);
 
         // Process and store luma blocks
         for (i, block) in y_blocks.iter().enumerate() {
@@ -357,6 +349,7 @@ fn idct_row(input: &[i16], output: &mut [i64]) {
 }
 
 /// 1D IDCT on a column
+#[allow(clippy::erasing_op, clippy::identity_op)]
 fn idct_col(input: &[i64; BLOCK_COEFFS], output: &mut [i16; BLOCK_COEFFS], col: usize) {
     // Extract column values
     let mut col_data = [0i64; BLOCK_SIZE];

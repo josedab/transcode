@@ -135,8 +135,18 @@ pub struct CineformFrame {
 
 impl CineformFrame {
     /// Create a new frame with the given header
+    ///
+    /// # Panics
+    /// Panics if width * height overflows. Use `try_new` for fallible creation.
     pub fn new(header: FrameHeader) -> Self {
-        let channel_size = (header.width * header.height) as usize;
+        Self::try_new(header).expect("frame dimensions overflow")
+    }
+
+    /// Try to create a new frame with the given header
+    pub fn try_new(header: FrameHeader) -> Result<Self> {
+        let channel_size = (header.width as usize)
+            .checked_mul(header.height as usize)
+            .ok_or_else(|| CineformError::InvalidHeader("frame dimensions overflow".into()))?;
         let channel_count = header.channel_count as usize;
 
         let mut channels = Vec::with_capacity(channel_count);
@@ -150,14 +160,14 @@ impl CineformFrame {
             channels.push(vec![0i16; size]);
         }
 
-        CineformFrame {
+        Ok(CineformFrame {
             width: header.width,
             height: header.height,
             pixel_format: header.pixel_format,
             quality: header.quality,
             header,
             channels,
-        }
+        })
     }
 
     /// Create frame from plane data

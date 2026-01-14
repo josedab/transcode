@@ -146,7 +146,7 @@ mod tests {
         let info = codec_info();
         assert_eq!(info.name, "vp9");
         assert_eq!(info.long_name, "Google VP9");
-        assert!(!info.can_encode);
+        assert!(info.can_encode);
         assert!(info.can_decode);
     }
 

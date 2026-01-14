@@ -281,6 +281,7 @@ impl Ffv1Decoder {
     }
 
     /// Decode a region of a plane.
+    #[allow(clippy::too_many_arguments)]
     fn decode_slice_region(
         &mut self,
         decoder: &mut RangeDecoder,

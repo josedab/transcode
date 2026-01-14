@@ -50,6 +50,7 @@ impl QuantTable {
     }
 
     /// Get all steps
+    #[allow(dead_code)]
     pub fn steps(&self) -> &[u16] {
         &self.steps
     }
@@ -136,6 +137,7 @@ fn dequantize_subband(data: &mut [i16], step: u16) {
 }
 
 /// Dead zone quantization (zeros out small values more aggressively)
+#[allow(dead_code)]
 pub fn deadzone_quantize(data: &mut [i16], step: u16, deadzone: u16) {
     let step = step as i32;
     let deadzone = deadzone as i32;

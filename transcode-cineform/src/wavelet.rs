@@ -6,20 +6,15 @@
 use crate::error::Result;
 
 /// Wavelet transform type
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WaveletType {
     /// Haar wavelet (simple averaging/differencing)
+    #[default]
     Haar,
     /// LeGall 5/3 wavelet (lossless)
     LeGall53,
     /// CDF 9/7 wavelet (lossy, higher quality)
     Cdf97,
-}
-
-impl Default for WaveletType {
-    fn default() -> Self {
-        WaveletType::Haar
-    }
 }
 
 /// Wavelet subband types
@@ -60,8 +55,8 @@ impl WaveletDecomposition {
 
         // For each level, we have LH, HL, HH subbands
         for _level in 0..levels {
-            let half_w = (w + 1) / 2;
-            let half_h = (h + 1) / 2;
+            let half_w = w.div_ceil(2);
+            let half_h = h.div_ceil(2);
             let subband_size = half_w * half_h;
 
             // LH, HL, HH for this level
@@ -86,6 +81,7 @@ impl WaveletDecomposition {
     }
 
     /// Get subband index for a specific level and type
+    #[allow(dead_code)]
     pub fn subband_index(&self, level: usize, subband: Subband) -> usize {
         match subband {
             Subband::LL => {
@@ -104,8 +100,8 @@ impl WaveletDecomposition {
         let mut h = self.height;
 
         for _ in 0..=level {
-            w = (w + 1) / 2;
-            h = (h + 1) / 2;
+            w = w.div_ceil(2);
+            h = h.div_ceil(2);
         }
 
         (w, h)
@@ -128,8 +124,8 @@ pub fn forward_wavelet_2d(
     let mut current_h = height;
 
     for level in 0..levels {
-        let half_w = (current_w + 1) / 2;
-        let half_h = (current_h + 1) / 2;
+        let half_w = current_w.div_ceil(2);
+        let half_h = current_h.div_ceil(2);
 
         // Allocate temporary buffers for subbands
         let mut ll = vec![0i16; half_w * half_h];
@@ -231,8 +227,8 @@ fn haar_forward_2d(
     hl: &mut [i16],
     hh: &mut [i16],
 ) {
-    let half_w = (width + 1) / 2;
-    let half_h = (height + 1) / 2;
+    let half_w = width.div_ceil(2);
+    let half_h = height.div_ceil(2);
 
     for y in 0..half_h {
         for x in 0..half_w {

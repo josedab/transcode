@@ -8,16 +8,10 @@ use crate::types::{tags, PixelFormat};
 use crate::wavelet::{inverse_wavelet_2d, WaveletDecomposition, WaveletType};
 
 /// Decoder configuration
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DecoderConfig {
     /// Enable threading
     pub threaded: bool,
-}
-
-impl Default for DecoderConfig {
-    fn default() -> Self {
-        DecoderConfig { threaded: false }
-    }
 }
 
 /// CineForm decoder
@@ -185,12 +179,13 @@ fn _decode_subband(data: &[u8], output: &mut [i16]) -> Result<()> {
 }
 
 /// Decode run length
+#[allow(dead_code)]
 fn decode_run(reader: &mut BitReader) -> Result<u32> {
     // Read leading zeros
     let mut zeros = 0u32;
     loop {
         match reader.read_bits(1) {
-            Some(bit) if bit == 1 => {
+            Some(1) => {
                 // End of run prefix
                 break;
             }

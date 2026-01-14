@@ -1,5 +1,7 @@
 //! Huffman coding for DNxHD
 
+#![allow(dead_code)]
+
 use crate::error::{DnxError, Result};
 
 /// Huffman code entry
@@ -266,14 +268,12 @@ impl<'a> BitReader<'a> {
         }
 
         // First use any unread bits
-        if self.unread_count > 0 {
-            if count <= self.unread_count as usize {
-                let shift = self.unread_count - count as u8;
-                let result = (self.unread_buffer >> shift) & ((1 << count) - 1);
-                self.unread_count -= count as u8;
-                self.unread_buffer &= (1 << self.unread_count) - 1;
-                return Ok(result);
-            }
+        if self.unread_count > 0 && count <= self.unread_count as usize {
+            let shift = self.unread_count - count as u8;
+            let result = (self.unread_buffer >> shift) & ((1 << count) - 1);
+            self.unread_count -= count as u8;
+            self.unread_buffer &= (1 << self.unread_count) - 1;
+            return Ok(result);
         }
 
         let mut result = 0u32;

@@ -84,8 +84,8 @@ impl FrameHeader {
         let has_alpha = profile.is_444();
 
         // Calculate macroblock dimensions (16x16 for luma)
-        let mb_width = (width + 15) / 16;
-        let mb_height = (height + 15) / 16;
+        let mb_width = width.div_ceil(16);
+        let mb_height = height.div_ceil(16);
 
         Ok(FrameHeader {
             width,
@@ -207,8 +207,8 @@ impl DnxFrame {
             chroma_format,
             colorimetry: Colorimetry::BT709,
             frame_size: 0, // Will be calculated during encoding
-            mb_width: (width + 15) / 16,
-            mb_height: (height + 15) / 16,
+            mb_width: width.div_ceil(16),
+            mb_height: height.div_ceil(16),
             interlaced: false,
             progressive: true,
             has_alpha: alpha_plane.is_some(),

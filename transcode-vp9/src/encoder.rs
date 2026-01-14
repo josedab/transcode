@@ -295,6 +295,7 @@ pub struct Vp9EncoderStats {
 }
 
 /// VP9 encoder.
+#[allow(dead_code)]
 pub struct Vp9Encoder {
     /// Encoder configuration.
     config: Vp9EncoderConfig,
@@ -322,6 +323,7 @@ pub struct Vp9Encoder {
 
 /// Input frame for encoding.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct Vp9InputFrame {
     y_plane: Vec<u8>,
     u_plane: Vec<u8>,
@@ -332,6 +334,7 @@ struct Vp9InputFrame {
 
 /// Reference frame buffer.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct ReferenceFrame {
     y_plane: Vec<u8>,
     u_plane: Vec<u8>,
@@ -341,23 +344,13 @@ struct ReferenceFrame {
 }
 
 /// Quantization tables.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 struct QuantTables {
     y_dc_delta: i16,
     y_ac_delta: i16,
     uv_dc_delta: i16,
     uv_ac_delta: i16,
-}
-
-impl Default for QuantTables {
-    fn default() -> Self {
-        Self {
-            y_dc_delta: 0,
-            y_ac_delta: 0,
-            uv_dc_delta: 0,
-            uv_ac_delta: 0,
-        }
-    }
 }
 
 impl Vp9Encoder {
@@ -645,7 +638,7 @@ impl Vp9Encoder {
 
         // Tile info
         let min_log2_tiles = 0u32;
-        let max_log2_tiles = ((self.config.width + 63) / 64).trailing_zeros();
+        let max_log2_tiles = self.config.width.div_ceil(64).trailing_zeros();
         let tile_cols_log2 = (self.config.tile_cols_log2 as u32).min(max_log2_tiles);
 
         // Write tile cols increment
@@ -676,10 +669,8 @@ impl Vp9Encoder {
         // For simplicity, write a minimal compressed header
         // Real implementation would use boolean arithmetic coding
 
-        let mut compressed = Vec::new();
-
         // Tx mode (2 bits for TX_MODE_SELECT)
-        compressed.push(0x80); // Minimal valid compressed header
+        let compressed = vec![0x80]; // Minimal valid compressed header
 
         // Append compressed header
         bitstream.extend_from_slice(&compressed);
@@ -717,8 +708,8 @@ impl Vp9Encoder {
         let height = self.config.height as usize;
 
         // Process superblocks (64x64)
-        let sb_cols = (width + 63) / 64;
-        let sb_rows = (height + 63) / 64;
+        let sb_cols = width.div_ceil(64);
+        let sb_rows = height.div_ceil(64);
 
         for sb_row in 0..sb_rows {
             for sb_col in 0..sb_cols {
@@ -750,7 +741,7 @@ impl Vp9Encoder {
         sb_row: usize,
         width: usize,
         height: usize,
-        is_keyframe: bool,
+        _is_keyframe: bool,
         q_index: u8,
     ) -> Result<Vec<u8>> {
         let mut sb_data = Vec::new();
@@ -920,7 +911,7 @@ impl Vp9Encoder {
 
         // Simple run-length encoding
         let mut run = 0u8;
-        for (i, &idx) in ZIGZAG.iter().enumerate().take(last_nz + 1) {
+        for &idx in ZIGZAG.iter().take(last_nz + 1) {
             let coeff = coeffs[idx];
             if coeff == 0 {
                 run += 1;
@@ -960,7 +951,7 @@ impl Vp9Encoder {
         }
 
         let mut run = 0u8;
-        for (i, &idx) in ZIGZAG_4X4.iter().enumerate().take(last_nz + 1) {
+        for &idx in ZIGZAG_4X4.iter().take(last_nz + 1) {
             let coeff = coeffs[idx];
             if coeff == 0 {
                 run += 1;
