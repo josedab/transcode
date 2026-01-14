@@ -95,3 +95,64 @@ impl Default for StreamingConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_streaming_config_default() {
+        let config = StreamingConfig::default();
+        assert_eq!(config.output_dir, "output");
+        assert_eq!(config.segment_duration, 6.0);
+        assert_eq!(config.qualities.len(), 3);
+        assert!(!config.drm_enabled);
+        assert!(config.drm_key_id.is_none());
+    }
+
+    #[test]
+    fn test_streaming_config_default_qualities() {
+        let config = StreamingConfig::default();
+
+        // First quality should be 1080p
+        assert_eq!(config.qualities[0].width, 1920);
+        assert_eq!(config.qualities[0].height, 1080);
+        assert_eq!(config.qualities[0].bitrate, 5_000_000);
+
+        // Second quality should be 720p
+        assert_eq!(config.qualities[1].width, 1280);
+        assert_eq!(config.qualities[1].height, 720);
+        assert_eq!(config.qualities[1].bitrate, 2_500_000);
+
+        // Third quality should be 480p
+        assert_eq!(config.qualities[2].width, 854);
+        assert_eq!(config.qualities[2].height, 480);
+        assert_eq!(config.qualities[2].bitrate, 1_000_000);
+    }
+
+    #[test]
+    fn test_streaming_config_custom() {
+        let config = StreamingConfig {
+            output_dir: "/tmp/output".to_string(),
+            segment_duration: 10.0,
+            qualities: vec![Quality::fhd_1080p()],
+            drm_enabled: true,
+            drm_key_id: Some("test-key-id".to_string()),
+        };
+
+        assert_eq!(config.output_dir, "/tmp/output");
+        assert_eq!(config.segment_duration, 10.0);
+        assert_eq!(config.qualities.len(), 1);
+        assert!(config.drm_enabled);
+        assert_eq!(config.drm_key_id.as_deref(), Some("test-key-id"));
+    }
+
+    #[test]
+    fn test_result_type_alias() {
+        // Verify the Result type alias works correctly
+        fn test_fn() -> Result<u32> {
+            Ok(42)
+        }
+        assert_eq!(test_fn().unwrap(), 42);
+    }
+}
