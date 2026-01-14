@@ -94,3 +94,124 @@ impl From<GpuError> for transcode_core::Error {
         transcode_core::Error::Unsupported(err.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_display_initialization_failed() {
+        let err = GpuError::InitializationFailed("test reason".to_string());
+        assert_eq!(err.to_string(), "GPU initialization failed: test reason");
+    }
+
+    #[test]
+    fn test_error_display_no_adapter() {
+        let err = GpuError::NoAdapter;
+        assert_eq!(err.to_string(), "No compatible GPU adapter found");
+    }
+
+    #[test]
+    fn test_error_display_device_creation_failed() {
+        let err = GpuError::DeviceCreationFailed("device error".to_string());
+        assert_eq!(err.to_string(), "Device creation failed: device error");
+    }
+
+    #[test]
+    fn test_error_display_shader_compilation_failed() {
+        let err = GpuError::ShaderCompilationFailed("syntax error".to_string());
+        assert_eq!(err.to_string(), "Shader compilation failed: syntax error");
+    }
+
+    #[test]
+    fn test_error_display_pipeline_creation_failed() {
+        let err = GpuError::PipelineCreationFailed("pipeline error".to_string());
+        assert_eq!(err.to_string(), "Pipeline creation failed: pipeline error");
+    }
+
+    #[test]
+    fn test_error_display_buffer_creation_failed() {
+        let err = GpuError::BufferCreationFailed("buffer error".to_string());
+        assert_eq!(err.to_string(), "Buffer creation failed: buffer error");
+    }
+
+    #[test]
+    fn test_error_display_texture_creation_failed() {
+        let err = GpuError::TextureCreationFailed("texture error".to_string());
+        assert_eq!(err.to_string(), "Texture creation failed: texture error");
+    }
+
+    #[test]
+    fn test_error_display_invalid_dimensions() {
+        let err = GpuError::InvalidDimensions {
+            width: 20000,
+            height: 10000,
+            max_dimension: 16384,
+        };
+        assert_eq!(
+            err.to_string(),
+            "Invalid dimensions: 20000x10000 (max: 16384)"
+        );
+    }
+
+    #[test]
+    fn test_error_display_unsupported_format() {
+        let err = GpuError::UnsupportedFormat("YUV420".to_string());
+        assert_eq!(err.to_string(), "Unsupported pixel format: YUV420");
+    }
+
+    #[test]
+    fn test_error_display_buffer_size_mismatch() {
+        let err = GpuError::BufferSizeMismatch {
+            expected: 1024,
+            actual: 512,
+        };
+        assert_eq!(
+            err.to_string(),
+            "Buffer size mismatch: expected 1024, got 512"
+        );
+    }
+
+    #[test]
+    fn test_error_display_submission_failed() {
+        let err = GpuError::SubmissionFailed("queue error".to_string());
+        assert_eq!(err.to_string(), "Command submission failed: queue error");
+    }
+
+    #[test]
+    fn test_error_display_mapping_failed() {
+        let err = GpuError::MappingFailed("map error".to_string());
+        assert_eq!(err.to_string(), "Buffer mapping failed: map error");
+    }
+
+    #[test]
+    fn test_error_display_timeout() {
+        let err = GpuError::Timeout(5000);
+        assert_eq!(err.to_string(), "Operation timed out after 5000ms");
+    }
+
+    #[test]
+    fn test_error_display_device_lost() {
+        let err = GpuError::DeviceLost;
+        assert_eq!(err.to_string(), "GPU device lost");
+    }
+
+    #[test]
+    fn test_error_display_out_of_memory() {
+        let err = GpuError::OutOfMemory;
+        assert_eq!(err.to_string(), "Out of GPU memory");
+    }
+
+    #[test]
+    fn test_error_display_invalid_config() {
+        let err = GpuError::InvalidConfig("bad config".to_string());
+        assert_eq!(err.to_string(), "Invalid configuration: bad config");
+    }
+
+    #[test]
+    fn test_error_into_transcode_core_error() {
+        let gpu_err = GpuError::NoAdapter;
+        let core_err: transcode_core::Error = gpu_err.into();
+        assert!(core_err.to_string().contains("No compatible GPU adapter found"));
+    }
+}

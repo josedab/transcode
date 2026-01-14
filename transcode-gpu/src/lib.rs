@@ -25,6 +25,10 @@
 //! }
 //! ```
 
+// Allow dead_code: This crate exposes a public API for GPU-accelerated video processing.
+// Many internal types and functions are building blocks for external consumers and may
+// not be used within the crate itself. The public API surface is intentionally larger
+// than internal usage to support various user workflows.
 #![allow(dead_code)]
 
 mod context;
@@ -43,6 +47,7 @@ pub use texture::{GpuTexture, TextureFormat};
 
 /// Scaling algorithm selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum ScaleMode {
     /// Nearest neighbor - fast, blocky
     Nearest,
@@ -57,6 +62,7 @@ pub enum ScaleMode {
 
 /// Color space for conversions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum ColorSpace {
     /// BT.601 (SD video)
     Bt601,
@@ -71,6 +77,7 @@ pub enum ColorSpace {
 
 /// Pixel format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum PixelFormat {
     /// RGBA 8-bit per channel
     #[default]
@@ -148,5 +155,102 @@ impl GpuCapabilities {
             supports_f16: false, // Check features if needed
             supports_64bit_atomics: false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ===== ScaleMode tests =====
+
+    #[test]
+    fn test_scale_mode_default() {
+        let mode: ScaleMode = Default::default();
+        assert_eq!(mode, ScaleMode::Bilinear);
+    }
+
+    #[test]
+    fn test_scale_mode_variants() {
+        // Ensure all variants can be constructed
+        let modes = [
+            ScaleMode::Nearest,
+            ScaleMode::Bilinear,
+            ScaleMode::Bicubic,
+            ScaleMode::Lanczos,
+        ];
+        assert_eq!(modes.len(), 4);
+    }
+
+    // ===== ColorSpace tests =====
+
+    #[test]
+    fn test_color_space_default() {
+        let space: ColorSpace = Default::default();
+        assert_eq!(space, ColorSpace::Bt709);
+    }
+
+    #[test]
+    fn test_color_space_variants() {
+        let spaces = [
+            ColorSpace::Bt601,
+            ColorSpace::Bt709,
+            ColorSpace::Bt2020,
+            ColorSpace::Srgb,
+        ];
+        assert_eq!(spaces.len(), 4);
+    }
+
+    // ===== PixelFormat tests =====
+
+    #[test]
+    fn test_pixel_format_default() {
+        let format: PixelFormat = Default::default();
+        assert_eq!(format, PixelFormat::Rgba8);
+    }
+
+    #[test]
+    fn test_pixel_format_bytes_per_pixel_packed() {
+        assert_eq!(PixelFormat::Rgba8.bytes_per_pixel(), Some(4));
+        assert_eq!(PixelFormat::Bgra8.bytes_per_pixel(), Some(4));
+        assert_eq!(PixelFormat::Yuyv.bytes_per_pixel(), Some(2));
+        assert_eq!(PixelFormat::Rgba16.bytes_per_pixel(), Some(8));
+        assert_eq!(PixelFormat::Rgba32f.bytes_per_pixel(), Some(16));
+    }
+
+    #[test]
+    fn test_pixel_format_bytes_per_pixel_planar() {
+        // Planar formats return None
+        assert_eq!(PixelFormat::Nv12.bytes_per_pixel(), None);
+        assert_eq!(PixelFormat::I420.bytes_per_pixel(), None);
+    }
+
+    #[test]
+    fn test_pixel_format_is_planar() {
+        assert!(!PixelFormat::Rgba8.is_planar());
+        assert!(!PixelFormat::Bgra8.is_planar());
+        assert!(!PixelFormat::Yuyv.is_planar());
+        assert!(PixelFormat::Nv12.is_planar());
+        assert!(PixelFormat::I420.is_planar());
+    }
+
+    // ===== GpuCapabilities tests =====
+
+    #[test]
+    fn test_gpu_capabilities_construction() {
+        let caps = GpuCapabilities {
+            device_name: "Test GPU".to_string(),
+            driver_info: "Test Driver 1.0".to_string(),
+            backend: "Vulkan".to_string(),
+            max_texture_dimension: 16384,
+            max_buffer_size: 256 * 1024 * 1024,
+            max_workgroup_size: [256, 256, 64],
+            max_workgroups_per_dimension: 65535,
+            supports_f16: true,
+            supports_64bit_atomics: false,
+        };
+        assert_eq!(caps.device_name, "Test GPU");
+        assert_eq!(caps.max_texture_dimension, 16384);
+        assert_eq!(caps.max_workgroup_size[0], 256);
     }
 }

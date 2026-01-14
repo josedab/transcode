@@ -274,3 +274,87 @@ impl TextureSet {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ===== TextureFormat tests =====
+
+    #[test]
+    fn test_texture_format_bytes_per_pixel() {
+        assert_eq!(TextureFormat::R8Unorm.bytes_per_pixel(), 1);
+        assert_eq!(TextureFormat::Rg8Unorm.bytes_per_pixel(), 2);
+        assert_eq!(TextureFormat::Rgba8Unorm.bytes_per_pixel(), 4);
+        assert_eq!(TextureFormat::Rgba8UnormSrgb.bytes_per_pixel(), 4);
+        assert_eq!(TextureFormat::Bgra8Unorm.bytes_per_pixel(), 4);
+        assert_eq!(TextureFormat::Rgba16Float.bytes_per_pixel(), 8);
+        assert_eq!(TextureFormat::Rgba32Float.bytes_per_pixel(), 16);
+    }
+
+    #[test]
+    fn test_texture_format_to_wgpu() {
+        assert_eq!(
+            TextureFormat::Rgba8Unorm.to_wgpu(),
+            wgpu::TextureFormat::Rgba8Unorm
+        );
+        assert_eq!(
+            TextureFormat::Rgba8UnormSrgb.to_wgpu(),
+            wgpu::TextureFormat::Rgba8UnormSrgb
+        );
+        assert_eq!(
+            TextureFormat::Bgra8Unorm.to_wgpu(),
+            wgpu::TextureFormat::Bgra8Unorm
+        );
+        assert_eq!(
+            TextureFormat::R8Unorm.to_wgpu(),
+            wgpu::TextureFormat::R8Unorm
+        );
+        assert_eq!(
+            TextureFormat::Rg8Unorm.to_wgpu(),
+            wgpu::TextureFormat::Rg8Unorm
+        );
+        assert_eq!(
+            TextureFormat::Rgba16Float.to_wgpu(),
+            wgpu::TextureFormat::Rgba16Float
+        );
+        assert_eq!(
+            TextureFormat::Rgba32Float.to_wgpu(),
+            wgpu::TextureFormat::Rgba32Float
+        );
+    }
+
+    #[test]
+    fn test_texture_format_from_pixel_format_success() {
+        assert_eq!(
+            TextureFormat::from_pixel_format(PixelFormat::Rgba8).unwrap(),
+            TextureFormat::Rgba8Unorm
+        );
+        assert_eq!(
+            TextureFormat::from_pixel_format(PixelFormat::Bgra8).unwrap(),
+            TextureFormat::Bgra8Unorm
+        );
+        assert_eq!(
+            TextureFormat::from_pixel_format(PixelFormat::Rgba16).unwrap(),
+            TextureFormat::Rgba16Float
+        );
+        assert_eq!(
+            TextureFormat::from_pixel_format(PixelFormat::Rgba32f).unwrap(),
+            TextureFormat::Rgba32Float
+        );
+    }
+
+    #[test]
+    fn test_texture_format_from_pixel_format_unsupported() {
+        // Planar formats are not supported for direct texture conversion
+        assert!(TextureFormat::from_pixel_format(PixelFormat::Nv12).is_err());
+        assert!(TextureFormat::from_pixel_format(PixelFormat::I420).is_err());
+        assert!(TextureFormat::from_pixel_format(PixelFormat::Yuyv).is_err());
+    }
+
+    #[test]
+    fn test_texture_format_equality() {
+        assert_eq!(TextureFormat::Rgba8Unorm, TextureFormat::Rgba8Unorm);
+        assert_ne!(TextureFormat::Rgba8Unorm, TextureFormat::Bgra8Unorm);
+    }
+}
