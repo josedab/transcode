@@ -1,5 +1,7 @@
 //! VP8 transform functions (Walsh-Hadamard and DCT).
 
+#![allow(dead_code)]
+
 /// Apply inverse Walsh-Hadamard transform to 4x4 block.
 pub fn iwht4x4(input: &[i16; 16], output: &mut [i16; 16]) {
     let mut tmp = [0i16; 16];
@@ -172,8 +174,8 @@ pub fn dequantize(
     ac_quant: i16,
 ) {
     coeffs[0] *= dc_quant;
-    for i in 1..16 {
-        coeffs[i] *= ac_quant;
+    for coeff in coeffs.iter_mut().skip(1) {
+        *coeff *= ac_quant;
     }
 }
 

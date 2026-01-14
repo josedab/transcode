@@ -3,8 +3,10 @@
 //! VP8 uses a loop filter similar to H.264 to reduce blocking artifacts.
 //! The filter operates on block edges and can be adjusted per-macroblock.
 
+#![allow(dead_code)]
+
 /// Loop filter parameters.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct LoopFilterParams {
     /// Filter level (0-63).
     pub level: u8,
@@ -12,16 +14,6 @@ pub struct LoopFilterParams {
     pub sharpness: u8,
     /// Use simple filter (vs normal filter).
     pub simple: bool,
-}
-
-impl Default for LoopFilterParams {
-    fn default() -> Self {
-        Self {
-            level: 0,
-            sharpness: 0,
-            simple: false,
-        }
-    }
 }
 
 impl LoopFilterParams {
@@ -65,7 +57,7 @@ fn compute_limits(level: u8, sharpness: u8) -> (u8, u8, u8) {
 
     let edge_limit = (level * 2) + interior_limit;
 
-    (interior_limit, edge_limit.min(255), hev_threshold)
+    (interior_limit, edge_limit, hev_threshold)
 }
 
 /// Simple filter for low complexity deblocking.
@@ -83,7 +75,7 @@ fn simple_filter(p1: u8, p0: u8, q0: u8, q1: u8, limit: u8) -> (u8, u8) {
     }
 
     // Compute filter value
-    let filter = (3 * (q0_i - p0_i) + 0).clamp(-128, 127);
+    let filter = (3 * (q0_i - p0_i)).clamp(-128, 127);
     let filter1 = ((filter + 4).clamp(-128, 127)) >> 3;
     let filter2 = ((filter + 3).clamp(-128, 127)) >> 3;
 
@@ -100,6 +92,7 @@ fn hev(p1: u8, p0: u8, q0: u8, q1: u8, threshold: u8) -> bool {
 }
 
 /// Normal filter for standard deblocking.
+#[allow(clippy::too_many_arguments)]
 fn normal_filter(
     p3: u8, p2: u8, p1: u8, p0: u8,
     q0: u8, q1: u8, q2: u8, q3: u8,
@@ -492,6 +485,7 @@ impl<'a> UVPlaneFilter<'a> {
 }
 
 /// Apply loop filter to entire frame.
+#[allow(clippy::too_many_arguments)]
 pub fn filter_frame(
     y_data: &mut [u8],
     u_data: &mut [u8],
@@ -506,8 +500,8 @@ pub fn filter_frame(
         return;
     }
 
-    let mb_width = (width + 15) / 16;
-    let mb_height = (height + 15) / 16;
+    let mb_width = width.div_ceil(16);
+    let mb_height = height.div_ceil(16);
 
     // Filter Y plane
     {
@@ -534,8 +528,8 @@ pub fn filter_frame(
 
     // Filter UV planes
     {
-        let uv_width = (width + 1) / 2;
-        let uv_height = (height + 1) / 2;
+        let uv_width = width.div_ceil(2);
+        let uv_height = height.div_ceil(2);
         let mut uv_filter = UVPlaneFilter::new(u_data, v_data, uv_stride, uv_width, uv_height);
 
         for mb_y in 0..mb_height {

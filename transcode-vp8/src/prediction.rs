@@ -5,6 +5,7 @@ use crate::frame::Vp8Frame;
 /// Intra 4x4 prediction modes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(u8)]
+#[allow(clippy::enum_variant_names)]
 pub enum Intra4x4Mode {
     /// DC prediction (average of above and left).
     #[default]
@@ -51,6 +52,7 @@ impl Intra4x4Mode {
 /// Intra 16x16 (luma) prediction modes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(u8)]
+#[allow(clippy::enum_variant_names)]
 pub enum Intra16x16Mode {
     /// DC prediction.
     #[default]
@@ -65,6 +67,7 @@ pub enum Intra16x16Mode {
 
 impl Intra16x16Mode {
     /// Create from raw value.
+    #[allow(dead_code)]
     pub fn from_raw(val: u8) -> Option<Self> {
         match val {
             0 => Some(Self::DcPred),
@@ -555,6 +558,7 @@ pub fn predict_8x8_chroma(mode: IntraChromaMode, ctx: &ChromaPredContext, output
 
 /// Motion vector.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[allow(dead_code)]
 pub struct MotionVector {
     /// Horizontal component (in quarter-pixel units).
     pub x: i16,
@@ -562,6 +566,7 @@ pub struct MotionVector {
     pub y: i16,
 }
 
+#[allow(dead_code)]
 impl MotionVector {
     /// Create a new motion vector.
     pub const fn new(x: i16, y: i16) -> Self {
@@ -582,7 +587,16 @@ impl MotionVector {
     }
 }
 
-/// Inter prediction using motion compensation.
+/// Inter prediction using motion compensation with 6-tap sub-pixel interpolation.
+///
+/// VP8 uses quarter-pixel motion vector precision. The interpolation works as follows:
+/// - For integer positions (frac = 0): direct copy from reference
+/// - For half-pixel positions (frac = 2): 6-tap filter applied
+/// - For quarter-pixel positions (frac = 1, 3): bilinear blend between adjacent samples
+///
+/// When both horizontal and vertical fractional offsets are non-zero, a two-pass
+/// filter is applied: horizontal first (producing a temporary buffer), then vertical.
+#[allow(dead_code)]
 pub fn inter_predict_16x16(
     reference: &Vp8Frame,
     mv: MotionVector,
@@ -592,46 +606,193 @@ pub fn inter_predict_16x16(
 ) {
     let ref_data = reference.y_data();
     let stride = reference.y_stride;
+    let width = reference.width as i32;
+    let height = reference.height as i32;
 
     let base_x = (mb_x * 16) as i32 + (mv.x as i32 >> 2);
     let base_y = (mb_y * 16) as i32 + (mv.y as i32 >> 2);
 
-    let frac_x = (mv.x & 3) as usize;
-    let frac_y = (mv.y & 3) as usize;
+    // Convert quarter-pixel fraction to eighth-pixel for 6-tap filter indexing
+    // VP8 uses quarter-pixel MVs, but filter table is indexed by eighths
+    let frac_x = ((mv.x & 3) * 2) as usize;
+    let frac_y = ((mv.y & 3) * 2) as usize;
 
-    // Simple integer-pel motion compensation for now
-    // TODO: Add sub-pixel interpolation filters
     if frac_x == 0 && frac_y == 0 {
-        // Integer pixel position
+        // Integer pixel position - direct copy
         for y in 0..16 {
             for x in 0..16 {
-                let ref_x = (base_x + x as i32).clamp(0, reference.width as i32 - 1) as usize;
-                let ref_y = (base_y + y as i32).clamp(0, reference.height as i32 - 1) as usize;
+                let ref_x = (base_x + x as i32).clamp(0, width - 1) as usize;
+                let ref_y = (base_y + y as i32).clamp(0, height - 1) as usize;
                 output[y * 16 + x] = ref_data[ref_y * stride + ref_x];
             }
         }
+    } else if frac_y == 0 {
+        // Horizontal-only sub-pixel interpolation
+        for y in 0..16 {
+            let ref_y = (base_y + y as i32).clamp(0, height - 1) as usize;
+            let row_start = ref_y * stride;
+            for x in 0..16 {
+                let ref_x = base_x + x as i32;
+                output[y * 16 + x] = filter_h_clamped(ref_data, row_start, ref_x, width, frac_x);
+            }
+        }
+    } else if frac_x == 0 {
+        // Vertical-only sub-pixel interpolation
+        for y in 0..16 {
+            let ref_y = base_y + y as i32;
+            for x in 0..16 {
+                let ref_x = (base_x + x as i32).clamp(0, width - 1) as usize;
+                output[y * 16 + x] = filter_v_clamped(ref_data, stride, ref_x, ref_y, height, frac_y);
+            }
+        }
     } else {
-        // Sub-pixel interpolation (bilinear for simplicity)
+        // Both horizontal and vertical sub-pixel - two-pass filtering
+        // First pass: horizontal filter into temporary buffer (need extra rows for vertical filter)
+        let mut temp = [0u8; 21 * 16]; // 21 rows (16 + 5 for 6-tap vertical filter), 16 cols
+
+        for y in 0..21 {
+            let ref_y_offset = base_y + y as i32 - 2; // Start 2 rows above for vertical filter taps
+            let ref_y = ref_y_offset.clamp(0, height - 1) as usize;
+            let row_start = ref_y * stride;
+            for x in 0..16 {
+                let ref_x = base_x + x as i32;
+                temp[y * 16 + x] = filter_h_clamped(ref_data, row_start, ref_x, width, frac_x);
+            }
+        }
+
+        // Second pass: vertical filter on horizontally-filtered data
         for y in 0..16 {
             for x in 0..16 {
-                let ref_x0 = (base_x + x as i32).clamp(0, reference.width as i32 - 1) as usize;
-                let ref_y0 = (base_y + y as i32).clamp(0, reference.height as i32 - 1) as usize;
-                let ref_x1 = (ref_x0 + 1).min(reference.width as usize - 1);
-                let ref_y1 = (ref_y0 + 1).min(reference.height as usize - 1);
+                output[y * 16 + x] = filter_v_temp(&temp, 16, x, y as i32 + 2, frac_y);
+            }
+        }
+    }
+}
 
-                let p00 = ref_data[ref_y0 * stride + ref_x0] as u32;
-                let p01 = ref_data[ref_y0 * stride + ref_x1] as u32;
-                let p10 = ref_data[ref_y1 * stride + ref_x0] as u32;
-                let p11 = ref_data[ref_y1 * stride + ref_x1] as u32;
+/// Apply 6-tap horizontal filter with boundary clamping.
+#[allow(dead_code)]
+fn filter_h_clamped(src: &[u8], row_start: usize, x: i32, width: i32, frac: usize) -> u8 {
+    if frac == 0 {
+        let idx = row_start + x.clamp(0, width - 1) as usize;
+        return src.get(idx).copied().unwrap_or(128);
+    }
 
-                let fx = frac_x as u32;
-                let fy = frac_y as u32;
+    let coeffs = &SUBPEL_FILTERS[frac];
+    let mut sum: i32 = 0;
 
-                let h0 = p00 * (4 - fx) + p01 * fx;
-                let h1 = p10 * (4 - fx) + p11 * fx;
-                let val = (h0 * (4 - fy) + h1 * fy + 8) >> 4;
+    for (i, &coeff) in coeffs.iter().enumerate() {
+        let sample_x = (x + i as i32 - 2).clamp(0, width - 1) as usize;
+        let idx = row_start + sample_x;
+        sum += src.get(idx).copied().unwrap_or(128) as i32 * coeff as i32;
+    }
 
-                output[y * 16 + x] = val as u8;
+    ((sum + 64) >> 7).clamp(0, 255) as u8
+}
+
+/// Apply 6-tap vertical filter with boundary clamping.
+#[allow(dead_code)]
+fn filter_v_clamped(src: &[u8], stride: usize, x: usize, y: i32, height: i32, frac: usize) -> u8 {
+    if frac == 0 {
+        let row = y.clamp(0, height - 1) as usize;
+        let idx = row * stride + x;
+        return src.get(idx).copied().unwrap_or(128);
+    }
+
+    let coeffs = &SUBPEL_FILTERS[frac];
+    let mut sum: i32 = 0;
+
+    for (i, &coeff) in coeffs.iter().enumerate() {
+        let sample_y = (y + i as i32 - 2).clamp(0, height - 1) as usize;
+        let idx = sample_y * stride + x;
+        sum += src.get(idx).copied().unwrap_or(128) as i32 * coeff as i32;
+    }
+
+    ((sum + 64) >> 7).clamp(0, 255) as u8
+}
+
+/// Apply 6-tap vertical filter on temporary buffer (already horizontally filtered).
+#[allow(dead_code)]
+fn filter_v_temp(temp: &[u8], stride: usize, x: usize, y: i32, frac: usize) -> u8 {
+    let coeffs = &SUBPEL_FILTERS[frac];
+    let mut sum: i32 = 0;
+
+    for (i, &coeff) in coeffs.iter().enumerate() {
+        let row = (y + i as i32 - 2).max(0) as usize;
+        let idx = row * stride + x;
+        sum += temp.get(idx).copied().unwrap_or(128) as i32 * coeff as i32;
+    }
+
+    ((sum + 64) >> 7).clamp(0, 255) as u8
+}
+
+/// Inter prediction for 4x4 block using motion compensation with 6-tap sub-pixel interpolation.
+///
+/// This is used for sub-macroblock motion compensation in VP8.
+#[allow(dead_code)]
+pub fn inter_predict_4x4(
+    reference: &Vp8Frame,
+    mv: MotionVector,
+    block_x: usize,
+    block_y: usize,
+    output: &mut [u8; 16],
+) {
+    let ref_data = reference.y_data();
+    let stride = reference.y_stride;
+    let width = reference.width as i32;
+    let height = reference.height as i32;
+
+    let base_x = block_x as i32 + (mv.x as i32 >> 2);
+    let base_y = block_y as i32 + (mv.y as i32 >> 2);
+
+    // Convert quarter-pixel fraction to eighth-pixel for 6-tap filter indexing
+    let frac_x = ((mv.x & 3) * 2) as usize;
+    let frac_y = ((mv.y & 3) * 2) as usize;
+
+    if frac_x == 0 && frac_y == 0 {
+        // Integer pixel position
+        for y in 0..4 {
+            for x in 0..4 {
+                let ref_x = (base_x + x as i32).clamp(0, width - 1) as usize;
+                let ref_y = (base_y + y as i32).clamp(0, height - 1) as usize;
+                output[y * 4 + x] = ref_data[ref_y * stride + ref_x];
+            }
+        }
+    } else if frac_y == 0 {
+        // Horizontal-only sub-pixel interpolation
+        for y in 0..4 {
+            let ref_y = (base_y + y as i32).clamp(0, height - 1) as usize;
+            let row_start = ref_y * stride;
+            for x in 0..4 {
+                let ref_x = base_x + x as i32;
+                output[y * 4 + x] = filter_h_clamped(ref_data, row_start, ref_x, width, frac_x);
+            }
+        }
+    } else if frac_x == 0 {
+        // Vertical-only sub-pixel interpolation
+        for y in 0..4 {
+            let ref_y = base_y + y as i32;
+            for x in 0..4 {
+                let ref_x = (base_x + x as i32).clamp(0, width - 1) as usize;
+                output[y * 4 + x] = filter_v_clamped(ref_data, stride, ref_x, ref_y, height, frac_y);
+            }
+        }
+    } else {
+        // Both horizontal and vertical sub-pixel - two-pass filtering
+        let mut temp = [0u8; 9 * 4]; // 9 rows (4 + 5 for 6-tap), 4 cols
+
+        for y in 0..9 {
+            let ref_y_offset = base_y + y as i32 - 2;
+            let ref_y = ref_y_offset.clamp(0, height - 1) as usize;
+            let row_start = ref_y * stride;
+            for x in 0..4 {
+                let ref_x = base_x + x as i32;
+                temp[y * 4 + x] = filter_h_clamped(ref_data, row_start, ref_x, width, frac_x);
+            }
+        }
+
+        for y in 0..4 {
+            for x in 0..4 {
+                output[y * 4 + x] = filter_v_temp(&temp, 4, x, y as i32 + 2, frac_y);
             }
         }
     }
@@ -650,6 +811,7 @@ pub const SUBPEL_FILTERS: [[i16; 6]; 8] = [
 ];
 
 /// Apply 6-tap filter for horizontal sub-pixel interpolation.
+#[allow(dead_code)]
 pub fn filter_h(src: &[u8], x: i32, frac: usize) -> u8 {
     let coeffs = &SUBPEL_FILTERS[frac];
     let mut sum: i32 = 0;
@@ -663,6 +825,7 @@ pub fn filter_h(src: &[u8], x: i32, frac: usize) -> u8 {
 }
 
 /// Apply 6-tap filter for vertical sub-pixel interpolation.
+#[allow(dead_code)]
 pub fn filter_v(src: &[u8], stride: usize, y: i32, frac: usize) -> u8 {
     let coeffs = &SUBPEL_FILTERS[frac];
     let mut sum: i32 = 0;
@@ -720,5 +883,58 @@ mod tests {
 
         assert_eq!(result.x, 2);
         assert_eq!(result.y, 11);
+    }
+
+    #[test]
+    fn test_subpel_filter_coefficients() {
+        // Verify filter coefficients sum to 128 (unity gain)
+        for filter in SUBPEL_FILTERS.iter() {
+            let sum: i16 = filter.iter().sum();
+            assert_eq!(sum, 128, "Filter coefficients must sum to 128");
+        }
+
+        // Verify integer position filter is identity
+        assert_eq!(SUBPEL_FILTERS[0], [0, 0, 128, 0, 0, 0]);
+
+        // Verify half-pixel filter is symmetric
+        let half = &SUBPEL_FILTERS[4];
+        assert_eq!(half[0], half[5]);
+        assert_eq!(half[1], half[4]);
+        assert_eq!(half[2], half[3]);
+    }
+
+    #[test]
+    fn test_filter_h_integer_position() {
+        let src = [10u8, 20, 30, 40, 50, 60, 70, 80];
+        // At frac=0 (integer position), the 6-tap filter [0,0,128,0,0,0] returns
+        // the sample at position x-2+2 = x, so filter_h(&src, 2, 0) returns src[2]
+        let result = filter_h(&src, 2, 0);
+        assert_eq!(result, 30); // src[2] = 30 (center tap at i=2, idx=2-2+2=2)
+    }
+
+    #[test]
+    fn test_filter_h_half_pixel() {
+        // Create a simple gradient for testing
+        let src = [100u8, 100, 100, 100, 100, 100, 100, 100];
+        // Half-pixel on uniform data should return the same value
+        let result = filter_h(&src, 4, 4); // 4/8 = half pixel
+        assert_eq!(result, 100);
+    }
+
+    #[test]
+    fn test_filter_v_integer_position() {
+        // Create vertical data: each row has the same value
+        let src = [10u8, 20, 30, 40, 50, 60, 70, 80]; // stride=1, 8 rows
+        // At frac=0, center tap (i=2) means we read row (y + 2 - 2) = y
+        let result = filter_v(&src, 1, 2, 0);
+        assert_eq!(result, 30); // Row 2 -> src[2] = 30
+    }
+
+    #[test]
+    fn test_filter_v_half_pixel() {
+        // Uniform data
+        let src = [100u8; 8];
+        let result = filter_v(&src, 1, 4, 4); // 4/8 = half pixel
+        assert_eq!(result, 100);
     }
 }

@@ -31,7 +31,12 @@ pub enum Vp8Error {
 
     /// Invalid dimensions.
     #[error("Invalid dimensions: {width}x{height}")]
-    InvalidDimensions { width: u32, height: u32 },
+    InvalidDimensions {
+        /// Width value that was invalid.
+        width: u32,
+        /// Height value that was invalid.
+        height: u32,
+    },
 
     /// Reference frame error.
     #[error("Reference frame error: {0}")]

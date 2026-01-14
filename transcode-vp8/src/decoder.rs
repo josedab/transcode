@@ -41,6 +41,7 @@ impl Default for Vp8DecoderConfig {
 
 /// Decoded macroblock info.
 #[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 struct MacroblockInfo {
     /// Luma prediction mode.
     y_mode: MbLumaMode,
@@ -135,8 +136,8 @@ impl Vp8Decoder {
         // Update decoder state
         self.width = header.width;
         self.height = header.height;
-        self.mb_width = ((header.width as usize) + 15) / 16;
-        self.mb_height = ((header.height as usize) + 15) / 16;
+        self.mb_width = (header.width as usize).div_ceil(16);
+        self.mb_height = (header.height as usize).div_ceil(16);
         self.mb_info.resize(self.mb_width * self.mb_height, MacroblockInfo::default());
 
         // Create output frame
@@ -446,6 +447,7 @@ impl Vp8Decoder {
     }
 
     /// Decode a single macroblock.
+    #[allow(clippy::too_many_arguments)]
     fn decode_macroblock(
         &mut self,
         frame: &mut Vp8Frame,
@@ -619,7 +621,7 @@ impl Vp8Decoder {
                 for x in 0..8 {
                     let px = mb_x * 8 + x;
                     let py = mb_y * 8 + y;
-                    if px < (frame.width as usize + 1) / 2 && py < (frame.height as usize + 1) / 2 {
+                    if px < (frame.width as usize).div_ceil(2) && py < (frame.height as usize).div_ceil(2) {
                         let val = last.get_u(px, py);
                         frame.set_u(px, py, val);
                     }
@@ -631,7 +633,7 @@ impl Vp8Decoder {
                 for x in 0..8 {
                     let px = mb_x * 8 + x;
                     let py = mb_y * 8 + y;
-                    if px < (frame.width as usize + 1) / 2 && py < (frame.height as usize + 1) / 2 {
+                    if px < (frame.width as usize).div_ceil(2) && py < (frame.height as usize).div_ceil(2) {
                         let val = last.get_v(px, py);
                         frame.set_v(px, py, val);
                     }
@@ -643,6 +645,7 @@ impl Vp8Decoder {
     }
 
     /// Decode UV (chroma) planes.
+    #[allow(clippy::too_many_arguments)]
     fn decode_uv_planes(
         &mut self,
         frame: &mut Vp8Frame,
@@ -824,8 +827,8 @@ impl Vp8Decoder {
 
         let px = mb_x * 8;
         let py = mb_y * 8;
-        let width = (frame.width as usize + 1) / 2;
-        let height = (frame.height as usize + 1) / 2;
+        let width = (frame.width as usize).div_ceil(2);
+        let height = (frame.height as usize).div_ceil(2);
 
         // Above pixels
         ctx.above_available = py > 0;
@@ -877,14 +880,14 @@ impl Vp8Decoder {
         coeffs.fill(0);
 
         // Just decode a few coefficients for demonstration
-        for i in 0..16 {
+        for coeff in coeffs.iter_mut().take(16) {
             if decoder.read_bool(200)? {
                 break; // End of block
             }
 
             let magnitude = decoder.read_bits(4)? as i16;
             let sign = decoder.read_bit()?;
-            coeffs[i] = if sign { -magnitude } else { magnitude };
+            *coeff = if sign { -magnitude } else { magnitude };
         }
 
         Ok(())
@@ -923,8 +926,8 @@ impl Vp8Decoder {
         residual: &[i16; 16],
         is_u: bool,
     ) {
-        let width = (frame.width as usize + 1) / 2;
-        let height = (frame.height as usize + 1) / 2;
+        let width = (frame.width as usize).div_ceil(2);
+        let height = (frame.height as usize).div_ceil(2);
 
         for y in 0..4 {
             for x in 0..4 {
@@ -974,6 +977,7 @@ impl Default for Vp8Decoder {
 
 /// Frame header information.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct FrameHeader {
     frame_type: Vp8FrameType,
     version: u8,
@@ -986,6 +990,7 @@ struct FrameHeader {
 
 /// Quantizer set for a frame.
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 struct QuantizerSet {
     y_ac: u8,
     y_dc: u8,
