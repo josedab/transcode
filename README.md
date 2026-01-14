@@ -75,7 +75,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-transcode = "0.1"
+transcode = "1.0"
 ```
 
 ### CLI Usage
@@ -281,12 +281,158 @@ Run benchmarks locally:
 cargo bench
 ```
 
+## Feature Maturity
+
+Not all features are at the same maturity level. This table helps you understand what's production-ready versus experimental:
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Video Codecs** | | |
+| H.264 Encode/Decode | Production | Fully tested, spec-compliant |
+| H.265/HEVC | Production | Fully tested, spec-compliant |
+| AV1 | Production | Via rav1e (encode) and dav1d (decode) |
+| VP9/VP8 | Stable | Well-tested decode and encode |
+| ProRes, DNxHD | Stable | Professional codec support |
+| **Audio Codecs** | | |
+| AAC, Opus, FLAC | Production | Fully tested |
+| AC3, DTS | Stable | Decode and encode |
+| Vorbis | Experimental | Simplified floor implementation, may not be bit-accurate |
+| **Containers** | | |
+| MP4, MKV, WebM | Production | Fully tested |
+| HLS, DASH | Stable | Streaming output only |
+| MXF, AVI, FLV | Stable | Basic support |
+| **Hardware Accel** | | |
+| VideoToolbox (macOS) | Production | Full hardware encoding/decoding |
+| VA-API (Linux) | Experimental | Requires libva, still in development |
+| NVENC (NVIDIA) | Experimental | Requires CUDA toolkit and `nvenc` feature |
+| **Other** | | |
+| GPU Processing | Stable | Via wgpu compute shaders |
+| WebP VP8L | Experimental | Simplified distance mapping |
+| AI Enhancement | Experimental | Neural upscaling/denoising |
+
+**Status Definitions:**
+- **Production**: Fully tested, suitable for production workloads
+- **Stable**: Well-tested, minor issues possible
+- **Experimental**: Working but may have limitations or spec deviations
+
 ## Building from Source
 
 ### Prerequisites
 
 - Rust 1.75 or later
 - Python 3.8+ (for Python bindings)
+
+### Optional System Dependencies
+
+Some features require additional system libraries. These are only needed if you enable specific features:
+
+#### AV1 Codec (transcode-av1)
+
+The AV1 decoder uses [dav1d](https://code.videolan.org/videolan/dav1d) via FFI:
+
+```bash
+# Ubuntu/Debian
+sudo apt install pkg-config libdav1d-dev
+
+# macOS (Homebrew)
+brew install dav1d
+
+# Fedora/RHEL
+sudo dnf install dav1d-devel
+
+# Arch Linux
+sudo pacman -S dav1d
+```
+
+#### Hardware Acceleration (transcode-hwaccel)
+
+Hardware-accelerated encoding requires platform-specific dependencies:
+
+> **Note:** Hardware encoder support is currently in preview. The VA-API and NVENC
+> encoders return simulated output data for development and testing. For production
+> encoding, use the software encoders (H.264, HEVC, AV1) which are fully functional.
+> Real hardware encoding with actual GPU offload is planned for a future release.
+
+**NVIDIA NVENC (Linux/Windows):**
+- NVIDIA GPU with Kepler architecture or later
+- NVIDIA driver 470.x or later
+- CUDA Toolkit 11.0+ (optional, for CUDA-based processing)
+
+**VA-API (Linux):**
+```bash
+# Ubuntu/Debian
+sudo apt install libva-dev vainfo
+
+# Fedora/RHEL
+sudo dnf install libva-devel
+
+# Arch Linux
+sudo pacman -S libva
+```
+
+**VideoToolbox (macOS):**
+- macOS 10.13 or later (included with system)
+
+**Intel Quick Sync (Linux/Windows):**
+- Intel CPU with integrated graphics (6th gen or later)
+- Intel Media SDK or oneVPL
+
+**Verifying Hardware Acceleration:**
+```bash
+# Check VA-API installation and supported profiles (Linux)
+vainfo
+
+# Check NVIDIA GPU and driver (Linux/Windows)
+nvidia-smi
+
+# Check dav1d installation (for AV1 decoding)
+pkg-config --modversion dav1d
+```
+
+#### FFI Codec Features
+
+These optional features enable FFI bindings to external libraries for codecs that require patent-encumbered implementations:
+
+**AC-3/E-AC-3, DTS, MPEG-2 Video** (requires `ffi-ffmpeg` feature):
+```bash
+# Ubuntu/Debian
+sudo apt install libavcodec-dev libavformat-dev libavutil-dev
+
+# macOS (Homebrew)
+brew install ffmpeg
+
+# Fedora/RHEL
+sudo dnf install ffmpeg-devel
+```
+
+**JPEG 2000** (requires `ffi-openjpeg` feature):
+```bash
+# Ubuntu/Debian
+sudo apt install libopenjp2-7-dev
+
+# macOS (Homebrew)
+brew install openjpeg
+
+# Fedora/RHEL
+sudo dnf install openjpeg2-devel
+```
+
+#### Node.js Bindings (transcode-node)
+
+```bash
+# Node.js 16+ required
+npm install -g node-gyp
+```
+
+#### WebAssembly (transcode-wasm)
+
+```bash
+# Install wasm-pack
+cargo install wasm-pack
+
+# Or using npm
+npm install -g wasm-pack
+```
 
 ### Build
 
