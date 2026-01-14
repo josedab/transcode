@@ -13,6 +13,26 @@
 //! - MP3 decoder
 //! - Opus decoder and encoder (planned)
 //!
+//! ## Trait System
+//!
+//! All codecs implement a common trait interface for uniform access:
+//!
+//! - [`Decoder`] - Common interface for all decoders
+//! - [`Encoder`] - Common interface for all encoders
+//! - [`CodecInfo`] - Metadata about codec capabilities
+//!
+//! This allows pipeline code to work generically with any codec without
+//! knowing the specific implementation details.
+//!
+//! ## Parallel Processing
+//!
+//! The [`parallel`] module provides multi-threaded encoding utilities:
+//!
+//! - [`ParallelMotionEstimator`] - Parallel motion estimation across blocks
+//! - [`ParallelRowEncoder`] - Row-level parallelism for encoding
+//! - [`LookaheadBuffer`] - Frame lookahead for rate control decisions
+//! - [`FrameBatchProcessor`] - Batch processing of video frames
+//!
 //! ## SIMD Optimization
 //! - AVX2 for x86_64 with runtime detection
 //! - NEON for AArch64 (always available)

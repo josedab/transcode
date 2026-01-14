@@ -333,7 +333,8 @@ impl CabacEncoder {
             self.output.push(0);
         }
 
-        let last = self.output.last_mut().unwrap();
+        // SAFETY: output is guaranteed non-empty here because we just pushed if it was empty
+        let last = self.output.last_mut().expect("output guaranteed non-empty after push check");
         *last = (*last << 1) | bit;
 
         for _ in 0..self.outstanding {

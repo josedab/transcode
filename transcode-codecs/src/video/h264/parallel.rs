@@ -9,6 +9,7 @@ use std::sync::Arc;
 use parking_lot::{Mutex, RwLock};
 use rayon::prelude::*;
 use rayon::ThreadPool;
+use transcode_core::error::{Error, Result};
 use transcode_core::Frame;
 
 use super::prediction::MotionVector;
@@ -204,19 +205,23 @@ pub struct ParallelMotionEstimator {
 
 impl ParallelMotionEstimator {
     /// Create a new parallel motion estimator.
-    pub fn new(config: &ThreadingConfig) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the thread pool cannot be created.
+    pub fn new(config: &ThreadingConfig) -> Result<Self> {
         let num_threads = config.effective_threads();
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .thread_name(|idx| format!("h264-me-{}", idx))
             .build()
-            .expect("Failed to create motion estimation thread pool");
+            .map_err(|e| Error::Config(format!("Failed to create motion estimation thread pool: {}", e)))?;
 
-        Self {
+        Ok(Self {
             thread_pool,
             search_range: 64,
             subpel_refine: true,
-        }
+        })
     }
 
     /// Set the search range for motion estimation.
@@ -535,18 +540,22 @@ pub struct ParallelSliceEncoder {
 
 impl ParallelSliceEncoder {
     /// Create a new parallel slice encoder.
-    pub fn new(config: &ThreadingConfig) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the thread pool cannot be created.
+    pub fn new(config: &ThreadingConfig) -> Result<Self> {
         let num_threads = config.effective_threads();
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .thread_name(|idx| format!("h264-slice-{}", idx))
             .build()
-            .expect("Failed to create slice encoding thread pool");
+            .map_err(|e| Error::Config(format!("Failed to create slice encoding thread pool: {}", e)))?;
 
-        Self {
+        Ok(Self {
             thread_pool,
             config: config.clone(),
-        }
+        })
     }
 
     /// Split a frame into slices for parallel encoding.
@@ -628,22 +637,26 @@ pub struct LookaheadBuffer {
 
 impl LookaheadBuffer {
     /// Create a new lookahead buffer.
-    pub fn new(config: &ThreadingConfig, max_bframes: u8, gop_size: u32) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the thread pool cannot be created.
+    pub fn new(config: &ThreadingConfig, max_bframes: u8, gop_size: u32) -> Result<Self> {
         let num_threads = config.effective_threads();
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .thread_name(|idx| format!("h264-la-{}", idx))
             .build()
-            .expect("Failed to create lookahead thread pool");
+            .map_err(|e| Error::Config(format!("Failed to create lookahead thread pool: {}", e)))?;
 
-        Self {
+        Ok(Self {
             max_depth: config.lookahead_depth,
             frames: Vec::with_capacity(config.lookahead_depth),
             thread_pool,
             max_bframes,
             gop_size,
             frame_counter: 0,
-        }
+        })
     }
 
     /// Add a frame to the lookahead buffer.
@@ -722,7 +735,7 @@ impl LookaheadBuffer {
 
     /// Determine frame types based on GOP structure.
     fn determine_frame_types(&mut self) {
-        for (idx, frame) in self.frames.iter_mut().enumerate() {
+        for frame in self.frames.iter_mut() {
             let pos_in_gop = frame.display_order % self.gop_size as u64;
 
             if pos_in_gop == 0 {
@@ -940,7 +953,7 @@ mod tests {
     #[test]
     fn test_parallel_slice_encoder_split() {
         let config = ThreadingConfig::default().with_slice_count(4);
-        let encoder = ParallelSliceEncoder::new(&config);
+        let encoder = ParallelSliceEncoder::new(&config).unwrap();
 
         let slices = encoder.split_into_slices(720);
         assert_eq!(slices.len(), 4);
@@ -953,7 +966,7 @@ mod tests {
     #[test]
     fn test_lookahead_buffer() {
         let config = ThreadingConfig::default().with_lookahead_depth(8);
-        let mut buffer = LookaheadBuffer::new(&config, 2, 30);
+        let mut buffer = LookaheadBuffer::new(&config, 2, 30).unwrap();
 
         // Add frames
         for i in 0..7 {
@@ -1002,7 +1015,7 @@ mod tests {
     #[test]
     fn test_parallel_motion_estimator() {
         let config = ThreadingConfig::with_threads(2);
-        let estimator = ParallelMotionEstimator::new(&config);
+        let estimator = ParallelMotionEstimator::new(&config).unwrap();
 
         let frame = create_test_frame(320, 240, 0);
         let results = estimator.estimate_motion(&frame, &[]);

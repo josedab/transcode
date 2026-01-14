@@ -207,13 +207,13 @@ impl H264Encoder {
                 }
 
                 let slice_enc = if config.threading.enable_slice_parallel {
-                    Some(ParallelSliceEncoder::new(&config.threading))
+                    Some(ParallelSliceEncoder::new(&config.threading)?)
                 } else {
                     None
                 };
 
                 let motion_est = if config.threading.enable_frame_parallel {
-                    Some(ParallelMotionEstimator::new(&config.threading))
+                    Some(ParallelMotionEstimator::new(&config.threading)?)
                 } else {
                     None
                 };
@@ -223,7 +223,7 @@ impl H264Encoder {
                         &config.threading,
                         config.bframes,
                         config.gop_size,
-                    ))
+                    )?)
                 } else {
                     None
                 };
@@ -607,7 +607,7 @@ impl H264Encoder {
 
     /// Encode a single slice (called from parallel context).
     fn encode_slice_data(
-        frame: &Frame,
+        _frame: &Frame,
         context: &SliceEncoderContext,
         slice_idx: usize,
         first_mb_row: usize,

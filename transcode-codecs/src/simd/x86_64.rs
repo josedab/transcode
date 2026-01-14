@@ -247,6 +247,10 @@ pub unsafe fn hadamard4x4_avx2(input: &[i16; 16], output: &mut [i16; 16]) {
     super::scalar::hadamard4x4_scalar(input, output);
 }
 
+/// Maximum supported stride for SIMD operations.
+/// This prevents potential integer overflow when computing buffer offsets.
+pub const MAX_STRIDE: usize = 16384;
+
 /// AVX2-optimized 16x16 SAD (Sum of Absolute Differences).
 ///
 /// Computes the sum of absolute differences between two 16x16 pixel blocks.
@@ -260,6 +264,20 @@ pub unsafe fn hadamard4x4_avx2(input: &[i16; 16], output: &mut [i16; 16]) {
 #[target_feature(enable = "avx2")]
 #[cfg(target_arch = "x86_64")]
 pub unsafe fn sad16x16_avx2(src1: &[u8], stride1: usize, src2: &[u8], stride2: usize) -> u32 {
+    // Debug assertions to catch caller errors during development
+    debug_assert!(stride1 >= 16, "stride1 must be at least 16");
+    debug_assert!(stride2 >= 16, "stride2 must be at least 16");
+    debug_assert!(stride1 <= MAX_STRIDE, "stride1 exceeds MAX_STRIDE");
+    debug_assert!(stride2 <= MAX_STRIDE, "stride2 exceeds MAX_STRIDE");
+    debug_assert!(
+        src1.len() >= 15 * stride1 + 16,
+        "src1 buffer too small for 16x16 block"
+    );
+    debug_assert!(
+        src2.len() >= 15 * stride2 + 16,
+        "src2 buffer too small for 16x16 block"
+    );
+
     let mut sad = _mm256_setzero_si256();
 
     for y in 0..16 {
@@ -306,6 +324,14 @@ pub unsafe fn deblock_luma_h_avx2(
     beta: i32,
     tc: &[i32; 4],
 ) {
+    // Debug assertions to catch caller errors during development
+    debug_assert!(stride > 0, "stride must be positive");
+    debug_assert!(stride <= MAX_STRIDE, "stride exceeds MAX_STRIDE");
+    debug_assert!(
+        pixels.len() >= 3 * stride + 4,
+        "pixels buffer too small for deblocking (need at least 4 rows)"
+    );
+
     // Deblocking is highly data-dependent, so SIMD gains are limited
     // Use scalar implementation for correctness
     super::scalar::deblock_luma_h_scalar(pixels, stride, alpha, beta, tc);
@@ -323,6 +349,17 @@ pub unsafe fn deblock_luma_h_avx2(
 #[target_feature(enable = "avx2")]
 #[cfg(target_arch = "x86_64")]
 pub unsafe fn mdct_forward_avx2(input: &[f32], output: &mut [f32], twiddles: &[(f32, f32)]) {
+    // Debug assertions to catch caller errors during development
+    debug_assert!(!output.is_empty(), "output must not be empty");
+    debug_assert!(
+        input.len() >= output.len() * 2,
+        "input must have at least output.len() * 2 elements"
+    );
+    debug_assert!(
+        twiddles.len() >= output.len() / 4,
+        "twiddles must have at least output.len() / 4 elements"
+    );
+
     let n = output.len();
 
     if n < 8 {

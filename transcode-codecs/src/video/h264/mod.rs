@@ -5,8 +5,8 @@
 // Allow common patterns in signal processing codec implementation
 #![allow(
     dead_code,
+    // BitWriter operations write to in-memory Vec and cannot fail
     unused_must_use,
-    unused_variables,
     clippy::needless_range_loop,
     clippy::too_many_arguments,
     clippy::unnecessary_cast,
