@@ -7,6 +7,10 @@
 //! Full decoding requires the `ffi-ffmpeg` feature. Without it, only parsing
 //! and metadata extraction is available.
 
+use std::fmt;
+
+#[cfg(feature = "ffi-ffmpeg")]
+use crate::ffi::{DtsFfiDecoder, TrueHdFfiDecoder};
 use crate::parser::{DtsParser, TrueHdParser};
 use crate::types::*;
 use crate::{DtsError, Result};
@@ -24,7 +28,6 @@ use crate::{DtsError, Result};
 /// let decoded = decoder.decode_frame(&dts_frame)?;
 /// println!("Decoded {} samples", decoded.samples_per_channel);
 /// ```
-#[derive(Debug)]
 pub struct DtsDecoder {
     /// Parser for extracting frame info.
     parser: DtsParser,
@@ -40,10 +43,43 @@ pub struct DtsDecoder {
     decode_hd: bool,
     /// Downmix to stereo.
     downmix_stereo: bool,
+    /// FFI decoder (when ffi-ffmpeg feature is enabled).
+    #[cfg(feature = "ffi-ffmpeg")]
+    ffi_decoder: Option<DtsFfiDecoder>,
+}
+
+impl fmt::Debug for DtsDecoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DtsDecoder")
+            .field("output_sample_rate", &self.output_sample_rate)
+            .field("output_bit_depth", &self.output_bit_depth)
+            .field("frames_decoded", &self.frames_decoded)
+            .field("samples_decoded", &self.samples_decoded)
+            .field("decode_hd", &self.decode_hd)
+            .field("downmix_stereo", &self.downmix_stereo)
+            .finish_non_exhaustive()
+    }
 }
 
 impl DtsDecoder {
     /// Create a new DTS decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn new() -> Result<Self> {
+        let ffi_decoder = DtsFfiDecoder::new().ok();
+        Ok(Self {
+            parser: DtsParser::new(),
+            output_sample_rate: None,
+            output_bit_depth: 24,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            decode_hd: true,
+            downmix_stereo: false,
+            ffi_decoder,
+        })
+    }
+
+    /// Create a new DTS decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn new() -> Result<Self> {
         Ok(Self {
             parser: DtsParser::new(),
@@ -57,6 +93,23 @@ impl DtsDecoder {
     }
 
     /// Create decoder with specific output format.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn with_format(sample_rate: u32, bit_depth: u8) -> Result<Self> {
+        let ffi_decoder = DtsFfiDecoder::new().ok();
+        Ok(Self {
+            parser: DtsParser::new(),
+            output_sample_rate: Some(sample_rate),
+            output_bit_depth: bit_depth,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            decode_hd: true,
+            downmix_stereo: false,
+            ffi_decoder,
+        })
+    }
+
+    /// Create decoder with specific output format.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn with_format(sample_rate: u32, bit_depth: u8) -> Result<Self> {
         Ok(Self {
             parser: DtsParser::new(),
@@ -84,8 +137,24 @@ impl DtsDecoder {
     /// Returns decoded PCM audio or an error if decoding fails.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn decode_frame(&mut self, data: &[u8]) -> Result<DecodedAudio> {
-        // FFI implementation would go here
-        Err(DtsError::FfiNotAvailable)
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            let decoded = ffi.decode(data)?;
+            self.frames_decoded += 1;
+            self.samples_decoded += decoded.samples_per_channel as u64;
+            Ok(decoded)
+        } else {
+            let frame = self.parse_frame(data)?;
+            let layout = ChannelLayout::from_audio_mode(frame.amode, frame.lfe);
+
+            Ok(DecodedAudio {
+                sample_rate: frame.sample_rate,
+                channels: frame.total_channels(),
+                layout,
+                samples: Vec::new(),
+                samples_per_channel: 0,
+                bit_depth: frame.pcm_resolution,
+            })
+        }
     }
 
     /// Decode a DTS frame (stub without FFI).
@@ -135,11 +204,33 @@ impl DtsDecoder {
     }
 
     /// Flush the decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn flush(&mut self) {
+        self.parser.reset();
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Flush the decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn flush(&mut self) {
         self.parser.reset();
     }
 
     /// Reset the decoder state.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn reset(&mut self) {
+        self.parser.reset();
+        self.frames_decoded = 0;
+        self.samples_decoded = 0;
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Reset the decoder state.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn reset(&mut self) {
         self.parser.reset();
         self.frames_decoded = 0;
@@ -167,8 +258,15 @@ impl DtsDecoder {
     }
 
     /// Check if FFI decoding is available.
+    #[cfg(feature = "ffi-ffmpeg")]
     pub fn is_decoding_available(&self) -> bool {
-        cfg!(feature = "ffi-ffmpeg")
+        self.ffi_decoder.is_some()
+    }
+
+    /// Check if FFI decoding is available.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
+    pub fn is_decoding_available(&self) -> bool {
+        false
     }
 
     /// Check if HD decoding is enabled.
@@ -196,7 +294,6 @@ impl Default for DtsDecoder {
 /// let decoded = decoder.decode_frame(&truehd_frame)?;
 /// println!("Decoded {} samples at {} Hz", decoded.samples_per_channel, decoded.sample_rate);
 /// ```
-#[derive(Debug)]
 pub struct TrueHdDecoder {
     /// Parser for extracting frame info.
     parser: TrueHdParser,
@@ -212,10 +309,43 @@ pub struct TrueHdDecoder {
     downmix_stereo: bool,
     /// Decode Atmos metadata.
     decode_atmos: bool,
+    /// FFI decoder (when ffi-ffmpeg feature is enabled).
+    #[cfg(feature = "ffi-ffmpeg")]
+    ffi_decoder: Option<TrueHdFfiDecoder>,
+}
+
+impl fmt::Debug for TrueHdDecoder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TrueHdDecoder")
+            .field("output_sample_rate", &self.output_sample_rate)
+            .field("output_bit_depth", &self.output_bit_depth)
+            .field("frames_decoded", &self.frames_decoded)
+            .field("samples_decoded", &self.samples_decoded)
+            .field("downmix_stereo", &self.downmix_stereo)
+            .field("decode_atmos", &self.decode_atmos)
+            .finish_non_exhaustive()
+    }
 }
 
 impl TrueHdDecoder {
     /// Create a new TrueHD decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn new() -> Result<Self> {
+        let ffi_decoder = TrueHdFfiDecoder::new().ok();
+        Ok(Self {
+            parser: TrueHdParser::new(),
+            output_sample_rate: None,
+            output_bit_depth: 24,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            downmix_stereo: false,
+            decode_atmos: true,
+            ffi_decoder,
+        })
+    }
+
+    /// Create a new TrueHD decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn new() -> Result<Self> {
         Ok(Self {
             parser: TrueHdParser::new(),
@@ -229,6 +359,23 @@ impl TrueHdDecoder {
     }
 
     /// Create decoder with specific output format.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn with_format(sample_rate: u32, bit_depth: u8) -> Result<Self> {
+        let ffi_decoder = TrueHdFfiDecoder::new().ok();
+        Ok(Self {
+            parser: TrueHdParser::new(),
+            output_sample_rate: Some(sample_rate),
+            output_bit_depth: bit_depth,
+            frames_decoded: 0,
+            samples_decoded: 0,
+            downmix_stereo: false,
+            decode_atmos: true,
+            ffi_decoder,
+        })
+    }
+
+    /// Create decoder with specific output format.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn with_format(sample_rate: u32, bit_depth: u8) -> Result<Self> {
         Ok(Self {
             parser: TrueHdParser::new(),
@@ -254,8 +401,32 @@ impl TrueHdDecoder {
     /// Decode a TrueHD frame.
     #[cfg(feature = "ffi-ffmpeg")]
     pub fn decode_frame(&mut self, data: &[u8]) -> Result<DecodedAudio> {
-        // FFI implementation would go here
-        Err(DtsError::FfiNotAvailable)
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            let decoded = ffi.decode(data)?;
+            self.frames_decoded += 1;
+            self.samples_decoded += decoded.samples_per_channel as u64;
+            Ok(decoded)
+        } else {
+            let frame = self.parse_frame(data)?;
+            let layout = match frame.channel_assignment {
+                TrueHdChannelAssignment::Mono => ChannelLayout::mono(),
+                TrueHdChannelAssignment::Stereo => ChannelLayout::stereo(),
+                TrueHdChannelAssignment::Layout5_1 => ChannelLayout::surround_5_1(),
+                TrueHdChannelAssignment::Layout7_1 | TrueHdChannelAssignment::Atmos => {
+                    ChannelLayout::surround_7_1()
+                }
+                _ => ChannelLayout::stereo(),
+            };
+
+            Ok(DecodedAudio {
+                sample_rate: frame.sample_rate,
+                channels: frame.channels,
+                layout,
+                samples: Vec::new(),
+                samples_per_channel: 0,
+                bit_depth: frame.bit_depth,
+            })
+        }
     }
 
     /// Decode a TrueHD frame (stub without FFI).
@@ -307,11 +478,33 @@ impl TrueHdDecoder {
     }
 
     /// Flush the decoder.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn flush(&mut self) {
+        self.parser.reset();
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Flush the decoder.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn flush(&mut self) {
         self.parser.reset();
     }
 
     /// Reset the decoder state.
+    #[cfg(feature = "ffi-ffmpeg")]
+    pub fn reset(&mut self) {
+        self.parser.reset();
+        self.frames_decoded = 0;
+        self.samples_decoded = 0;
+        if let Some(ref mut ffi) = self.ffi_decoder {
+            ffi.flush();
+        }
+    }
+
+    /// Reset the decoder state.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
     pub fn reset(&mut self) {
         self.parser.reset();
         self.frames_decoded = 0;
@@ -339,8 +532,15 @@ impl TrueHdDecoder {
     }
 
     /// Check if FFI decoding is available.
+    #[cfg(feature = "ffi-ffmpeg")]
     pub fn is_decoding_available(&self) -> bool {
-        cfg!(feature = "ffi-ffmpeg")
+        self.ffi_decoder.is_some()
+    }
+
+    /// Check if FFI decoding is available.
+    #[cfg(not(feature = "ffi-ffmpeg"))]
+    pub fn is_decoding_available(&self) -> bool {
+        false
     }
 
     /// Check if Atmos decoding is enabled.
