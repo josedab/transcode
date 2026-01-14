@@ -595,7 +595,10 @@ impl RtmpConnection {
         let payload_chunk = self.read_buffer.split_to(chunk_payload_len);
 
         // Accumulate payload
-        let state = self.chunk_streams.get_mut(&chunk_stream_id).unwrap();
+        let state = self
+            .chunk_streams
+            .get_mut(&chunk_stream_id)
+            .ok_or_else(|| IngestError::ProtocolError("Chunk stream state not found".into()))?;
         if state.incomplete_message.is_none() {
             state.incomplete_message = Some(BytesMut::with_capacity(header.message_length as usize));
         }
@@ -603,12 +606,21 @@ impl RtmpConnection {
         state
             .incomplete_message
             .as_mut()
-            .unwrap()
+            .ok_or_else(|| IngestError::ProtocolError("Message buffer not initialized".into()))?
             .extend_from_slice(&payload_chunk);
 
         // Check if message is complete
-        if state.incomplete_message.as_ref().unwrap().len() >= header.message_length as usize {
-            let payload = state.incomplete_message.take().unwrap().freeze();
+        let incomplete_len = state
+            .incomplete_message
+            .as_ref()
+            .map(|m| m.len())
+            .unwrap_or(0);
+        if incomplete_len >= header.message_length as usize {
+            let payload = state
+                .incomplete_message
+                .take()
+                .ok_or_else(|| IngestError::ProtocolError("Message buffer missing".into()))?
+                .freeze();
             state.last_header = Some(header.clone());
 
             return Ok(Some(RtmpMessage { header, payload }));

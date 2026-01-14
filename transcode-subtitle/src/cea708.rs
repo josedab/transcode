@@ -902,9 +902,9 @@ impl ServiceDecoder {
 
     /// Parse 6-bit color to Color (static version)
     fn parse_color_static(byte: u8) -> Color {
-        let r = ((byte & 0x03) * 85) as u8;
-        let g = (((byte >> 2) & 0x03) * 85) as u8;
-        let b = (((byte >> 4) & 0x03) * 85) as u8;
+        let r = (byte & 0x03) * 85;
+        let g = ((byte >> 2) & 0x03) * 85;
+        let b = ((byte >> 4) & 0x03) * 85;
         Color::rgb(r, g, b)
     }
 

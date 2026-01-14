@@ -17,9 +17,10 @@ use crate::types::{
 };
 
 /// CEA-608 caption channel
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CaptionChannel {
     /// Primary caption channel (CC1)
+    #[default]
     CC1,
     /// Secondary caption channel (CC2)
     CC2,
@@ -33,27 +34,16 @@ pub enum CaptionChannel {
     T2,
 }
 
-impl Default for CaptionChannel {
-    fn default() -> Self {
-        CaptionChannel::CC1
-    }
-}
-
 /// CEA-608 caption mode
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CaptionMode {
     /// Roll-up captions (1-4 rows)
     RollUp(u8),
     /// Pop-on captions (displayed all at once)
+    #[default]
     PopOn,
     /// Paint-on captions (displayed character by character)
     PaintOn,
-}
-
-impl Default for CaptionMode {
-    fn default() -> Self {
-        CaptionMode::PopOn
-    }
 }
 
 /// CEA-608 basic colors

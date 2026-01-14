@@ -126,6 +126,7 @@ impl From<VideoCodec> for VideoCodecName {
             VideoCodec::Av1 => Self::Av1,
             VideoCodec::Mjpeg => Self::Mjpeg,
             VideoCodec::Raw => Self::Raw,
+            _ => Self::Raw, // Unknown codec treated as raw
         }
     }
 }
@@ -244,6 +245,7 @@ impl From<AudioCodec> for AudioCodecName {
             AudioCodec::Pcm => Self::Pcm,
             AudioCodec::Ac3 => Self::Ac3,
             AudioCodec::Eac3 => Self::Eac3,
+            _ => Self::Pcm, // Unknown codec treated as PCM
         }
     }
 }
@@ -371,6 +373,7 @@ impl From<ContainerFormat> for ContainerName {
             ContainerFormat::Flv => Self::Flv,
             ContainerFormat::Mov => Self::Mov,
             ContainerFormat::Raw => Self::Raw,
+            _ => Self::Raw, // Unknown format treated as raw
         }
     }
 }

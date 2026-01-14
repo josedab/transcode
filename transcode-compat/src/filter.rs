@@ -3,7 +3,7 @@
 //! This module parses FFmpeg's filter graph syntax, supporting:
 //! - Simple filter chains (scale=1920:1080,fps=30)
 //! - Filter parameters with named or positional arguments
-//! - Filter graph links ([in][out])
+//! - Filter graph links (`[in][out]`)
 //! - Complex filter graphs with multiple inputs/outputs
 
 use crate::error::{CompatError, Result};

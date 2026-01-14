@@ -127,8 +127,15 @@ impl WatermarkPayload {
 
         let mut pos = 0;
 
-        // ID
-        let id_len = u32::from_le_bytes(bytes[pos..pos + 4].try_into().unwrap()) as usize;
+        // ID length
+        if pos + 4 > bytes.len() {
+            return Err(WatermarkError::InvalidPayload("truncated id length".into()));
+        }
+        let id_len = u32::from_le_bytes(
+            bytes[pos..pos + 4]
+                .try_into()
+                .map_err(|_| WatermarkError::InvalidPayload("invalid id length bytes".into()))?,
+        ) as usize;
         pos += 4;
 
         if pos + id_len > bytes.len() {
@@ -140,11 +147,25 @@ impl WatermarkPayload {
         pos += id_len;
 
         // Timestamp
-        let timestamp = u64::from_le_bytes(bytes[pos..pos + 8].try_into().unwrap());
+        if pos + 8 > bytes.len() {
+            return Err(WatermarkError::InvalidPayload("truncated timestamp".into()));
+        }
+        let timestamp = u64::from_le_bytes(
+            bytes[pos..pos + 8]
+                .try_into()
+                .map_err(|_| WatermarkError::InvalidPayload("invalid timestamp bytes".into()))?,
+        );
         pos += 8;
 
-        // Data
-        let data_len = u32::from_le_bytes(bytes[pos..pos + 4].try_into().unwrap()) as usize;
+        // Data length
+        if pos + 4 > bytes.len() {
+            return Err(WatermarkError::InvalidPayload("truncated data length".into()));
+        }
+        let data_len = u32::from_le_bytes(
+            bytes[pos..pos + 4]
+                .try_into()
+                .map_err(|_| WatermarkError::InvalidPayload("invalid data length bytes".into()))?,
+        ) as usize;
         pos += 4;
 
         if pos + data_len + 32 > bytes.len() {
@@ -155,7 +176,9 @@ impl WatermarkPayload {
         pos += data_len;
 
         // Hash
-        let hash: [u8; 32] = bytes[pos..pos + 32].try_into().unwrap();
+        let hash: [u8; 32] = bytes[pos..pos + 32]
+            .try_into()
+            .map_err(|_| WatermarkError::InvalidPayload("invalid hash bytes".into()))?;
 
         let mut payload = Self {
             id,
