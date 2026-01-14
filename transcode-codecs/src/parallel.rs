@@ -14,6 +14,7 @@ use parking_lot::{Mutex, RwLock};
 use rayon::prelude::*;
 use rayon::ThreadPool;
 use std::sync::Arc;
+use transcode_core::error::{Error, Result};
 use transcode_core::Frame;
 
 /// Thread pool configuration for parallel encoding.
@@ -191,19 +192,23 @@ pub struct ParallelMotionEstimator {
 
 impl ParallelMotionEstimator {
     /// Create a new parallel motion estimator.
-    pub fn new(config: &ThreadConfig, block_size: u32) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the thread pool cannot be created.
+    pub fn new(config: &ThreadConfig, block_size: u32) -> Result<Self> {
         let num_threads = config.effective_threads();
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .thread_name(|idx| format!("me-{}", idx))
             .build()
-            .expect("Failed to create motion estimation thread pool");
+            .map_err(|e| Error::Config(format!("Failed to create motion estimation thread pool: {}", e)))?;
 
-        Self {
+        Ok(Self {
             thread_pool,
             search_range: 64,
             block_size,
-        }
+        })
     }
 
     /// Set the search range for motion estimation.
@@ -519,18 +524,22 @@ pub struct ParallelRowEncoder {
 
 impl ParallelRowEncoder {
     /// Create a new parallel row encoder.
-    pub fn new(config: &ThreadConfig) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the thread pool cannot be created.
+    pub fn new(config: &ThreadConfig) -> Result<Self> {
         let num_threads = config.effective_threads();
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .thread_name(|idx| format!("row-enc-{}", idx))
             .build()
-            .expect("Failed to create row encoding thread pool");
+            .map_err(|e| Error::Config(format!("Failed to create row encoding thread pool: {}", e)))?;
 
-        Self {
+        Ok(Self {
             thread_pool,
             slice_count: config.slice_count,
-        }
+        })
     }
 
     /// Split a frame into row ranges for parallel encoding.
@@ -595,15 +604,19 @@ pub struct LookaheadBuffer {
 
 impl LookaheadBuffer {
     /// Create a new lookahead buffer.
-    pub fn new(config: &ThreadConfig, max_bframes: u8, gop_size: u32) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the thread pool cannot be created.
+    pub fn new(config: &ThreadConfig, max_bframes: u8, gop_size: u32) -> Result<Self> {
         let num_threads = config.effective_threads();
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .thread_name(|idx| format!("lookahead-{}", idx))
             .build()
-            .expect("Failed to create lookahead thread pool");
+            .map_err(|e| Error::Config(format!("Failed to create lookahead thread pool: {}", e)))?;
 
-        Self {
+        Ok(Self {
             max_depth: config.lookahead_depth,
             frames: Vec::with_capacity(config.lookahead_depth),
             thread_pool,
@@ -611,7 +624,7 @@ impl LookaheadBuffer {
             gop_size,
             frame_counter: 0,
             scene_change_threshold: 0.5,
-        }
+        })
     }
 
     /// Set the scene change detection threshold.
@@ -866,18 +879,22 @@ pub struct FrameBatchProcessor {
 
 impl FrameBatchProcessor {
     /// Create a new frame batch processor.
-    pub fn new(config: &ThreadConfig, max_batch_size: usize) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the thread pool cannot be created.
+    pub fn new(config: &ThreadConfig, max_batch_size: usize) -> Result<Self> {
         let num_threads = config.effective_threads();
         let thread_pool = rayon::ThreadPoolBuilder::new()
             .num_threads(num_threads)
             .thread_name(|idx| format!("batch-{}", idx))
             .build()
-            .expect("Failed to create batch processing thread pool");
+            .map_err(|e| Error::Config(format!("Failed to create batch processing thread pool: {}", e)))?;
 
-        Self {
+        Ok(Self {
             thread_pool,
             max_batch_size,
-        }
+        })
     }
 
     /// Process a batch of frames in parallel.
@@ -952,7 +969,7 @@ mod tests {
     #[test]
     fn test_parallel_row_encoder_split() {
         let config = ThreadConfig::default().with_slice_count(4);
-        let encoder = ParallelRowEncoder::new(&config);
+        let encoder = ParallelRowEncoder::new(&config).unwrap();
 
         let rows = encoder.split_into_rows(720, 16);
         assert_eq!(rows.len(), 4);
@@ -964,7 +981,7 @@ mod tests {
     #[test]
     fn test_lookahead_buffer() {
         let config = ThreadConfig::default().with_lookahead_depth(8);
-        let mut buffer = LookaheadBuffer::new(&config, 2, 30);
+        let mut buffer = LookaheadBuffer::new(&config, 2, 30).unwrap();
 
         for i in 0..7 {
             let frame = create_test_frame(320, 240, i);
@@ -1010,7 +1027,7 @@ mod tests {
     #[test]
     fn test_parallel_motion_estimator() {
         let config = ThreadConfig::with_threads(2);
-        let estimator = ParallelMotionEstimator::new(&config, 16);
+        let estimator = ParallelMotionEstimator::new(&config, 16).unwrap();
 
         let frame = create_test_frame(320, 240, 0);
         let results = estimator.estimate_motion(&frame, &[]);
@@ -1022,7 +1039,7 @@ mod tests {
     #[test]
     fn test_frame_batch_processor() {
         let config = ThreadConfig::with_threads(2);
-        let processor = FrameBatchProcessor::new(&config, 8);
+        let processor = FrameBatchProcessor::new(&config, 8).unwrap();
 
         let frames: Vec<Frame> = (0..4).map(|i| create_test_frame(320, 240, i)).collect();
 
