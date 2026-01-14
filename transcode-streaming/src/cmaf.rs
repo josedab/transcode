@@ -454,8 +454,32 @@ impl CmafEncryption {
         }
     }
 
-    /// Set encryption key.
-    /// WARNING: In production, use a secure key management system.
+    /// Set encryption key for content protection.
+    ///
+    /// # Security Considerations
+    ///
+    /// **WARNING:** This method stores the encryption key in memory as a plain string.
+    /// For production deployments, consider the following:
+    ///
+    /// - **Use a Key Management System (KMS):** Integrate with AWS KMS, Google Cloud KMS,
+    ///   Azure Key Vault, or HashiCorp Vault for secure key storage and rotation.
+    /// - **Key Rotation:** Implement regular key rotation policies.
+    /// - **Memory Protection:** Keys in memory may be vulnerable to memory dumps or
+    ///   side-channel attacks. Consider using secure memory allocators for sensitive data.
+    /// - **Access Control:** Ensure only authorized processes can access encryption keys.
+    /// - **Audit Logging:** Log key access events for security auditing.
+    ///
+    /// This API is designed for flexibility and testing. For production DRM workflows,
+    /// use [`Self::with_drm_system`] with a properly configured DRM provider that handles
+    /// key management securely.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // For testing only - never hardcode keys in production!
+    /// let config = CmafEncryptionConfig::new()
+    ///     .with_key("0123456789abcdef0123456789abcdef");
+    /// ```
     pub fn with_key(mut self, key: impl Into<String>) -> Self {
         self.key = Some(key.into());
         self

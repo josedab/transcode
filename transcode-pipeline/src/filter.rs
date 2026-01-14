@@ -1,5 +1,6 @@
 //! Filter abstractions for video and audio processing.
 
+use crate::error::PipelineError;
 use crate::Result;
 use transcode_core::frame::{Frame, FrameFlags};
 use transcode_core::sample::Sample;
@@ -266,11 +267,22 @@ impl AudioFilter for VolumeFilter {
 
         // Process as S16 samples if format allows
         if data.len() >= 2 {
+            // Validate alignment requirements for safe i16 access
+            if !data.len().is_multiple_of(2) {
+                return Err(PipelineError::InvalidConfig(
+                    "Sample data length must be even for S16 processing".to_string(),
+                ));
+            }
+            let ptr = data.as_mut_ptr();
+            if ptr.align_offset(std::mem::align_of::<i16>()) != 0 {
+                return Err(PipelineError::InvalidConfig(
+                    "Sample buffer not aligned for i16 access".to_string(),
+                ));
+            }
+
+            // SAFETY: We verified length is even and pointer is properly aligned for i16
             let samples: &mut [i16] = unsafe {
-                std::slice::from_raw_parts_mut(
-                    data.as_mut_ptr() as *mut i16,
-                    data.len() / 2,
-                )
+                std::slice::from_raw_parts_mut(ptr as *mut i16, data.len() / 2)
             };
 
             for s in samples.iter_mut() {

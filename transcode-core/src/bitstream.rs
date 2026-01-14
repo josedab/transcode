@@ -406,6 +406,25 @@ pub fn remove_emulation_prevention(data: &[u8]) -> Vec<u8> {
 }
 
 /// Add emulation prevention bytes to RBSP data.
+///
+/// In H.264/H.265 NAL units, the byte sequences `0x000000`, `0x000001`, `0x000002`,
+/// and `0x000003` must be escaped to prevent false start code detection. This function
+/// inserts `0x03` (emulation prevention byte) after any `0x0000` sequence that would
+/// otherwise form these patterns.
+///
+/// This is the inverse of [`remove_emulation_prevention`].
+///
+/// # Example
+///
+/// ```
+/// use transcode_core::bitstream::add_emulation_prevention;
+///
+/// // Input containing 0x000001 which needs escaping
+/// let input = [0x00, 0x00, 0x01, 0xFF];
+/// let output = add_emulation_prevention(&input);
+/// // Output: [0x00, 0x00, 0x03, 0x01, 0xFF]
+/// assert_eq!(output, vec![0x00, 0x00, 0x03, 0x01, 0xFF]);
+/// ```
 pub fn add_emulation_prevention(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::with_capacity(data.len() + data.len() / 100);
     let mut zeros = 0;

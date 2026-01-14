@@ -16,6 +16,9 @@ use transcode_core::{AudioCodec, Packet, PacketFlags, VideoCodec};
 /// Default timecode scale (1 millisecond in nanoseconds).
 const DEFAULT_TIMECODE_SCALE: u64 = 1_000_000;
 
+/// Maximum element size to prevent OOM from malformed files (256 MB).
+const MAX_ELEMENT_SIZE: u64 = 256 * 1024 * 1024;
+
 /// WebM time base (nanoseconds).
 pub const WEBM_TIME_BASE: TimeBase = TimeBase::NANOSECONDS;
 
@@ -1195,6 +1198,15 @@ impl<R: Read + Seek> WebmDemuxer<R> {
     // Helper methods for reading EBML data types
 
     fn read_bytes(&mut self, size: u64) -> Result<Vec<u8>> {
+        if size > MAX_ELEMENT_SIZE {
+            return Err(WebmError::InvalidElementSize {
+                offset: 0, // Offset not available in this context
+                message: format!(
+                    "element size {} exceeds maximum allowed {}",
+                    size, MAX_ELEMENT_SIZE
+                ),
+            });
+        }
         let mut data = vec![0u8; size as usize];
         self.reader.read_exact(&mut data)?;
         Ok(data)

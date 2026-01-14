@@ -23,6 +23,10 @@
 //! let output = upscaler.process(&input_frame)?;
 //! ```
 
+// Allow dead_code: This crate provides AI enhancement building blocks for external use.
+// The pipeline components (upscaler, denoiser, interpolator) expose configuration options
+// and methods that may not all be exercised internally but are part of the public API
+// for library consumers implementing custom enhancement workflows.
 #![allow(dead_code)]
 
 mod denoiser;
@@ -73,6 +77,7 @@ pub struct PipelineConfig {
 
 /// Order of enhancement operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub enum ProcessingOrder {
     /// Denoise -> Upscale -> Interpolate (default, best quality).
     #[default]

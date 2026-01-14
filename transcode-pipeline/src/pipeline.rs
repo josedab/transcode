@@ -11,6 +11,7 @@ use tracing::{debug, info, trace};
 
 /// Pipeline state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PipelineState {
     /// Pipeline is created but not initialized.
     Created,
@@ -174,9 +175,10 @@ impl Pipeline {
 
     /// Initialize the pipeline.
     pub fn initialize(&mut self) -> Result<()> {
-        if self.demuxer.is_none() {
-            return Err(PipelineError::InvalidConfig("No demuxer configured".into()));
-        }
+        let demuxer = self
+            .demuxer
+            .as_ref()
+            .ok_or_else(|| PipelineError::InvalidConfig("No demuxer configured".into()))?;
 
         if self.muxer.is_none() {
             return Err(PipelineError::InvalidConfig("No muxer configured".into()));
@@ -184,7 +186,6 @@ impl Pipeline {
 
         // Setup stream mappings if not already configured
         if self.stream_mappings.is_empty() {
-            let demuxer = self.demuxer.as_ref().unwrap();
             for i in 0..demuxer.num_streams() {
                 if let Some(info) = demuxer.stream_info(i) {
                     self.stream_mappings.push(StreamMapping {
@@ -199,7 +200,6 @@ impl Pipeline {
         }
 
         // Configure synchronizer
-        let demuxer = self.demuxer.as_ref().unwrap();
         for mapping in &self.stream_mappings {
             if let Some(info) = demuxer.stream_info(mapping.source_index) {
                 match mapping.track_type {

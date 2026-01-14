@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 /// Pixel format for video frames.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum PixelFormat {
     /// Planar YUV 4:2:0, 12bpp (1 Cr & Cb sample per 2x2 Y samples).
     Yuv420p,

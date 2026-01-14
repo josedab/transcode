@@ -4,6 +4,7 @@ use std::fmt;
 
 /// Container format type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ContainerFormat {
     /// ISO Base Media File Format (MP4, M4V, M4A).
     Mp4,
@@ -78,6 +79,7 @@ impl fmt::Display for ContainerFormat {
 
 /// Video codec type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum VideoCodec {
     /// H.264 / AVC.
     H264,
@@ -131,6 +133,7 @@ impl fmt::Display for VideoCodec {
 
 /// Audio codec type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum AudioCodec {
     /// AAC (Advanced Audio Coding).
     Aac,
@@ -192,6 +195,7 @@ impl fmt::Display for AudioCodec {
 
 /// Stream type (video, audio, subtitle, etc.).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum StreamType {
     /// Video stream.
     Video,

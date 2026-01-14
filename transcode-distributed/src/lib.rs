@@ -121,6 +121,7 @@ impl CoordinatorClient {
 }
 
 /// Worker runner for processing tasks.
+#[derive(Debug)]
 pub struct WorkerRunner {
     /// Worker information.
     info: WorkerInfo,

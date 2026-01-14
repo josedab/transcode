@@ -839,7 +839,7 @@ impl Mp4Muxer {
         for (i, chunk) in track.chunks.iter().enumerate() {
             let samples_per_chunk = chunk.sample_count as u32;
 
-            if entries.is_empty() || entries.last().unwrap().1 != samples_per_chunk {
+            if entries.last().is_none_or(|e| e.1 != samples_per_chunk) {
                 entries.push((i as u32 + 1, samples_per_chunk, 1));
             }
         }
