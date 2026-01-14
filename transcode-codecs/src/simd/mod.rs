@@ -2,6 +2,58 @@
 //!
 //! This module provides SIMD-optimized implementations for performance-critical
 //! codec operations with runtime CPU feature detection.
+//!
+//! # Implementation Status
+//!
+//! Not all operations have full SIMD implementations. The table below shows
+//! which operations are fully accelerated vs. falling back to scalar code:
+//!
+//! ## Video Operations
+//!
+//! | Operation | AVX2 (x86_64) | NEON (aarch64) | Notes |
+//! |-----------|---------------|----------------|-------|
+//! | `sad16x16` | ✅ Full | ✅ Full | Sum of Absolute Differences |
+//! | `quantize` | ✅ Full | ✅ Full | Transform coefficient quantization |
+//! | `mc_bilinear` | ✅ Full | ✅ Full | Motion compensation with bilinear interpolation |
+//! | `idct4x4` | ⚠️ Scalar fallback | ⚠️ Scalar fallback | Complex matrix transpose required |
+//! | `idct8x8` | ⚠️ Scalar fallback | ⚠️ Scalar fallback | Chen DCT algorithm not yet vectorized |
+//! | `hadamard4x4` | ⚠️ Scalar fallback | ⚠️ Scalar fallback | Butterfly operations need complex shuffles |
+//! | `deblock_luma_h` | ⚠️ Scalar fallback | ⚠️ Scalar fallback | Highly data-dependent branching |
+//!
+//! ## Audio Operations
+//!
+//! | Operation | AVX2 (x86_64) | NEON (aarch64) | Notes |
+//! |-----------|---------------|----------------|-------|
+//! | `apply_gain` | ✅ Full | ✅ Full | Simple multiply |
+//! | `mix_samples` | ✅ Full | ✅ Full | FMA (fused multiply-add) |
+//! | `interleave_stereo` | ✅ Full | ✅ Full | Channel interleaving |
+//! | `deinterleave_stereo` | ✅ Full | ✅ Full | Channel deinterleaving |
+//! | `fir_filter` | ✅ Full | ✅ Full | FIR filter dot product |
+//! | `calculate_rms` | ✅ Full | ✅ Full | RMS level calculation |
+//! | `find_peak` | ✅ Full | ✅ Full | Peak detection |
+//! | `hard_clip` | ✅ Full | ✅ Full | Hard limiting/clipping |
+//! | `overlap_add` | ✅ Full | ✅ Full | MDCT windowed overlap-add |
+//! | `mdct_forward` | ✅ Partial | ✅ Partial | Main loop vectorized, remainder scalar |
+//! | `biquad_process` | ❌ Scalar only | ❌ Scalar only | State dependencies prevent vectorization |
+//! | `soft_clip` | ❌ Scalar only | ❌ Scalar only | tanh approximation not vectorized |
+//! | `remove_dc_offset` | ❌ Scalar only | ❌ Scalar only | State dependencies |
+//!
+//! # Performance Notes
+//!
+//! - Operations marked "Scalar fallback" dispatch to SIMD code but immediately
+//!   call the scalar implementation internally. This is intentional for
+//!   correctness while full SIMD implementations are developed.
+//! - The SIMD implementations provide significant speedups (2-8x) for operations
+//!   marked "Full" when processing large buffers.
+//! - Minimum buffer sizes for SIMD dispatch: AVX2 requires 8+ elements for f32,
+//!   16+ elements for i16/u8. NEON requires 4+ elements for f32, 8+ for i16/u8.
+//!
+//! # Future Work
+//!
+//! The following operations are candidates for full SIMD implementation:
+//! - `idct4x4`/`idct8x8`: Implement matrix transpose using shuffle instructions
+//! - `hadamard4x4`: Implement butterfly operations with vperm/vshuf
+//! - `biquad_process`: Consider parallel multi-channel processing
 
 // Allow common patterns in SIMD/signal processing code
 #![allow(
