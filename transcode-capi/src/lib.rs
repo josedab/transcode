@@ -37,6 +37,23 @@ use std::ptr;
 use std::slice;
 
 // ============================================================================
+// Safety Limits
+// ============================================================================
+
+/// Maximum packet size to prevent DoS via unbounded allocation (1 GB).
+const MAX_PACKET_SIZE: usize = 1024 * 1024 * 1024;
+
+/// Maximum path length to prevent DoS via unbounded path strings (4 KB).
+const MAX_PATH_LENGTH: usize = 4096;
+
+/// Maximum number of streams to prevent unbounded allocation.
+#[allow(dead_code)] // Reserved for future stream count validation
+const MAX_STREAMS: usize = 256;
+
+/// Maximum frame dimension to prevent excessive memory allocation.
+const MAX_FRAME_DIMENSION: u32 = 16384;
+
+// ============================================================================
 // Error Codes
 // ============================================================================
 
@@ -146,6 +163,7 @@ impl From<transcode_core::PixelFormat> for TranscodePixelFormat {
             transcode_core::PixelFormat::Bgra => TranscodePixelFormat::Bgra,
             transcode_core::PixelFormat::Gray8 => TranscodePixelFormat::Gray8,
             transcode_core::PixelFormat::Gray16 => TranscodePixelFormat::Gray16,
+            _ => TranscodePixelFormat::Unknown, // Unknown pixel format
         }
     }
 }
@@ -606,8 +624,13 @@ pub unsafe extern "C" fn transcode_open_input(
         return TranscodeError::NullPointer;
     }
 
-    // Convert path to Rust string
-    let path_str = match CStr::from_ptr(path).to_str() {
+    // Convert path to Rust string with length validation
+    let path_cstr = CStr::from_ptr(path);
+    let path_bytes = path_cstr.to_bytes();
+    if path_bytes.len() > MAX_PATH_LENGTH {
+        return TranscodeError::InvalidArgument;
+    }
+    let path_str = match path_cstr.to_str() {
         Ok(s) => s,
         Err(_) => return TranscodeError::InvalidArgument,
     };
@@ -652,7 +675,13 @@ pub unsafe extern "C" fn transcode_open_input(
 
     // Allocate streams array
     let streams_ptr = if !internal.streams.is_empty() {
-        let streams_size = internal.streams.len() * std::mem::size_of::<TranscodeStreamInfo>();
+        let streams_size = match internal.streams.len().checked_mul(std::mem::size_of::<TranscodeStreamInfo>()) {
+            Some(size) => size,
+            None => {
+                libc::free(path_copy as *mut c_void);
+                return TranscodeError::ResourceExhausted;
+            }
+        };
         let ptr = libc::malloc(streams_size) as *mut TranscodeStreamInfo;
         if !ptr.is_null() {
             for (i, stream) in internal.streams.iter().enumerate() {
@@ -713,8 +742,13 @@ pub unsafe extern "C" fn transcode_open_output(
         return TranscodeError::InvalidState;
     }
 
-    // Convert and store output path
-    let path_str = match CStr::from_ptr(path).to_str() {
+    // Convert and store output path with length validation
+    let path_cstr = CStr::from_ptr(path);
+    let path_bytes = path_cstr.to_bytes();
+    if path_bytes.len() > MAX_PATH_LENGTH {
+        return TranscodeError::InvalidArgument;
+    }
+    let path_str = match path_cstr.to_str() {
         Ok(s) => s,
         Err(_) => return TranscodeError::InvalidArgument,
     };
@@ -893,8 +927,13 @@ pub unsafe extern "C" fn transcode_packet_grow(
         return TranscodeError::Success;
     }
 
-    // Allocate new buffer with some extra capacity
-    let new_capacity = size.max(packet.capacity * 2).max(1024);
+    // Prevent unbounded allocation
+    if size > MAX_PACKET_SIZE {
+        return TranscodeError::ResourceExhausted;
+    }
+
+    // Allocate new buffer with some extra capacity (capped at MAX_PACKET_SIZE)
+    let new_capacity = size.max(packet.capacity * 2).clamp(1024, MAX_PACKET_SIZE);
     let new_data = libc::malloc(new_capacity) as *mut u8;
     if new_data.is_null() {
         return TranscodeError::ResourceExhausted;
@@ -1019,6 +1058,11 @@ pub unsafe extern "C" fn transcode_write_packet(
         return TranscodeError::InvalidArgument;
     }
 
+    // Validate packet size is within bounds
+    if packet.size > MAX_PACKET_SIZE {
+        return TranscodeError::InvalidArgument;
+    }
+
     // Get output path
     let path_str = match CStr::from_ptr(ctx.output_path).to_str() {
         Ok(s) => s,
@@ -1094,6 +1138,11 @@ pub unsafe extern "C" fn transcode_frame_alloc_buffer(
     }
 
     if width == 0 || height == 0 {
+        return TranscodeError::InvalidArgument;
+    }
+
+    // Prevent excessive memory allocation
+    if width > MAX_FRAME_DIMENSION || height > MAX_FRAME_DIMENSION {
         return TranscodeError::InvalidArgument;
     }
 
@@ -1218,12 +1267,25 @@ pub unsafe extern "C" fn transcode_frame_copy(
         return TranscodeError::InvalidArgument;
     }
 
-    // Copy plane data
+    // Copy plane data with size validation
     for i in 0..src.num_planes as usize {
+        if i >= TRANSCODE_MAX_PLANES {
+            break;
+        }
         if src.data[i].is_null() || dst.data[i].is_null() {
             continue;
         }
-        let size = src.linesize[i] * src.height as usize;
+        // Validate linesize and height to prevent overflow
+        let Some(size) = src.linesize[i].checked_mul(src.height as usize) else {
+            return TranscodeError::InvalidArgument;
+        };
+        // Validate dst has sufficient linesize
+        let Some(dst_size) = dst.linesize[i].checked_mul(dst.height as usize) else {
+            return TranscodeError::InvalidArgument;
+        };
+        if dst_size < size {
+            return TranscodeError::BufferTooSmall;
+        }
         ptr::copy_nonoverlapping(src.data[i], dst.data[i], size);
     }
 
