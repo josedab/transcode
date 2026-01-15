@@ -86,7 +86,36 @@ pub enum OpusError {
 
 impl From<OpusError> for transcode_core::Error {
     fn from(err: OpusError) -> Self {
-        transcode_core::Error::Codec(transcode_core::error::CodecError::Other(err.to_string()))
+        use transcode_core::error::{CodecError, OpusErrorKind};
+
+        let kind = match err {
+            OpusError::InvalidPacket(msg) => OpusErrorKind::InvalidPacket(msg),
+            OpusError::InvalidToc(toc) => OpusErrorKind::InvalidToc(toc),
+            OpusError::InvalidSampleRate(rate) => OpusErrorKind::InvalidSampleRate(rate),
+            OpusError::InvalidChannels(ch) => OpusErrorKind::InvalidChannels(ch),
+            OpusError::InvalidFrameSize(size) => OpusErrorKind::InvalidFrameSize(size),
+            OpusError::UnsupportedConfig(msg) => OpusErrorKind::UnsupportedConfig(msg),
+            OpusError::RangeCoder(msg) => OpusErrorKind::RangeCoder(msg),
+            OpusError::SilkDecoder(msg) => OpusErrorKind::SilkDecoder(msg),
+            OpusError::CeltDecoder(msg) => OpusErrorKind::CeltDecoder(msg),
+            OpusError::EncoderConfig(msg) => OpusErrorKind::EncoderConfig(msg),
+            OpusError::PlcFailed(msg) => OpusErrorKind::PlcFailed(msg),
+            OpusError::BitstreamCorruption { offset } => OpusErrorKind::BitstreamCorruption(offset),
+            OpusError::InvalidBandwidth(msg) | OpusError::InvalidMode(msg) => {
+                OpusErrorKind::UnsupportedConfig(msg)
+            }
+            OpusError::NotInitialized => {
+                return transcode_core::Error::Codec(CodecError::NotInitialized);
+            }
+            OpusError::BufferTooSmall { needed, available } => {
+                return transcode_core::Error::BufferTooSmall { needed, available };
+            }
+            OpusError::Internal(msg) => {
+                return transcode_core::Error::Codec(CodecError::Other(msg));
+            }
+        };
+
+        transcode_core::Error::Codec(CodecError::Opus(kind))
     }
 }
 

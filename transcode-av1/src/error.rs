@@ -48,6 +48,27 @@ pub enum Av1Error {
 
 impl From<Av1Error> for transcode_core::Error {
     fn from(err: Av1Error) -> Self {
-        transcode_core::Error::Codec(transcode_core::error::CodecError::Other(err.to_string()))
+        use transcode_core::error::{Av1ErrorKind, CodecError};
+
+        let kind = match err {
+            Av1Error::InvalidConfig(msg) => Av1ErrorKind::InvalidConfig(msg),
+            Av1Error::EncoderError(msg) => Av1ErrorKind::EncoderError(msg),
+            Av1Error::DecoderError(msg) => Av1ErrorKind::DecoderError(msg),
+            Av1Error::InvalidFrame(msg) => Av1ErrorKind::InvalidFrame(msg),
+            Av1Error::RateControlError(msg) => Av1ErrorKind::RateControlError(msg),
+            Av1Error::NeedsMoreFrames => Av1ErrorKind::NeedsMoreFrames,
+            Av1Error::NeedsMoreData => Av1ErrorKind::NeedsMoreData,
+            Av1Error::ResourceExhausted(msg) => {
+                return transcode_core::Error::ResourceExhausted(msg);
+            }
+            Av1Error::EndOfStream => {
+                return transcode_core::Error::EndOfStream;
+            }
+            Av1Error::Io(e) => {
+                return transcode_core::Error::Io(e);
+            }
+        };
+
+        transcode_core::Error::Codec(CodecError::Av1(kind))
     }
 }

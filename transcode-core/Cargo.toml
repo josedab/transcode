@@ -9,6 +9,12 @@ keywords.workspace = true
 categories.workspace = true
 description = "Core types and utilities for the Transcode codec library"
 
+[features]
+default = []
+## Enable metrics collection for observability.
+## When enabled, counters and histograms are recorded for key operations.
+metrics = ["dep:metrics"]
+
 [dependencies]
 thiserror.workspace = true
 byteorder.workspace = true
@@ -18,6 +24,7 @@ num-traits.workspace = true
 num-derive.workspace = true
 smallvec.workspace = true
 parking_lot.workspace = true
+metrics = { workspace = true, optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true

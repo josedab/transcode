@@ -50,6 +50,16 @@ pub enum Error {
     /// Buffer too small for operation.
     #[error("Buffer too small: need {needed} bytes, have {available}")]
     BufferTooSmall { needed: usize, available: usize },
+
+    /// Error with additional context.
+    #[error("{context}: {source}")]
+    WithContext {
+        /// The underlying error.
+        #[source]
+        source: Box<Error>,
+        /// Additional context about where/why the error occurred.
+        context: String,
+    },
 }
 
 /// Container format errors.
@@ -164,9 +174,107 @@ pub enum CodecError {
     #[error("Resource exhausted: {0}")]
     ResourceExhausted(String),
 
+    /// AV1-specific error.
+    #[error("AV1: {0}")]
+    Av1(Av1ErrorKind),
+
+    /// Opus-specific error.
+    #[error("Opus: {0}")]
+    Opus(OpusErrorKind),
+
     /// Generic codec error message.
     #[error("{0}")]
     Other(String),
+}
+
+/// AV1-specific error variants.
+///
+/// These preserve type information for AV1 codec errors, enabling
+/// programmatic error handling and recovery.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum Av1ErrorKind {
+    /// Invalid AV1 configuration.
+    #[error("invalid configuration: {0}")]
+    InvalidConfig(String),
+
+    /// Encoder error during AV1 encoding.
+    #[error("encoder error: {0}")]
+    EncoderError(String),
+
+    /// Decoder error during AV1 decoding.
+    #[error("decoder error: {0}")]
+    DecoderError(String),
+
+    /// Invalid frame data for AV1.
+    #[error("invalid frame: {0}")]
+    InvalidFrame(String),
+
+    /// AV1 rate control error.
+    #[error("rate control error: {0}")]
+    RateControlError(String),
+
+    /// Encoder needs more frames before producing output.
+    #[error("encoder needs more frames")]
+    NeedsMoreFrames,
+
+    /// Decoder needs more data before producing output.
+    #[error("decoder needs more data")]
+    NeedsMoreData,
+}
+
+/// Opus-specific error variants.
+///
+/// These preserve type information for Opus codec errors, enabling
+/// programmatic error handling and recovery.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum OpusErrorKind {
+    /// Invalid Opus packet structure.
+    #[error("invalid packet: {0}")]
+    InvalidPacket(String),
+
+    /// Invalid TOC (Table of Contents) byte.
+    #[error("invalid TOC byte: 0x{0:02x}")]
+    InvalidToc(u8),
+
+    /// Invalid Opus sample rate.
+    #[error("invalid sample rate: {0} Hz")]
+    InvalidSampleRate(u32),
+
+    /// Invalid Opus channel count.
+    #[error("invalid channel count: {0}")]
+    InvalidChannels(u8),
+
+    /// Invalid frame size for Opus.
+    #[error("invalid frame size: {0} samples")]
+    InvalidFrameSize(usize),
+
+    /// Unsupported Opus configuration.
+    #[error("unsupported config: {0}")]
+    UnsupportedConfig(String),
+
+    /// Range coder error in Opus bitstream.
+    #[error("range coder error: {0}")]
+    RangeCoder(String),
+
+    /// SILK layer decoder error.
+    #[error("SILK decoder error: {0}")]
+    SilkDecoder(String),
+
+    /// CELT layer decoder error.
+    #[error("CELT decoder error: {0}")]
+    CeltDecoder(String),
+
+    /// Opus encoder configuration error.
+    #[error("encoder config: {0}")]
+    EncoderConfig(String),
+
+    /// Packet loss concealment failed.
+    #[error("PLC failed: {0}")]
+    PlcFailed(String),
+
+    /// Bitstream corruption detected.
+    #[error("bitstream corruption at offset {0}")]
+    BitstreamCorruption(usize),
 }
 
 impl From<String> for CodecError {
@@ -224,6 +332,66 @@ impl From<&str> for BitstreamError {
 /// Result type alias using our Error type.
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Extension trait for adding context to errors.
+///
+/// This trait allows adding descriptive context to errors as they propagate
+/// up the call stack, making debugging easier.
+///
+/// # Example
+///
+/// ```
+/// use transcode_core::error::{Result, ErrorContext};
+///
+/// fn read_config() -> Result<()> {
+///     // ... operation that might fail ...
+///     Ok(())
+/// }
+///
+/// fn process() -> Result<()> {
+///     read_config().context("reading configuration file")?;
+///     Ok(())
+/// }
+/// ```
+pub trait ErrorContext<T> {
+    /// Add context to an error.
+    fn context(self, msg: impl Into<String>) -> Result<T>;
+
+    /// Add lazily-evaluated context to an error.
+    fn with_context<F: FnOnce() -> String>(self, f: F) -> Result<T>;
+}
+
+impl<T> ErrorContext<T> for Result<T> {
+    fn context(self, msg: impl Into<String>) -> Result<T> {
+        self.map_err(|e| Error::WithContext {
+            source: Box::new(e),
+            context: msg.into(),
+        })
+    }
+
+    fn with_context<F: FnOnce() -> String>(self, f: F) -> Result<T> {
+        self.map_err(|e| Error::WithContext {
+            source: Box::new(e),
+            context: f(),
+        })
+    }
+}
+
+impl<T> ErrorContext<T> for std::result::Result<T, std::io::Error> {
+    fn context(self, msg: impl Into<String>) -> Result<T> {
+        self.map_err(|e| Error::WithContext {
+            source: Box::new(Error::Io(e)),
+            context: msg.into(),
+        })
+    }
+
+    fn with_context<F: FnOnce() -> String>(self, f: F) -> Result<T> {
+        self.map_err(|e| Error::WithContext {
+            source: Box::new(Error::Io(e)),
+            context: f(),
+        })
+    }
+}
+
 impl Error {
     /// Create an invalid parameter error.
     pub fn invalid_param(msg: impl Into<String>) -> Self {
@@ -238,18 +406,46 @@ impl Error {
     /// Check if this is an end-of-stream error.
     #[must_use]
     pub fn is_eof(&self) -> bool {
-        matches!(self, Error::EndOfStream)
+        match self {
+            Error::EndOfStream => true,
+            Error::WithContext { source, .. } => source.is_eof(),
+            _ => false,
+        }
     }
 
     /// Check if this error is recoverable (can continue processing).
     #[must_use]
     pub fn is_recoverable(&self) -> bool {
-        matches!(
-            self,
+        match self {
             Error::Codec(CodecError::BitstreamCorruption { .. })
-                | Error::Codec(CodecError::MissingReference { .. })
-                | Error::Bitstream(BitstreamError::InvalidSyntax { .. })
-        )
+            | Error::Codec(CodecError::MissingReference { .. })
+            | Error::Bitstream(BitstreamError::InvalidSyntax { .. }) => true,
+            Error::WithContext { source, .. } => source.is_recoverable(),
+            _ => false,
+        }
+    }
+
+    /// Get the root cause of this error, unwrapping any context layers.
+    #[must_use]
+    pub fn root_cause(&self) -> &Error {
+        match self {
+            Error::WithContext { source, .. } => source.root_cause(),
+            _ => self,
+        }
+    }
+
+    /// Iterate over the chain of context messages.
+    pub fn context_chain(&self) -> Vec<&str> {
+        let mut contexts = Vec::new();
+        self.collect_contexts(&mut contexts);
+        contexts
+    }
+
+    fn collect_contexts<'a>(&'a self, contexts: &mut Vec<&'a str>) {
+        if let Error::WithContext { source, context } = self {
+            contexts.push(context.as_str());
+            source.collect_contexts(contexts);
+        }
     }
 }
 
@@ -283,5 +479,82 @@ mod tests {
 
         let not_recoverable = Error::EndOfStream;
         assert!(!not_recoverable.is_recoverable());
+    }
+
+    #[test]
+    fn test_error_context() {
+        let result: Result<()> = Err(Error::EndOfStream);
+        let with_context = result.context("reading from input file");
+
+        assert!(with_context.is_err());
+        let err = with_context.unwrap_err();
+        assert!(err.to_string().contains("reading from input file"));
+        assert!(err.to_string().contains("End of stream"));
+    }
+
+    #[test]
+    fn test_error_with_context_lazy() {
+        let result: Result<()> = Err(Error::EndOfStream);
+        let with_context = result.with_context(|| format!("processing frame {}", 42));
+
+        let err = with_context.unwrap_err();
+        assert!(err.to_string().contains("processing frame 42"));
+    }
+
+    #[test]
+    fn test_error_context_chain() {
+        let base_err: Result<()> = Err(Error::EndOfStream);
+        let err = base_err
+            .context("inner operation")
+            .context("middle layer")
+            .context("outer operation")
+            .unwrap_err();
+
+        let chain = err.context_chain();
+        assert_eq!(chain.len(), 3);
+        assert_eq!(chain[0], "outer operation");
+        assert_eq!(chain[1], "middle layer");
+        assert_eq!(chain[2], "inner operation");
+    }
+
+    #[test]
+    fn test_error_root_cause() {
+        let base_err: Result<()> = Err(Error::EndOfStream);
+        let wrapped = base_err
+            .context("layer 1")
+            .context("layer 2")
+            .unwrap_err();
+
+        let root = wrapped.root_cause();
+        assert!(matches!(root, Error::EndOfStream));
+    }
+
+    #[test]
+    fn test_is_eof_through_context() {
+        let base_err: Result<()> = Err(Error::EndOfStream);
+        let wrapped = base_err.context("reading packet").unwrap_err();
+
+        assert!(wrapped.is_eof());
+    }
+
+    #[test]
+    fn test_is_recoverable_through_context() {
+        let base_err: Result<()> = Err(Error::Codec(CodecError::BitstreamCorruption { offset: 100 }));
+        let wrapped = base_err.context("decoding frame").unwrap_err();
+
+        assert!(wrapped.is_recoverable());
+    }
+
+    #[test]
+    fn test_error_context_preserves_source() {
+        let base_err = Error::Codec(CodecError::MissingReference { frame_num: 5 });
+        let wrapped = Error::WithContext {
+            source: Box::new(base_err),
+            context: "decoding P-frame".into(),
+        };
+
+        // std::error::Error source() should return the inner error
+        use std::error::Error as StdError;
+        assert!(wrapped.source().is_some());
     }
 }
