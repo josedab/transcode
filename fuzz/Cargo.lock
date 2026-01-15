@@ -347,7 +347,7 @@ dependencies = [
 
 [[package]]
 name = "transcode-codecs"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -365,7 +365,7 @@ dependencies = [
 
 [[package]]
 name = "transcode-containers"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -377,13 +377,14 @@ dependencies = [
 
 [[package]]
 name = "transcode-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bitflags",
  "byteorder",
  "bytes",
  "num-derive",
  "num-traits",
+ "parking_lot",
  "smallvec",
  "thiserror",
 ]
@@ -399,12 +400,14 @@ dependencies = [
  "transcode-core",
  "transcode-hevc",
  "transcode-mkv",
+ "transcode-opus",
  "transcode-ts",
+ "transcode-vp9",
 ]
 
 [[package]]
 name = "transcode-hevc"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "bitflags",
  "thiserror",
@@ -414,7 +417,16 @@ dependencies = [
 
 [[package]]
 name = "transcode-mkv"
-version = "0.1.0"
+version = "1.0.0"
+dependencies = [
+ "thiserror",
+ "tracing",
+ "transcode-core",
+]
+
+[[package]]
+name = "transcode-opus"
+version = "1.0.0"
 dependencies = [
  "thiserror",
  "tracing",
@@ -423,7 +435,16 @@ dependencies = [
 
 [[package]]
 name = "transcode-ts"
-version = "0.1.0"
+version = "1.0.0"
+dependencies = [
+ "thiserror",
+ "tracing",
+ "transcode-core",
+]
+
+[[package]]
+name = "transcode-vp9"
+version = "1.0.0"
 dependencies = [
  "thiserror",
  "tracing",

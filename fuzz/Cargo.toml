@@ -18,6 +18,8 @@ transcode-containers = { path = "../transcode-containers" }
 transcode-hevc = { path = "../transcode-hevc" }
 transcode-mkv = { path = "../transcode-mkv" }
 transcode-ts = { path = "../transcode-ts" }
+transcode-opus = { path = "../transcode-opus" }
+transcode-vp9 = { path = "../transcode-vp9" }
 
 # ============================================================================
 # Existing fuzz targets
@@ -151,6 +153,30 @@ bench = false
 [[bin]]
 name = "ts_pes"
 path = "fuzz_targets/ts_pes.rs"
+test = false
+doc = false
+bench = false
+
+# ============================================================================
+# Audio codec fuzz targets
+# ============================================================================
+
+# Opus packet parsing
+[[bin]]
+name = "opus_packet"
+path = "fuzz_targets/opus_packet.rs"
+test = false
+doc = false
+bench = false
+
+# ============================================================================
+# Video codec fuzz targets
+# ============================================================================
+
+# VP9 bitstream parsing
+[[bin]]
+name = "vp9_bitstream"
+path = "fuzz_targets/vp9_bitstream.rs"
 test = false
 doc = false
 bench = false
