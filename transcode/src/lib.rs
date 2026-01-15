@@ -78,7 +78,11 @@ pub use transcode_pipeline::{
 };
 
 // High-level API
-pub use options::{TranscodeOptions, InputConfig, OutputConfig, VideoConfig, AudioConfig};
+pub use options::{
+    TranscodeOptions, TranscodeOptionsBuilder,
+    InputConfig, OutputConfig, VideoConfig, AudioConfig,
+    NotSet, InputSet, OutputSet,
+};
 pub use presets::{Preset, Quality, Format};
 pub use transcoder::{Transcoder, TranscodeStats};
 

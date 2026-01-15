@@ -27,6 +27,14 @@ packages = [
     "transcode-containers",
     "transcode-pipeline",
     "transcode",
+    "transcode-ai",
+    "transcode-gpu",
+    "transcode-distributed",
+    "transcode-streaming",
+    "transcode-av1",
+    "transcode-opus",
+    "transcode-quality",
+    "transcode-intel",
 ]
 
 # Timeout for tests (in seconds)
@@ -45,7 +53,7 @@ output-dir = "coverage"
 verbose = true
 
 # Fail if coverage is below threshold
-fail-under = 50.0
+fail-under = 55.0
 
 [ci]
 # CI-specific settings

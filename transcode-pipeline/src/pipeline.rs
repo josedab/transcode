@@ -215,7 +215,10 @@ impl Pipeline {
         }
 
         self.state = PipelineState::Ready;
-        info!("Pipeline initialized with {} stream mappings", self.stream_mappings.len());
+        info!(
+            stream_mappings = self.stream_mappings.len(),
+            "Pipeline initialized"
+        );
 
         Ok(())
     }
@@ -249,7 +252,10 @@ impl Pipeline {
             NodeOutput::EndOfStream => {
                 self.flush()?;
                 self.state = PipelineState::Finished;
-                info!("Pipeline finished, processed {} packets", self.packets_processed);
+                info!(
+                    packets_processed = self.packets_processed,
+                    "Pipeline finished"
+                );
                 Ok(false)
             }
             _ => Ok(true),
@@ -259,7 +265,11 @@ impl Pipeline {
     /// Process a packet through the pipeline.
     fn process_packet(&mut self, packet: &Packet<'_>) -> Result<()> {
         let stream_index = packet.stream_index as usize;
-        trace!("Processing packet for stream {}", stream_index);
+        trace!(
+            stream_index = stream_index,
+            packet_size = packet.data().len(),
+            "Processing packet"
+        );
 
         // Find mapping for this stream
         let mapping = self
@@ -269,7 +279,7 @@ impl Pipeline {
             .cloned();
 
         let Some(mapping) = mapping else {
-            debug!("No mapping for stream {}, skipping packet", stream_index);
+            debug!(stream_index = stream_index, "No mapping for stream, skipping");
             return Ok(());
         };
 
@@ -337,7 +347,11 @@ impl Pipeline {
 
     /// Flush the pipeline.
     fn flush(&mut self) -> Result<()> {
-        info!("Flushing pipeline");
+        info!(
+            decoders = self.decoders.len(),
+            encoders = self.encoders.len(),
+            "Flushing pipeline"
+        );
 
         // Collect decoder outputs first
         let mut decoder_outputs: Vec<(usize, Vec<NodeOutput>)> = Vec::new();
@@ -434,12 +448,18 @@ impl Pipeline {
             if total > 0 {
                 let progress = (self.duration_processed as f64 / total as f64 * 100.0).min(100.0);
                 info!(
-                    "Progress: {:.1}% ({} packets processed)",
-                    progress, self.packets_processed
+                    progress_percent = progress,
+                    packets_processed = self.packets_processed,
+                    duration_processed = self.duration_processed,
+                    total_duration = total,
+                    "Pipeline progress"
                 );
             }
         } else {
-            info!("Processed {} packets", self.packets_processed);
+            info!(
+                packets_processed = self.packets_processed,
+                "Pipeline progress"
+            );
         }
     }
 

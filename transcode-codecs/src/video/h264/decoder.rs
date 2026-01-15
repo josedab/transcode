@@ -167,7 +167,12 @@ impl H264Decoder {
                 if !self.sps_map.contains_key(&sps_id) && self.sps_map.len() >= MAX_SPS_COUNT {
                     return Err(CodecError::ResourceExhausted("SPS count limit exceeded".into()).into());
                 }
-                tracing::debug!("Parsed SPS {}: {}x{}", sps_id, sps.width(), sps.height());
+                tracing::debug!(
+                    sps_id = sps_id,
+                    width = sps.width(),
+                    height = sps.height(),
+                    "Parsed SPS"
+                );
                 self.sps_map.insert(sps_id, sps);
                 self.active_sps = Some(sps_id);
                 Ok(None)
@@ -179,7 +184,7 @@ impl H264Decoder {
                 if !self.pps_map.contains_key(&pps_id) && self.pps_map.len() >= MAX_PPS_COUNT {
                     return Err(CodecError::ResourceExhausted("PPS count limit exceeded".into()).into());
                 }
-                tracing::debug!("Parsed PPS {}", pps_id);
+                tracing::debug!(pps_id = pps_id, "Parsed PPS");
                 self.pps_map.insert(pps_id, pps);
                 self.active_pps = Some(pps_id);
                 Ok(None)
@@ -260,6 +265,15 @@ impl VideoDecoder for H264Decoder {
         }
     }
 
+    #[tracing::instrument(
+        level = "trace",
+        skip(self, packet),
+        fields(
+            codec = "h264",
+            packet_size = packet.data().len(),
+            pts = ?packet.pts,
+        )
+    )]
     fn decode(&mut self, packet: &Packet<'_>) -> Result<Vec<Frame>> {
         let mut frames = Vec::new();
 
