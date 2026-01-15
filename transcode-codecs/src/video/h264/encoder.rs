@@ -752,20 +752,33 @@ impl H264Encoder {
             Ok(Vec::new())
         }
     }
-}
 
-impl VideoEncoder for H264Encoder {
-    fn codec_info(&self) -> CodecInfo {
-        CodecInfo {
-            name: "h264",
-            long_name: "H.264 / AVC / MPEG-4 AVC",
-            can_encode: true,
-            can_decode: false,
-        }
-    }
-
-    fn encode(&mut self, frame: &Frame) -> Result<Vec<Packet<'static>>> {
-        let mut packets = Vec::new();
+    /// Encode a frame into a pre-allocated output buffer.
+    ///
+    /// This method is more efficient than [`encode`](VideoEncoder::encode) when encoding
+    /// multiple frames in a loop, as it allows reusing the same output buffer without
+    /// repeated allocations.
+    ///
+    /// # Arguments
+    ///
+    /// * `frame` - The frame to encode
+    /// * `out` - Output buffer to store encoded packets. Will be cleared before use.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let mut encoder = H264Encoder::new(config)?;
+    /// let mut packets = Vec::new();
+    ///
+    /// for frame in frames {
+    ///     encoder.encode_into(&frame, &mut packets)?;
+    ///     for packet in packets.drain(..) {
+    ///         muxer.write_packet(packet)?;
+    ///     }
+    /// }
+    /// ```
+    pub fn encode_into(&mut self, frame: &Frame, out: &mut Vec<Packet<'static>>) -> Result<()> {
+        out.clear();
 
         // Determine if this should be a keyframe
         let is_keyframe = self.frame_count.is_multiple_of(self.config.gop_size as u64);
@@ -773,9 +786,9 @@ impl VideoEncoder for H264Encoder {
         // Use parallel slice encoding if available
         if self.slice_encoder.is_some() {
             let packet = self.encode_parallel_slices(frame, is_keyframe)?;
-            packets.push(packet);
+            out.push(packet);
             self.frame_count += 1;
-            return Ok(packets);
+            return Ok(());
         }
 
         // Fall back to single-threaded encoding
@@ -785,17 +798,17 @@ impl VideoEncoder for H264Encoder {
             sps_data.extend_from_slice(&self.sps);
             let mut sps_packet = Packet::new(sps_data);
             sps_packet.pts = frame.pts;
-            packets.push(sps_packet);
+            out.push(sps_packet);
 
             let mut pps_data = vec![0x00, 0x00, 0x00, 0x01];
             pps_data.extend_from_slice(&self.pps);
             let mut pps_packet = Packet::new(pps_data);
             pps_packet.pts = frame.pts;
-            packets.push(pps_packet);
+            out.push(pps_packet);
 
             // Encode IDR frame
             let idr_packet = self.encode_idr(frame)?;
-            packets.push(idr_packet);
+            out.push(idr_packet);
         } else {
             // Encode P-frame (simplified)
             let mut data = Vec::new();
@@ -825,20 +838,59 @@ impl VideoEncoder for H264Encoder {
             let mut packet = Packet::new(data);
             packet.pts = frame.pts;
             packet.dts = frame.dts;
-            packets.push(packet);
+            out.push(packet);
         }
 
         self.frame_count += 1;
+        Ok(())
+    }
+
+    /// Flush encoder into a pre-allocated output buffer.
+    ///
+    /// This method is more efficient than [`flush`](VideoEncoder::flush) when flushing
+    /// at the end of a transcoding loop, as it allows reusing the same output buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `out` - Output buffer to store flushed packets. Will be cleared before use.
+    pub fn flush_into(&mut self, out: &mut Vec<Packet<'static>>) -> Result<()> {
+        out.clear();
+
+        // Flush lookahead buffer if present
+        if let Some(ref mut lookahead) = self.lookahead {
+            let remaining = lookahead.flush();
+            for la_frame in remaining {
+                let packet = self.encode_lookahead_frame(&la_frame)?;
+                out.push(packet);
+            }
+        }
+
+        // Clear any pending frames (they don't produce output)
+        self.pending_frames.clear();
+
+        Ok(())
+    }
+}
+
+impl VideoEncoder for H264Encoder {
+    fn codec_info(&self) -> CodecInfo {
+        CodecInfo {
+            name: "h264",
+            long_name: "H.264 / AVC / MPEG-4 AVC",
+            can_encode: true,
+            can_decode: false,
+        }
+    }
+
+    fn encode(&mut self, frame: &Frame) -> Result<Vec<Packet<'static>>> {
+        let mut packets = Vec::new();
+        self.encode_into(frame, &mut packets)?;
         Ok(packets)
     }
 
     fn flush(&mut self) -> Result<Vec<Packet<'static>>> {
-        // Flush lookahead buffer if present
-        let mut packets = self.flush_lookahead()?;
-
-        // Return any pending frames
-        packets.extend(self.pending_frames.drain(..).filter_map(|_| None::<Packet<'static>>));
-
+        let mut packets = Vec::new();
+        self.flush_into(&mut packets)?;
         Ok(packets)
     }
 
@@ -1135,5 +1187,123 @@ mod tests {
         // Should have one result per macroblock
         let mb_count = ((320 + 15) / 16) * ((240 + 15) / 16);
         assert_eq!(results.len(), mb_count);
+    }
+
+    // Tests for pre-allocated encode_into API
+
+    #[test]
+    fn test_encode_into_reuses_buffer() {
+        use transcode_core::{PixelFormat, TimeBase, Timestamp};
+
+        let mut encoder = H264Encoder::new_single_threaded(320, 240).unwrap();
+        let time_base = TimeBase::new(1, 30);
+
+        // Pre-allocate buffer
+        let mut packets = Vec::with_capacity(10);
+
+        // Create and encode first frame
+        let mut frame1 = transcode_core::Frame::new(320, 240, PixelFormat::Yuv420p, time_base);
+        frame1.pts = Timestamp::new(0, time_base);
+        fill_test_frame(&mut frame1);
+
+        encoder.encode_into(&frame1, &mut packets).unwrap();
+        assert!(!packets.is_empty()); // Should have SPS, PPS, and IDR for keyframe
+        assert!(packets.len() >= 3); // At least 3 packets for keyframe
+
+        // Store capacity before second encode
+        let capacity_before = packets.capacity();
+
+        // Create and encode second frame (P-frame)
+        let mut frame2 = transcode_core::Frame::new(320, 240, PixelFormat::Yuv420p, time_base);
+        frame2.pts = Timestamp::new(1, time_base);
+        fill_test_frame(&mut frame2);
+
+        encoder.encode_into(&frame2, &mut packets).unwrap();
+        assert_eq!(packets.len(), 1); // P-frame produces single packet
+
+        // Buffer should not have grown (allocation reused)
+        assert_eq!(packets.capacity(), capacity_before);
+    }
+
+    #[test]
+    fn test_encode_into_clears_output_buffer() {
+        use transcode_core::{PixelFormat, TimeBase, Timestamp};
+
+        let mut encoder = H264Encoder::new_single_threaded(320, 240).unwrap();
+        let time_base = TimeBase::new(1, 30);
+
+        // Pre-populate buffer with junk
+        let mut packets = vec![Packet::new(vec![1, 2, 3])];
+
+        let mut frame = transcode_core::Frame::new(320, 240, PixelFormat::Yuv420p, time_base);
+        frame.pts = Timestamp::new(0, time_base);
+        fill_test_frame(&mut frame);
+
+        encoder.encode_into(&frame, &mut packets).unwrap();
+
+        // Should only contain new packets, not the junk
+        assert!(!packets.is_empty());
+        for packet in &packets {
+            // First bytes should be start code, not 1,2,3
+            assert!(packet.data().starts_with(&[0x00, 0x00, 0x00, 0x01]));
+        }
+    }
+
+    #[test]
+    fn test_encode_into_equivalent_to_encode() {
+        use transcode_core::{PixelFormat, TimeBase, Timestamp};
+
+        let config = H264EncoderConfig::new(320, 240);
+        let mut encoder1 = H264Encoder::new(config.clone()).unwrap();
+        let mut encoder2 = H264Encoder::new(config).unwrap();
+
+        let time_base = TimeBase::new(1, 30);
+        let mut frame = transcode_core::Frame::new(320, 240, PixelFormat::Yuv420p, time_base);
+        frame.pts = Timestamp::new(0, time_base);
+        fill_test_frame(&mut frame);
+
+        // Encode with both methods
+        let packets1 = encoder1.encode(&frame).unwrap();
+        let mut packets2 = Vec::new();
+        encoder2.encode_into(&frame, &mut packets2).unwrap();
+
+        // Results should be identical
+        assert_eq!(packets1.len(), packets2.len());
+        for (p1, p2) in packets1.iter().zip(packets2.iter()) {
+            assert_eq!(p1.data(), p2.data());
+            assert_eq!(p1.pts, p2.pts);
+        }
+    }
+
+    #[test]
+    fn test_flush_into_clears_output() {
+        let mut encoder = H264Encoder::new_single_threaded(320, 240).unwrap();
+
+        // Pre-populate buffer
+        let mut packets = vec![Packet::new(vec![1, 2, 3])];
+
+        encoder.flush_into(&mut packets).unwrap();
+
+        // Output should be cleared (no frames to flush for this encoder state)
+        assert!(packets.is_empty());
+    }
+
+    /// Helper to fill a frame with test pattern
+    fn fill_test_frame(frame: &mut transcode_core::Frame) {
+        if let Some(y_plane) = frame.plane_mut(0) {
+            for (i, pixel) in y_plane.iter_mut().enumerate() {
+                *pixel = (i % 256) as u8;
+            }
+        }
+        if let Some(u_plane) = frame.plane_mut(1) {
+            for pixel in u_plane.iter_mut() {
+                *pixel = 128;
+            }
+        }
+        if let Some(v_plane) = frame.plane_mut(2) {
+            for pixel in v_plane.iter_mut() {
+                *pixel = 128;
+            }
+        }
     }
 }
