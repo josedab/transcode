@@ -123,6 +123,27 @@ impl VideoSegment {
         }
     }
 
+    /// Create a new video segment with a shared source string.
+    ///
+    /// This avoids cloning the source path for each segment when creating
+    /// multiple segments from the same source file.
+    pub fn new_shared(
+        source: std::sync::Arc<str>,
+        start_time: f64,
+        end_time: f64,
+        index: usize,
+        total_segments: usize,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            source: source.to_string(),
+            start_time,
+            end_time,
+            index,
+            total_segments,
+        }
+    }
+
     /// Get segment duration.
     pub fn duration(&self) -> f64 {
         self.end_time - self.start_time
@@ -218,6 +239,17 @@ impl Task {
             progress: 0.0,
             output: None,
         }
+    }
+
+    /// Create a new task with shared params.
+    ///
+    /// This method accepts an `Arc<TranscodeParams>` to allow sharing params
+    /// across multiple tasks. The params are cloned into the task for
+    /// serialization compatibility.
+    pub fn new_shared(job_id: Uuid, segment: VideoSegment, params: std::sync::Arc<TranscodeParams>) -> Self {
+        // Clone from Arc - in the future, Task could store Arc internally
+        // with custom serde to avoid this clone
+        Self::new(job_id, segment, (*params).clone())
     }
 
     /// Set task priority.

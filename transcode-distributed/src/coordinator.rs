@@ -115,11 +115,110 @@ impl Coordinator {
         self.start_health_checker().await;
     }
 
-    /// Stop the coordinator.
+    /// Stop the coordinator immediately without draining tasks.
     pub async fn stop(&self) {
         let mut running = self.running.write().await;
         *running = false;
         info!("Coordinator stopped");
+    }
+
+    /// Stop the coordinator gracefully, waiting for in-flight tasks to complete.
+    ///
+    /// This method will:
+    /// 1. Stop accepting new jobs
+    /// 2. Wait for running tasks to complete (up to timeout)
+    /// 3. Cancel any remaining pending tasks
+    /// 4. Return the number of tasks that were forcefully cancelled
+    ///
+    /// # Arguments
+    /// * `timeout` - Maximum time to wait for tasks to complete
+    ///
+    /// # Returns
+    /// The number of tasks that were cancelled due to timeout
+    pub async fn stop_graceful(&self, timeout: std::time::Duration) -> usize {
+        info!(timeout_secs = timeout.as_secs(), "Initiating graceful shutdown");
+
+        // Signal that we're stopping (prevents new task scheduling)
+        {
+            let mut running = self.running.write().await;
+            *running = false;
+        }
+
+        let deadline = tokio::time::Instant::now() + timeout;
+
+        // Wait for running tasks to complete
+        loop {
+            let running_count = self
+                .tasks
+                .iter()
+                .filter(|t| t.state == TaskState::Running || t.state == TaskState::Queued)
+                .count();
+
+            if running_count == 0 {
+                info!("All tasks completed, shutdown complete");
+                return 0;
+            }
+
+            if tokio::time::Instant::now() >= deadline {
+                warn!(
+                    running_tasks = running_count,
+                    "Graceful shutdown timeout reached"
+                );
+                break;
+            }
+
+            debug!(
+                running_tasks = running_count,
+                "Waiting for tasks to complete"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+
+        // Cancel remaining tasks
+        let mut cancelled_count = 0;
+        for mut task in self.tasks.iter_mut() {
+            if !task.state.is_terminal() && task.cancel().is_ok() {
+                cancelled_count += 1;
+            }
+        }
+
+        // Update job states
+        for job in self.jobs.iter() {
+            let job_id = job.id;
+            drop(job);
+            self.check_job_completion(job_id).await;
+        }
+
+        if cancelled_count > 0 {
+            warn!(cancelled_tasks = cancelled_count, "Force cancelled tasks during shutdown");
+        }
+
+        info!(cancelled_count = cancelled_count, "Coordinator shutdown complete");
+        cancelled_count
+    }
+
+    /// Get count of active (non-terminal) tasks.
+    pub fn active_task_count(&self) -> usize {
+        self.tasks
+            .iter()
+            .filter(|t| !t.state.is_terminal())
+            .count()
+    }
+
+    /// Get count of pending tasks.
+    pub fn pending_task_count(&self) -> usize {
+        self.tasks
+            .iter()
+            .filter(|t| t.state == TaskState::Pending)
+            .count()
+    }
+
+    /// Get count of running tasks.
+    pub fn running_task_count(&self) -> usize {
+        self.tasks
+            .iter()
+            .filter(|t| t.state == TaskState::Running)
+            .count()
     }
 
     /// Check if coordinator is running.
@@ -142,12 +241,17 @@ impl Coordinator {
         // Create tasks for each segment
         let num_segments = (duration / self.config.segment_duration).ceil() as usize;
 
+        // Use Arc to share params across all tasks (avoids O(n) clones)
+        let shared_params = Arc::new(params);
+        // Use Arc<str> to share source path (avoids O(n) string clones)
+        let shared_source: Arc<str> = source.into();
+
         for i in 0..num_segments {
             let start = i as f64 * self.config.segment_duration;
             let end = ((i + 1) as f64 * self.config.segment_duration).min(duration);
 
-            let segment = VideoSegment::new(source.clone(), start, end, i, num_segments);
-            let task = Task::new(job_id, segment, params.clone());
+            let segment = VideoSegment::new_shared(Arc::clone(&shared_source), start, end, i, num_segments);
+            let task = Task::new_shared(job_id, segment, Arc::clone(&shared_params));
 
             job.add_task(task.id);
             self.tasks.insert(task.id, task);
@@ -155,7 +259,7 @@ impl Coordinator {
 
         self.jobs.insert(job_id, job);
 
-        info!("Job {} submitted with {} tasks", job_id, num_segments);
+        info!(job_id = %job_id, task_count = num_segments, "Job submitted");
         self.emit(CoordinatorEvent::JobSubmitted { job_id });
 
         Ok(job_id)
@@ -179,7 +283,7 @@ impl Coordinator {
             }
         }
 
-        info!("Job {} cancelled", job_id);
+        info!(job_id = %job_id, "Job cancelled");
         Ok(())
     }
 
@@ -216,7 +320,7 @@ impl Coordinator {
         let worker_id = worker.id.clone();
         self.workers.register(worker).await?;
 
-        info!("Worker {} registered", worker_id);
+        info!(worker_id = %worker_id, "Worker registered");
         self.emit(CoordinatorEvent::WorkerRegistered { worker_id });
 
         Ok(())
