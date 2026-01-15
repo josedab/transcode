@@ -350,3 +350,145 @@ fn nchw_to_frame(array: &Array4<f32>, pts: i64) -> Result<Frame> {
 
     Ok(Frame::new(data, width as u32, height as u32, channels as u8).with_pts(pts))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_frame(width: u32, height: u32) -> Frame {
+        let channels = 3u8;
+        let data = vec![128u8; (width * height * channels as u32) as usize];
+        Frame::new(data, width, height, channels)
+    }
+
+    #[test]
+    fn test_scale_factor_values() {
+        assert_eq!(ScaleFactor::X2.as_u32(), 2);
+        assert_eq!(ScaleFactor::X4.as_u32(), 4);
+    }
+
+    #[test]
+    fn test_upscale_model_names() {
+        assert_eq!(
+            UpscaleModel::RealESRGAN.model_name(ScaleFactor::X2),
+            "realesrgan_x2"
+        );
+        assert_eq!(
+            UpscaleModel::RealESRGAN.model_name(ScaleFactor::X4),
+            "realesrgan_x4"
+        );
+        assert_eq!(UpscaleModel::Lanczos.model_name(ScaleFactor::X2), "lanczos");
+    }
+
+    #[test]
+    fn test_upscale_model_requires_nn() {
+        assert!(UpscaleModel::RealESRGAN.requires_nn());
+        assert!(UpscaleModel::ESPCN.requires_nn());
+        assert!(!UpscaleModel::Lanczos.requires_nn());
+    }
+
+    #[test]
+    fn test_upscaler_config_builder() {
+        let config = UpscalerConfig::default()
+            .with_scale_factor(ScaleFactor::X4)
+            .with_model(UpscaleModel::ESPCN)
+            .with_tiling(256, 32);
+
+        assert_eq!(config.scale_factor, ScaleFactor::X4);
+        assert_eq!(config.model, UpscaleModel::ESPCN);
+        assert_eq!(config.tile_size, 256);
+        assert_eq!(config.tile_overlap, 32);
+    }
+
+    #[test]
+    fn test_upscaler_2x_dimensions() {
+        let config = UpscalerConfig::default()
+            .with_scale_factor(ScaleFactor::X2)
+            .with_model(UpscaleModel::Lanczos);
+
+        let upscaler = Upscaler::new(config).unwrap();
+        let input = create_test_frame(100, 100);
+        let output = upscaler.process(&input).unwrap();
+
+        assert_eq!(output.width, 200);
+        assert_eq!(output.height, 200);
+        assert_eq!(output.channels, 3);
+    }
+
+    #[test]
+    fn test_upscaler_4x_dimensions() {
+        let config = UpscalerConfig::default()
+            .with_scale_factor(ScaleFactor::X4)
+            .with_model(UpscaleModel::Lanczos);
+
+        let upscaler = Upscaler::new(config).unwrap();
+        let input = create_test_frame(50, 50);
+        let output = upscaler.process(&input).unwrap();
+
+        assert_eq!(output.width, 200);
+        assert_eq!(output.height, 200);
+    }
+
+    #[test]
+    fn test_upscaler_preserves_pts() {
+        let config = UpscalerConfig::default()
+            .with_scale_factor(ScaleFactor::X2)
+            .with_model(UpscaleModel::Lanczos);
+
+        let upscaler = Upscaler::new(config).unwrap();
+        let input = create_test_frame(64, 64).with_pts(12345);
+        let output = upscaler.process(&input).unwrap();
+
+        assert_eq!(output.pts, 12345);
+    }
+
+    #[test]
+    fn test_upscaler_fallback_when_no_model() {
+        // Using a model that requires NN but won't be found
+        let config = UpscalerConfig::default()
+            .with_scale_factor(ScaleFactor::X2)
+            .with_model(UpscaleModel::RealESRGAN);
+
+        let upscaler = Upscaler::new(config).unwrap();
+        // Should fall back to Lanczos when model not found
+        assert!(!upscaler.is_using_nn());
+
+        let input = create_test_frame(64, 64);
+        let output = upscaler.process(&input).unwrap();
+        assert_eq!(output.width, 128);
+        assert_eq!(output.height, 128);
+    }
+
+    #[test]
+    fn test_upscaler_invalid_frame() {
+        let config = UpscalerConfig::default()
+            .with_model(UpscaleModel::Lanczos);
+
+        let upscaler = Upscaler::new(config).unwrap();
+
+        // Create frame with mismatched data size
+        let frame = Frame {
+            data: vec![0u8; 100], // Wrong size
+            width: 64,
+            height: 64,
+            channels: 3,
+            pts: 0,
+        };
+
+        let result = upscaler.process(&frame);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_frame_to_nchw_roundtrip() {
+        let input = create_test_frame(32, 32);
+        let nchw = frame_to_nchw(&input).unwrap();
+
+        assert_eq!(nchw.dim(), (1, 3, 32, 32));
+
+        let output = nchw_to_frame(&nchw, input.pts).unwrap();
+        assert_eq!(output.width, input.width);
+        assert_eq!(output.height, input.height);
+        assert_eq!(output.channels, input.channels);
+    }
+}

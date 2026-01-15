@@ -353,3 +353,166 @@ impl Denoiser {
         self.session.is_some()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_frame(width: u32, height: u32) -> crate::Frame {
+        let channels = 3u8;
+        let data = vec![128u8; (width * height * channels as u32) as usize];
+        crate::Frame::new(data, width, height, channels)
+    }
+
+    fn create_noisy_frame(width: u32, height: u32) -> crate::Frame {
+        let channels = 3u8;
+        let size = (width * height * channels as u32) as usize;
+        let mut data = Vec::with_capacity(size);
+        for i in 0..size {
+            // Add some variation to simulate noise
+            data.push(((i % 256) as u8).wrapping_add((i / 256) as u8));
+        }
+        crate::Frame::new(data, width, height, channels)
+    }
+
+    #[test]
+    fn test_noise_level_sigma_values() {
+        assert_eq!(NoiseLevel::Low.sigma(), 10.0);
+        assert_eq!(NoiseLevel::Medium.sigma(), 20.0);
+        assert_eq!(NoiseLevel::High.sigma(), 35.0);
+        assert_eq!(NoiseLevel::VeryHigh.sigma(), 50.0);
+        assert_eq!(NoiseLevel::Custom(25).sigma(), 25.0);
+        assert_eq!(NoiseLevel::Auto.sigma(), 15.0);
+    }
+
+    #[test]
+    fn test_denoise_model_names() {
+        assert_eq!(DenoiseModel::DnCNN.model_name(), "dncnn");
+        assert_eq!(DenoiseModel::FFDNet.model_name(), "ffdnet");
+        assert_eq!(DenoiseModel::NLMeans.model_name(), "");
+        assert_eq!(DenoiseModel::Bilateral.model_name(), "");
+    }
+
+    #[test]
+    fn test_denoise_model_requires_nn() {
+        assert!(DenoiseModel::DnCNN.requires_nn());
+        assert!(DenoiseModel::FFDNet.requires_nn());
+        assert!(!DenoiseModel::NLMeans.requires_nn());
+        assert!(!DenoiseModel::Bilateral.requires_nn());
+    }
+
+    #[test]
+    fn test_denoiser_config_builder() {
+        let config = DenoiserConfig::default()
+            .with_noise_level(NoiseLevel::High)
+            .with_model(DenoiseModel::Bilateral)
+            .with_detail_preservation(0.5)
+            .with_temporal(true);
+
+        assert_eq!(config.noise_level, NoiseLevel::High);
+        assert_eq!(config.model, DenoiseModel::Bilateral);
+        assert!((config.detail_preservation - 0.5).abs() < f32::EPSILON);
+        assert!(config.temporal);
+    }
+
+    #[test]
+    fn test_denoiser_config_detail_preservation_clamped() {
+        let config = DenoiserConfig::default()
+            .with_detail_preservation(1.5); // Should be clamped to 1.0
+        assert!((config.detail_preservation - 1.0).abs() < f32::EPSILON);
+
+        let config = DenoiserConfig::default()
+            .with_detail_preservation(-0.5); // Should be clamped to 0.0
+        assert!(config.detail_preservation.abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_denoiser_preserves_dimensions() {
+        let config = DenoiserConfig::default()
+            .with_model(DenoiseModel::Bilateral)
+            .with_noise_level(NoiseLevel::Medium);
+
+        let denoiser = Denoiser::new(config).unwrap();
+        let input = create_test_frame(64, 64);
+        let output = denoiser.process(&input).unwrap();
+
+        assert_eq!(output.width, input.width);
+        assert_eq!(output.height, input.height);
+        assert_eq!(output.channels, input.channels);
+    }
+
+    #[test]
+    fn test_denoiser_preserves_pts() {
+        let config = DenoiserConfig::default()
+            .with_model(DenoiseModel::Bilateral);
+
+        let denoiser = Denoiser::new(config).unwrap();
+        let input = create_test_frame(32, 32).with_pts(98765);
+        let output = denoiser.process(&input).unwrap();
+
+        assert_eq!(output.pts, 98765);
+    }
+
+    #[test]
+    fn test_denoiser_bilateral_filter() {
+        let config = DenoiserConfig::default()
+            .with_model(DenoiseModel::Bilateral)
+            .with_noise_level(NoiseLevel::Low);
+
+        let denoiser = Denoiser::new(config).unwrap();
+        let input = create_noisy_frame(32, 32);
+        let output = denoiser.process(&input).unwrap();
+
+        // Output should have valid data
+        assert_eq!(output.data.len(), input.data.len());
+    }
+
+    #[test]
+    fn test_denoiser_nlmeans_filter() {
+        let config = DenoiserConfig::default()
+            .with_model(DenoiseModel::NLMeans)
+            .with_noise_level(NoiseLevel::Low);
+
+        let denoiser = Denoiser::new(config).unwrap();
+        // Use small frame for NLMeans (it's slow)
+        let input = create_noisy_frame(16, 16);
+        let output = denoiser.process(&input).unwrap();
+
+        assert_eq!(output.width, input.width);
+        assert_eq!(output.height, input.height);
+    }
+
+    #[test]
+    fn test_denoiser_fallback_when_no_model() {
+        let config = DenoiserConfig::default()
+            .with_model(DenoiseModel::DnCNN); // Requires NN
+
+        let denoiser = Denoiser::new(config).unwrap();
+        // Should fall back when model not found
+        assert!(!denoiser.is_using_nn());
+
+        let input = create_test_frame(32, 32);
+        let output = denoiser.process(&input).unwrap();
+        assert_eq!(output.width, 32);
+    }
+
+    #[test]
+    fn test_denoiser_invalid_frame() {
+        let config = DenoiserConfig::default()
+            .with_model(DenoiseModel::Bilateral);
+
+        let denoiser = Denoiser::new(config).unwrap();
+
+        // Create frame with mismatched data size
+        let frame = crate::Frame {
+            data: vec![0u8; 50], // Wrong size
+            width: 32,
+            height: 32,
+            channels: 3,
+            pts: 0,
+        };
+
+        let result = denoiser.process(&frame);
+        assert!(result.is_err());
+    }
+}

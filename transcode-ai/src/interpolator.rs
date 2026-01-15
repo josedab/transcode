@@ -404,3 +404,250 @@ fn bilinear_sample(frame: &Frame, x: f32, y: f32, channel: usize) -> f32 {
 
     (1.0 - fy) * ((1.0 - fx) * v00 + fx * v01) + fy * ((1.0 - fx) * v10 + fx * v11)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_frame(width: u32, height: u32, value: u8) -> Frame {
+        let channels = 3u8;
+        let data = vec![value; (width * height * channels as u32) as usize];
+        Frame::new(data, width, height, channels)
+    }
+
+    fn create_gradient_frame(width: u32, height: u32) -> Frame {
+        let channels = 3u8;
+        let size = (width * height * channels as u32) as usize;
+        let mut data = Vec::with_capacity(size);
+        for i in 0..size {
+            data.push((i % 256) as u8);
+        }
+        Frame::new(data, width, height, channels)
+    }
+
+    #[test]
+    fn test_interpolation_model_names() {
+        assert_eq!(InterpolationModel::Rife.model_name(), "rife");
+        assert_eq!(InterpolationModel::Film.model_name(), "film");
+        assert_eq!(InterpolationModel::LinearBlend.model_name(), "");
+    }
+
+    #[test]
+    fn test_interpolation_model_requires_nn() {
+        assert!(InterpolationModel::Rife.requires_nn());
+        assert!(InterpolationModel::Film.requires_nn());
+        assert!(!InterpolationModel::LinearBlend.requires_nn());
+    }
+
+    #[test]
+    fn test_interpolator_config_builder() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(4)
+            .with_scene_threshold(0.3);
+
+        assert_eq!(config.mode, InterpolationMode::Linear);
+        assert_eq!(config.model, InterpolationModel::LinearBlend);
+        assert_eq!(config.multiplier, 4);
+        assert!((config.scene_threshold - 0.3).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_interpolator_config_multiplier_min() {
+        let config = InterpolatorConfig::default()
+            .with_multiplier(1); // Should be clamped to 2
+        assert_eq!(config.multiplier, 2);
+    }
+
+    #[test]
+    fn test_interpolator_config_scene_threshold_clamped() {
+        let config = InterpolatorConfig::default()
+            .with_scene_threshold(1.5);
+        assert!((config.scene_threshold - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_interpolate_frame_count_2x() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2)
+            .with_scene_threshold(0.0); // Disable scene detection
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        let frame1 = create_test_frame(32, 32, 0);
+        let frame2 = create_test_frame(32, 32, 255);
+
+        let results = interpolator.interpolate(&frame1, &frame2, 0.5).unwrap();
+        // 2x multiplier means 1 intermediate frame
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn test_interpolate_frame_count_4x() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(4)
+            .with_scene_threshold(0.0);
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        let frame1 = create_test_frame(32, 32, 0);
+        let frame2 = create_test_frame(32, 32, 255);
+
+        let results = interpolator.interpolate(&frame1, &frame2, 0.5).unwrap();
+        // 4x multiplier means 3 intermediate frames
+        assert_eq!(results.len(), 3);
+    }
+
+    #[test]
+    fn test_interpolate_preserves_dimensions() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2)
+            .with_scene_threshold(0.0);
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        let frame1 = create_test_frame(64, 48, 100);
+        let frame2 = create_test_frame(64, 48, 200);
+
+        let results = interpolator.interpolate(&frame1, &frame2, 0.5).unwrap();
+        assert_eq!(results[0].width, 64);
+        assert_eq!(results[0].height, 48);
+        assert_eq!(results[0].channels, 3);
+    }
+
+    #[test]
+    fn test_interpolate_linear_midpoint() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2)
+            .with_scene_threshold(0.0);
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        let frame1 = create_test_frame(8, 8, 0);
+        let frame2 = create_test_frame(8, 8, 200);
+
+        let results = interpolator.interpolate(&frame1, &frame2, 0.5).unwrap();
+        // At t=0.5, linear blend should give ~100
+        let mid_value = results[0].data[0];
+        assert!(mid_value >= 95 && mid_value <= 105, "Expected ~100, got {}", mid_value);
+    }
+
+    #[test]
+    fn test_interpolate_pts_interpolation() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2)
+            .with_scene_threshold(0.0);
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        let frame1 = create_test_frame(16, 16, 0).with_pts(0);
+        let frame2 = create_test_frame(16, 16, 255).with_pts(1000);
+
+        let results = interpolator.interpolate(&frame1, &frame2, 0.5).unwrap();
+        // At t=0.5, PTS should be ~500
+        assert!(results[0].pts >= 400 && results[0].pts <= 600);
+    }
+
+    #[test]
+    fn test_interpolate_dimension_mismatch() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2);
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        let frame1 = create_test_frame(64, 64, 0);
+        let frame2 = create_test_frame(32, 32, 255); // Different size
+
+        let result = interpolator.interpolate(&frame1, &frame2, 0.5);
+        assert!(result.is_err());
+        match result {
+            Err(AiError::DimensionMismatch { .. }) => (),
+            _ => panic!("Expected DimensionMismatch error"),
+        }
+    }
+
+    #[test]
+    fn test_interpolate_invalid_frame() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2);
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+
+        let frame1 = Frame {
+            data: vec![0u8; 10], // Wrong size
+            width: 32,
+            height: 32,
+            channels: 3,
+            pts: 0,
+        };
+        let frame2 = create_test_frame(32, 32, 255);
+
+        let result = interpolator.interpolate(&frame1, &frame2, 0.5);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_scene_change_detection() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Linear)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2)
+            .with_scene_threshold(0.1); // Low threshold to trigger detection
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+
+        // Very different frames (scene change)
+        let frame1 = create_test_frame(32, 32, 0);
+        let frame2 = create_test_frame(32, 32, 255);
+
+        let results = interpolator.interpolate(&frame1, &frame2, 0.5).unwrap();
+        // Scene change should return just the first frame
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].data[0], 0); // Should be frame1
+    }
+
+    #[test]
+    fn test_motion_compensated_interpolation() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::MotionCompensated)
+            .with_model(InterpolationModel::LinearBlend)
+            .with_multiplier(2)
+            .with_scene_threshold(0.0);
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        let frame1 = create_gradient_frame(32, 32);
+        let frame2 = create_gradient_frame(32, 32);
+
+        let results = interpolator.interpolate(&frame1, &frame2, 0.5).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].width, 32);
+        assert_eq!(results[0].height, 32);
+    }
+
+    #[test]
+    fn test_bilinear_sample_center() {
+        let frame = create_test_frame(4, 4, 100);
+        let value = bilinear_sample(&frame, 1.5, 1.5, 0);
+        assert!((value - 100.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_interpolator_fallback_when_no_model() {
+        let config = InterpolatorConfig::default()
+            .with_mode(InterpolationMode::Neural)
+            .with_model(InterpolationModel::Rife); // Requires NN
+
+        let interpolator = FrameInterpolator::new(config).unwrap();
+        // Should fall back when model not found
+        assert!(!interpolator.is_using_nn());
+    }
+}
