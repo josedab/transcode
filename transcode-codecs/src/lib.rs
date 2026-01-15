@@ -44,7 +44,11 @@ pub mod traits;
 pub mod simd;
 pub mod parallel;
 
-pub use traits::{Decoder, Encoder, CodecInfo};
+pub use traits::{
+    Decoder, Encoder, CodecInfo,
+    VideoDecoder, VideoEncoder, AudioDecoder, AudioEncoder,
+    VideoDecoderExt, AudioDecoderExt, AudioEncoderExt,
+};
 pub use simd::{SimdOps, SimdCapabilities, detect_simd};
 pub use parallel::{
     ThreadConfig, FrameType, MotionVector, MotionResult, ReferenceFrame,
