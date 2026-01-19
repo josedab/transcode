@@ -1,0 +1,54 @@
+{
+  "name": "Transcode Development",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-1.75-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "serayuzgur.crates",
+        "tamasfe.even-better-toml",
+        "vadimcn.vscode-lldb",
+        "fill-labs.dependi",
+        "usernamehw.errorlens",
+        "eamodio.gitlens",
+        "github.copilot"
+      ],
+      "settings": {
+        "rust-analyzer.check.command": "clippy",
+        "rust-analyzer.check.extraArgs": ["--", "-D", "warnings"],
+        "rust-analyzer.cargo.features": "all",
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "cargo fetch && pip install maturin",
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "CARGO_TERM_COLOR": "always",
+    "RUST_BACKTRACE": "1"
+  },
+  "mounts": [
+    "source=transcode-cargo-cache,target=/usr/local/cargo/registry,type=volume"
+  ],
+  "forwardPorts": [8000, 3000, 9090, 16686],
+  "portsAttributes": {
+    "8000": { "label": "Documentation" },
+    "3000": { "label": "Grafana" },
+    "9090": { "label": "Prometheus" },
+    "16686": { "label": "Jaeger" }
+  }
+}
