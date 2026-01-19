@@ -43,6 +43,7 @@ impl TraceId {
     }
 
     /// Convert to hex string.
+    #[allow(clippy::format_collect)]
     pub fn to_hex(&self) -> String {
         self.0.iter().map(|b| format!("{:02x}", b)).collect()
     }
@@ -102,6 +103,7 @@ impl SpanId {
     }
 
     /// Convert to hex string.
+    #[allow(clippy::format_collect)]
     pub fn to_hex(&self) -> String {
         self.0.iter().map(|b| format!("{:02x}", b)).collect()
     }

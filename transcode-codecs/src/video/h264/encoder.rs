@@ -363,7 +363,7 @@ impl H264Encoder {
         // direct_8x8_inference_flag
         writer.write_bit(true);
         // frame_cropping_flag
-        let crop = !self.config.width.is_multiple_of(16) || !self.config.height.is_multiple_of(16);
+        let crop = self.config.width % 16 != 0 || self.config.height % 16 != 0;
         writer.write_bit(crop);
         if crop {
             let crop_right = (16 - (self.config.width % 16)) % 16 / 2;
@@ -781,7 +781,7 @@ impl H264Encoder {
         out.clear();
 
         // Determine if this should be a keyframe
-        let is_keyframe = self.frame_count.is_multiple_of(self.config.gop_size as u64);
+        let is_keyframe = self.frame_count % (self.config.gop_size as u64) == 0;
 
         // Use parallel slice encoding if available
         if self.slice_encoder.is_some() {

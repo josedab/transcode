@@ -398,7 +398,7 @@ impl InverseTelecine {
         self.phase += 1;
         let frame = self.buffer.remove(0);
 
-        if self.phase.is_multiple_of(25) {
+        if self.phase % 25 == 0 {
             // Skip this frame (it's the duplicate)
             Ok(Vec::new())
         } else {

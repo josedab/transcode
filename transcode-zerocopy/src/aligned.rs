@@ -9,7 +9,7 @@ pub fn align_up(size: usize, alignment: usize) -> usize {
 
 /// Check if pointer is aligned
 pub fn is_aligned(ptr: *const u8, alignment: usize) -> bool {
-    (ptr as usize).is_multiple_of(alignment)
+    (ptr as usize) % alignment == 0
 }
 
 /// Alignment requirements for different use cases

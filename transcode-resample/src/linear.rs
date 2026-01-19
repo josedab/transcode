@@ -112,7 +112,7 @@ impl ResamplerImpl for LinearResampler {
             return Ok(Vec::new());
         }
 
-        if !input.len().is_multiple_of(channels) {
+        if input.len() % channels != 0 {
             return Err(ResampleError::BufferSizeMismatch {
                 actual: input.len(),
                 channels,

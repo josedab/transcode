@@ -5459,7 +5459,7 @@ impl NvencEncoder {
         self.async_tracker
             .start(self.frame_count, AsyncOpType::Encode, Some(self.frame_count));
 
-        let is_keyframe = self.frame_count.is_multiple_of(self.config.gop_size as u64);
+        let is_keyframe = self.frame_count % self.config.gop_size as u64 == 0;
 
         // Try real NVENC encoding if available
         #[cfg(feature = "nvenc")]
@@ -5926,7 +5926,7 @@ impl NvencEncoder {
 
         while let Some(pending) = self.lookahead_buffer.pop_front() {
             let is_keyframe =
-                pending.force_keyframe || self.frame_count.is_multiple_of(self.config.gop_size as u64);
+                pending.force_keyframe || self.frame_count % self.config.gop_size as u64 == 0;
 
             // Try real NVENC encoding for lookahead frames if available
             #[cfg(feature = "nvenc")]

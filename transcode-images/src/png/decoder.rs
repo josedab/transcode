@@ -186,7 +186,7 @@ impl PngDecoder {
 
     /// Parse PLTE chunk.
     fn parse_plte(&mut self, data: &[u8]) -> Result<()> {
-        if !data.len().is_multiple_of(3) || data.len() > 256 * 3 {
+        if data.len() % 3 != 0 || data.len() > 256 * 3 {
             return Err(ImageError::DecoderError("Invalid PLTE chunk".into()));
         }
 

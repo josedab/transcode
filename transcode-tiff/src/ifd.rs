@@ -493,7 +493,7 @@ impl Ifd {
                 large_values.push((value_offset, &entry.value));
                 value_offset += byte_size as u32;
                 // Align to word boundary
-                if !value_offset.is_multiple_of(2) {
+                if value_offset % 2 != 0 {
                     value_offset += 1;
                 }
             }

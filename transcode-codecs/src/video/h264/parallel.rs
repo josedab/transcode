@@ -747,7 +747,7 @@ impl LookaheadBuffer {
             } else {
                 // Determine if B or P frame
                 let bframe_interval = self.max_bframes as u64 + 1;
-                if pos_in_gop.is_multiple_of(bframe_interval) {
+                if pos_in_gop % bframe_interval == 0 {
                     frame.frame_type = FrameType::P;
                 } else {
                     frame.frame_type = FrameType::B;

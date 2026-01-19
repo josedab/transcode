@@ -246,7 +246,7 @@ impl RiffChunk {
         writer.write_all(&self.data)?;
 
         // Pad to word boundary
-        if !self.data.len().is_multiple_of(2) {
+        if self.data.len() % 2 != 0 {
             writer.write_all(&[0])?;
         }
 
@@ -372,7 +372,7 @@ impl ListChunk {
         }
 
         // Pad to word boundary if needed
-        if !content_size.is_multiple_of(2) {
+        if content_size % 2 != 0 {
             writer.write_all(&[0])?;
         }
 

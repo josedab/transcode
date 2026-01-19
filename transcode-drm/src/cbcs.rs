@@ -139,7 +139,7 @@ impl CbcsEncryptor {
             return Ok(());
         }
 
-        if !data.len().is_multiple_of(AES_BLOCK_SIZE) {
+        if data.len() % AES_BLOCK_SIZE != 0 {
             return Err(EncryptionError::BlockAlignment {
                 size: data.len(),
                 block_size: AES_BLOCK_SIZE,
@@ -250,7 +250,7 @@ impl CbcsDecryptor {
             return Ok(());
         }
 
-        if !data.len().is_multiple_of(AES_BLOCK_SIZE) {
+        if data.len() % AES_BLOCK_SIZE != 0 {
             return Err(EncryptionError::BlockAlignment {
                 size: data.len(),
                 block_size: AES_BLOCK_SIZE,

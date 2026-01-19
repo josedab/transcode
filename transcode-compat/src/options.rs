@@ -68,11 +68,11 @@ impl Bitrate {
 
 impl std::fmt::Display for Bitrate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.0 >= 1_000_000_000 && self.0.is_multiple_of(1_000_000_000) {
+        if self.0 >= 1_000_000_000 && self.0 % 1_000_000_000 == 0 {
             write!(f, "{}G", self.0 / 1_000_000_000)
-        } else if self.0 >= 1_000_000 && self.0.is_multiple_of(1_000_000) {
+        } else if self.0 >= 1_000_000 && self.0 % 1_000_000 == 0 {
             write!(f, "{}M", self.0 / 1_000_000)
-        } else if self.0 >= 1_000 && self.0.is_multiple_of(1_000) {
+        } else if self.0 >= 1_000 && self.0 % 1_000 == 0 {
             write!(f, "{}k", self.0 / 1_000)
         } else {
             write!(f, "{}", self.0)

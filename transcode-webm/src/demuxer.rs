@@ -1303,7 +1303,7 @@ impl<R: Read + Seek> WebmDemuxer<R> {
 
     /// Parse frame sizes from fixed-size lacing.
     fn parse_fixed_lacing(total_data_size: usize, num_frames: usize) -> Result<Vec<usize>> {
-        if !total_data_size.is_multiple_of(num_frames) {
+        if total_data_size % num_frames != 0 {
             return Err(WebmError::InvalidLacing(format!(
                 "Fixed lacing: data size {} not evenly divisible by {} frames",
                 total_data_size, num_frames

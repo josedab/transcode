@@ -137,7 +137,7 @@ impl SincResampler {
         if channels == 0 {
             return Err(ResampleError::InvalidChannelCount { count: channels });
         }
-        if window_size == 0 || !window_size.is_multiple_of(2) {
+        if window_size == 0 || window_size % 2 != 0 {
             return Err(ResampleError::InvalidWindowSize { size: window_size });
         }
 
@@ -325,7 +325,7 @@ impl ResamplerImpl for SincResampler {
             return Ok(Vec::new());
         }
 
-        if !input.len().is_multiple_of(channels) {
+        if input.len() % channels != 0 {
             return Err(ResampleError::BufferSizeMismatch {
                 actual: input.len(),
                 channels,

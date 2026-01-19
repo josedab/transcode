@@ -2535,7 +2535,7 @@ mod tests {
         let mut samples = Vec::new();
         for i in 0..60 {
             // 2 seconds at 30fps
-            samples.push(SampleInfo::new(vec![i as u8; 1000], 3003, i % 30 == 0));
+            samples.push(SampleInfo::new(vec![i as u8; 1000], 3003, i % 30 != 0));
         }
 
         let segment = writer.write_media_segment("1080p", &samples, 2.0).unwrap();

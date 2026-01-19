@@ -216,7 +216,7 @@ impl PcmEncoder {
 
     /// Encode interleaved f32 samples to planar PCM data.
     pub fn encode_interleaved_to_planar(&mut self, samples: &[f32]) -> Result<Vec<Vec<u8>>> {
-        if !samples.len().is_multiple_of(self.channels as usize) {
+        if !samples.len() % self.channels as usize == 0 {
             return Err(PcmError::InvalidData(
                 "Sample count must be divisible by channel count".to_string(),
             ));

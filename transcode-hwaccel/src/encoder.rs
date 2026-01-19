@@ -271,7 +271,7 @@ impl HwEncoder {
         }
 
         // Validate dimensions are even (required by most codecs)
-        if !config.width.is_multiple_of(2) || !config.height.is_multiple_of(2) {
+        if config.width % 2 != 0 || config.height % 2 != 0 {
             return Err(HwAccelError::Config(
                 "Dimensions must be even".to_string(),
             ));
@@ -499,7 +499,7 @@ impl HwEncoder {
 
     /// Mock encoding fallback when platform encoder is not available.
     fn encode_mock(&mut self, frame: &HwFrame) -> Result<Option<HwPacket>> {
-        let is_keyframe = self.frame_count.is_multiple_of(self.config.gop_size as u64);
+        let is_keyframe = self.frame_count % self.config.gop_size as u64 == 0;
 
         // Generate realistic mock data based on codec and resolution
         let estimated_size = self.estimate_frame_size(is_keyframe);

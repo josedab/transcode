@@ -1871,7 +1871,7 @@ impl ProResEncoderConfig {
         }
 
         // ProRes requires specific dimensions (multiples of 2 for all profiles)
-        if !self.width.is_multiple_of(2) || !self.height.is_multiple_of(2) {
+        if self.width % 2 != 0 || self.height % 2 != 0 {
             return Err(HwAccelError::Config(
                 "ProRes requires even dimensions".to_string(),
             ));
@@ -3191,7 +3191,7 @@ impl VTEncoder {
             self.session_manager.prepare_to_encode_frames()?;
         }
 
-        let is_keyframe = self.frame_count.is_multiple_of(self.config.base.gop_size as u64);
+        let is_keyframe = self.frame_count % self.config.base.gop_size as u64 == 0;
         self.frame_count += 1;
         self.pending_frames += 1;
 

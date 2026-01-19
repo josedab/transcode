@@ -398,7 +398,7 @@ impl HdrProcessor {
     /// Process a frame of RGB pixels.
     /// Pixels are stored as contiguous RGB triplets.
     pub fn process_frame(&mut self, pixels: &mut [f64]) -> Result<()> {
-        if !pixels.len().is_multiple_of(3) {
+        if pixels.len() % 3 != 0 {
             return Err(HdrError::Processing(
                 "Pixel buffer length must be multiple of 3".into(),
             ));
@@ -417,7 +417,7 @@ impl HdrProcessor {
 
     /// Process a frame of f32 RGB pixels.
     pub fn process_frame_f32(&mut self, pixels: &mut [f32]) -> Result<()> {
-        if !pixels.len().is_multiple_of(3) {
+        if pixels.len() % 3 != 0 {
             return Err(HdrError::Processing(
                 "Pixel buffer length must be multiple of 3".into(),
             ));

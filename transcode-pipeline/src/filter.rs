@@ -268,7 +268,7 @@ impl AudioFilter for VolumeFilter {
         // Process as S16 samples if format allows
         if data.len() >= 2 {
             // Validate alignment requirements for safe i16 access
-            if !data.len().is_multiple_of(2) {
+            if data.len() % 2 != 0 {
                 return Err(PipelineError::InvalidConfig(
                     "Sample data length must be even for S16 processing".to_string(),
                 ));

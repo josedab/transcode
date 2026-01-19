@@ -1590,7 +1590,7 @@ impl<R: Read + Seek> MkvDemuxer<R> {
     /// All frames have equal size, calculated by dividing the remaining data
     /// by the number of frames.
     fn parse_fixed_lacing(total_data_size: usize, num_frames: usize) -> Result<Vec<usize>> {
-        if !total_data_size.is_multiple_of(num_frames) {
+        if total_data_size % num_frames != 0 {
             return Err(MkvError::InvalidLacing(format!(
                 "Fixed lacing: data size {} not evenly divisible by {} frames",
                 total_data_size, num_frames

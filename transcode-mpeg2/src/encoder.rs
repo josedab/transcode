@@ -496,7 +496,7 @@ impl Mpeg2Encoder {
             PictureCodingType::P
         } else {
             let frames_per_pattern = self.config.b_frames + 1;
-            if self.gop_frame_count.is_multiple_of(frames_per_pattern) {
+            if self.gop_frame_count % frames_per_pattern == 0 {
                 PictureCodingType::P
             } else {
                 PictureCodingType::B

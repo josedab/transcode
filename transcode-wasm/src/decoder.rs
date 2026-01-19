@@ -207,13 +207,13 @@ impl WasmDecoder {
 
             if is_start_code {
                 // For demo: create a placeholder frame every 4KB of data
-                if self.buffer.len() > 4096 && self.frames_decoded.is_multiple_of(30) {
+                if self.buffer.len() > 4096 && self.frames_decoded % 30 == 0 {
                     let frame = DecodedFrame {
                         width: if self.width > 0 { self.width } else { 1920 },
                         height: if self.height > 0 { self.height } else { 1080 },
                         pts: (self.frames_decoded as i64) * 33333, // ~30fps
                         duration: 33333,
-                        keyframe: self.frames_decoded.is_multiple_of(30),
+                        keyframe: self.frames_decoded % 30 == 0,
                         pixel_format: "yuv420p".to_string(),
                         data: vec![0; 1920 * 1080 * 3 / 2], // YUV420p placeholder
                     };

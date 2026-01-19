@@ -107,7 +107,7 @@ pub fn frame_to_drop_frame_timecode(frame_number: u64, frame_rate: FrameRate) ->
     let minutes = (total_minutes % 60) as u8;
 
     // Add back the dropped frames for display
-    let display_frames = if extra_minutes > 0 && extra_minutes < 10 && !minutes.is_multiple_of(10) {
+    let display_frames = if extra_minutes > 0 && extra_minutes < 10 && minutes % 10 != 0 {
         remaining_frames + drop
     } else {
         remaining_frames
@@ -183,7 +183,7 @@ pub fn is_dropped_frame(minutes: u8, seconds: u8, frames: u8, frame_rate: FrameR
     };
 
     // Frames are dropped at the start of each minute except every 10th minute
-    if seconds == 0 && !minutes.is_multiple_of(10) {
+    if seconds == 0 && minutes % 10 != 0 {
         frames < config.frames_dropped_per_minute as u8
     } else {
         false

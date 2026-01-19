@@ -210,7 +210,7 @@ fn write_simple_webp<W: Write>(writer: &mut W, frame: &EncodedFrame) -> Result<(
     writer.write_all(&frame.data)?;
 
     // Padding if needed
-    if !chunk_size.is_multiple_of(2) {
+    if chunk_size % 2 != 0 {
         writer.write_all(&[0])?;
     }
 
@@ -271,7 +271,7 @@ fn write_extended_webp<W: Write>(writer: &mut W, frame: &EncodedFrame) -> Result
     writer.write_all(&frame.data)?;
 
     // Padding if needed
-    if !image_chunk_size.is_multiple_of(2) {
+    if image_chunk_size % 2 != 0 {
         writer.write_all(&[0])?;
     }
 
@@ -335,6 +335,7 @@ fn encode_vp8l(
     let mut writer = Vp8lBitWriter::new();
 
     // Transform bits - we'll apply some simple transforms based on compression level
+    #[allow(clippy::precedence)]
     let pixels: Vec<u32> = rgba
         .chunks(4)
         .map(|c| {

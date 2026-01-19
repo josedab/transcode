@@ -313,7 +313,7 @@ impl Timecode {
                 _ => 0,
             };
 
-            if self.seconds == 0 && !self.minutes.is_multiple_of(10) && self.frames < skip_frames {
+            if self.seconds == 0 && self.minutes % 10 != 0 && self.frames < skip_frames {
                 return Err(TimecodeError::drop_frame(format!(
                     "Frame {} is dropped at minute {} (not divisible by 10)",
                     self.frames, self.minutes

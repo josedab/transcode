@@ -84,6 +84,7 @@ impl<'a> BitReader<'a> {
     }
 
     /// Initialize the VP8 boolean decoder
+    #[allow(clippy::precedence)]
     pub fn init_bool_decoder(&mut self) -> Result<()> {
         if self.data.len() < 2 {
             return Err(WebPError::UnexpectedEof);

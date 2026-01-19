@@ -277,7 +277,7 @@ fn parse_chunk<R: Read + Seek>(reader: &mut R) -> Result<WebPChunk> {
     reader.read_exact(&mut data)?;
 
     // Skip padding byte if size is odd
-    if !size.is_multiple_of(2) {
+    if size % 2 != 0 {
         reader.seek(SeekFrom::Current(1))?;
     }
 

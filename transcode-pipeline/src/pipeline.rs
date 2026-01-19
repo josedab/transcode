@@ -242,7 +242,7 @@ impl Pipeline {
                 self.packets_processed += 1;
 
                 if self.config.report_progress
-                    && self.packets_processed.is_multiple_of(self.config.progress_interval as u64)
+                    && self.packets_processed % (self.config.progress_interval as u64) == 0
                 {
                     self.report_progress();
                 }

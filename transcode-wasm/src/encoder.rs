@@ -242,7 +242,7 @@ impl WasmEncoder {
         }
 
         // Create encoded packet (placeholder implementation)
-        let is_keyframe = self.frames_encoded.is_multiple_of(self.config.keyframe_interval as u64);
+        let is_keyframe = self.frames_encoded % self.config.keyframe_interval as u64 == 0;
 
         // Estimate encoded size based on quality and keyframe status
         let base_size = (self.config.width * self.config.height) as usize;
@@ -282,7 +282,7 @@ impl WasmEncoder {
 
         // Create encoded packet (placeholder implementation)
         let is_keyframe =
-            keyframe || self.frames_encoded.is_multiple_of(self.config.keyframe_interval as u64);
+            keyframe || self.frames_encoded % self.config.keyframe_interval as u64 == 0;
 
         let base_size = (self.config.width * self.config.height) as usize;
         let size_factor = if is_keyframe { 0.1 } else { 0.03 };
