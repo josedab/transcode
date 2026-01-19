@@ -1,0 +1,76 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Cancel in-progress deployments
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # Build the documentation
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mdBook
+        run: |
+          mkdir -p $HOME/.local/bin
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.36/mdbook-v0.4.36-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C $HOME/.local/bin
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install mdBook plugins
+        run: |
+          cargo install mdbook-toc --locked
+          cargo install mdbook-mermaid --locked
+        continue-on-error: true
+
+      - name: Build mdBook
+        run: |
+          cd docs
+          mdbook build
+
+      - name: Build API documentation
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Generate rustdoc
+        run: |
+          cargo doc --workspace --exclude transcode-python --exclude transcode-wasm --no-deps
+          # Copy to docs output
+          cp -r target/doc docs/book/api
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/book
+
+  # Deploy to GitHub Pages (only on main branch)
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
