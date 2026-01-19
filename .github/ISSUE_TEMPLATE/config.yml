@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://docs.rs/transcode
+    about: Check the API documentation on docs.rs
+  - name: Questions & Discussions
+    url: https://github.com/transcode/transcode/discussions
+    about: Ask questions and discuss ideas in GitHub Discussions

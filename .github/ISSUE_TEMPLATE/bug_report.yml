@@ -1,0 +1,110 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the information below to help us investigate.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the bug...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. Use this code/command...
+        2. With this input...
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: I expected...
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Instead, this happened...
+
+  - type: input
+    id: version
+    attributes:
+      label: Transcode Version
+      description: Which version of transcode are you using?
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running on?
+      options:
+        - Linux (x86_64)
+        - Linux (aarch64)
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Windows
+        - WebAssembly
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: rust-version
+    attributes:
+      label: Rust Version
+      description: Output of `rustc --version`
+      placeholder: "rustc 1.75.0 (82e1608df 2023-12-21)"
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      description: Which part of transcode is affected?
+      options:
+        - transcode-core
+        - transcode-codecs (H.264, AAC, MP3)
+        - transcode-containers (MP4, MKV, etc.)
+        - transcode-pipeline
+        - transcode-av1
+        - transcode-hevc
+        - transcode-vp9
+        - transcode-gpu
+        - transcode-ai
+        - transcode-streaming (HLS/DASH)
+        - transcode-distributed
+        - transcode-cli
+        - transcode-python
+        - transcode-wasm
+        - Other / Multiple
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Output / Logs
+      description: Please paste any relevant error messages or logs.
+      render: shell
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or sample files that might help.

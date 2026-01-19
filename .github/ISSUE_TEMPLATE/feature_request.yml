@@ -1,0 +1,85 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please describe your idea in detail.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? Is your feature request related to a limitation or frustration?
+      placeholder: I'm frustrated when... / I need to be able to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like. Be as specific as possible.
+      placeholder: I would like transcode to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Suggested API (if applicable)
+      description: If you have ideas about what the API could look like, share them here.
+      render: rust
+      placeholder: |
+        // Example API usage
+        let transcoder = Transcoder::new()
+            .with_new_feature(options)
+            .build()?;
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches have you considered? Are there workarounds you're currently using?
+      placeholder: I've tried... / Other libraries handle this by...
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Related Component
+      description: Which part of transcode would this feature affect?
+      options:
+        - transcode-core
+        - transcode-codecs
+        - transcode-containers
+        - transcode-pipeline
+        - Video codecs (H.264, HEVC, AV1, VP9, etc.)
+        - Audio codecs (AAC, Opus, FLAC, etc.)
+        - GPU acceleration
+        - AI enhancement
+        - Streaming (HLS/DASH)
+        - Distributed processing
+        - CLI
+        - Python bindings
+        - WebAssembly
+        - Documentation
+        - Other / New component
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would significantly improve my workflow
+        - Blocking my use case
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be willing to help implement this feature?
+      options:
+        - label: I would be willing to submit a PR for this feature
