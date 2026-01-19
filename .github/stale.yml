@@ -1,0 +1,82 @@
+# Configuration for the stale action
+# https://github.com/actions/stale
+
+# Number of days of inactivity before an issue becomes stale
+daysUntilStale: 60
+
+# Number of days of inactivity before a stale issue is closed
+daysUntilClose: 14
+
+# Only issues with these labels will be checked for staleness
+# onlyLabels:
+#   - 'status: needs info'
+
+# Issues with these labels will never be considered stale
+exemptLabels:
+  - "pinned"
+  - "security"
+  - "priority: critical"
+  - "priority: high"
+  - "status: confirmed"
+  - "status: in progress"
+  - "status: blocked"
+  - "good first issue"
+  - "help wanted"
+
+# Set to true to ignore issues with an assignee
+exemptAssignees: true
+
+# Set to true to ignore issues in a project
+exemptProjects: true
+
+# Set to true to ignore issues in a milestone
+exemptMilestones: true
+
+# Label to apply when an issue becomes stale
+staleLabel: "stale"
+
+# Comment to post when marking an issue as stale
+markComment: >
+  This issue has been automatically marked as stale because it has not had
+  recent activity. It will be closed in 14 days if no further activity occurs.
+
+  If this issue is still relevant:
+  - Comment with an update on the current status
+  - Remove the stale label
+
+  Thank you for your contributions to Transcode!
+
+# Comment to post when closing a stale issue
+closeComment: >
+  This issue has been automatically closed due to inactivity.
+
+  If you believe this issue is still relevant, please feel free to reopen it
+  with additional context or create a new issue referencing this one.
+
+# Comment to post when unmarking a stale issue
+# unmarkComment: >
+#   This issue is no longer stale.
+
+# Limit the number of actions per run (0 means no limit)
+operationsPerRun: 30
+
+# Remove stale label from issues/PRs when they are updated
+removeStaleWhenUpdated: true
+
+# Optionally, specify configuration for PRs separately
+pulls:
+  daysUntilStale: 30
+  daysUntilClose: 7
+  exemptLabels:
+    - "pinned"
+    - "security"
+    - "status: in progress"
+  markComment: >
+    This pull request has been automatically marked as stale because it has not had
+    recent activity. It will be closed in 7 days if no further activity occurs.
+
+    If you're still working on this:
+    - Push new commits or comment with a status update
+    - Remove the stale label
+
+    Thank you for contributing to Transcode!
