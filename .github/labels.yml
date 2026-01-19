@@ -1,0 +1,181 @@
+# Labels for the Transcode repository
+# Sync with: https://github.com/marketplace/actions/github-labeler
+
+# Type labels
+- name: "type: bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: "type: feature"
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: "type: enhancement"
+  color: "84b6eb"
+  description: "Improvement to existing functionality"
+
+- name: "type: documentation"
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+- name: "type: refactor"
+  color: "cfd3d7"
+  description: "Code refactoring without behavior changes"
+
+- name: "type: performance"
+  color: "f9d0c4"
+  description: "Performance improvements"
+
+- name: "type: security"
+  color: "ee0701"
+  description: "Security-related issues or improvements"
+
+- name: "type: question"
+  color: "d876e3"
+  description: "Further information is requested"
+
+# Priority labels
+- name: "priority: critical"
+  color: "b60205"
+  description: "Must be fixed ASAP"
+
+- name: "priority: high"
+  color: "d93f0b"
+  description: "High priority issue"
+
+- name: "priority: medium"
+  color: "fbca04"
+  description: "Medium priority issue"
+
+- name: "priority: low"
+  color: "0e8a16"
+  description: "Low priority issue"
+
+# Status labels
+- name: "status: needs triage"
+  color: "ededed"
+  description: "Needs initial review and categorization"
+
+- name: "status: needs info"
+  color: "fef2c0"
+  description: "More information needed from reporter"
+
+- name: "status: confirmed"
+  color: "215cea"
+  description: "Issue has been confirmed"
+
+- name: "status: in progress"
+  color: "0052cc"
+  description: "Actively being worked on"
+
+- name: "status: blocked"
+  color: "b60205"
+  description: "Blocked by another issue or external factor"
+
+- name: "status: wontfix"
+  color: "ffffff"
+  description: "This will not be worked on"
+
+# Component labels
+- name: "component: core"
+  color: "c5def5"
+  description: "Core library (transcode-core)"
+
+- name: "component: codecs"
+  color: "c5def5"
+  description: "Codec implementations"
+
+- name: "component: containers"
+  color: "c5def5"
+  description: "Container format support"
+
+- name: "component: cli"
+  color: "c5def5"
+  description: "Command-line interface"
+
+- name: "component: gpu"
+  color: "c5def5"
+  description: "GPU acceleration"
+
+- name: "component: ai"
+  color: "c5def5"
+  description: "AI enhancement features"
+
+- name: "component: streaming"
+  color: "c5def5"
+  description: "HLS/DASH streaming"
+
+- name: "component: distributed"
+  color: "c5def5"
+  description: "Distributed transcoding"
+
+- name: "component: python"
+  color: "c5def5"
+  description: "Python bindings"
+
+- name: "component: wasm"
+  color: "c5def5"
+  description: "WebAssembly support"
+
+# Codec-specific labels
+- name: "codec: h264"
+  color: "bfdadc"
+  description: "H.264/AVC codec"
+
+- name: "codec: hevc"
+  color: "bfdadc"
+  description: "H.265/HEVC codec"
+
+- name: "codec: av1"
+  color: "bfdadc"
+  description: "AV1 codec"
+
+- name: "codec: vp9"
+  color: "bfdadc"
+  description: "VP9 codec"
+
+- name: "codec: aac"
+  color: "bfdadc"
+  description: "AAC audio codec"
+
+- name: "codec: opus"
+  color: "bfdadc"
+  description: "Opus audio codec"
+
+# Effort labels
+- name: "effort: small"
+  color: "c2e0c6"
+  description: "Small effort (< 2 hours)"
+
+- name: "effort: medium"
+  color: "fef2c0"
+  description: "Medium effort (2-8 hours)"
+
+- name: "effort: large"
+  color: "f9d0c4"
+  description: "Large effort (> 8 hours)"
+
+# Special labels
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: "breaking change"
+  color: "b60205"
+  description: "Introduces breaking changes"
+
+- name: "dependencies"
+  color: "0366d6"
+  description: "Pull requests that update dependencies"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "This doesn't seem right"
