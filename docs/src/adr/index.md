@@ -20,6 +20,13 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [ADR-0003](./0003-error-handling-strategy.md) | Error Handling Strategy | Accepted | 2024-02 |
 | [ADR-0004](./0004-simd-abstraction.md) | SIMD Abstraction Layer | Accepted | 2024-02 |
 | [ADR-0005](./0005-async-pipeline.md) | Async Pipeline Design | Accepted | 2024-03 |
+| [ADR-0006](./0006-gpu-compute.md) | GPU Compute via wgpu | Accepted | 2024-04 |
+| [ADR-0007](./0007-ai-enhancement-pipeline.md) | AI Enhancement Pipeline | Accepted | 2024-05 |
+| [ADR-0008](./0008-distributed-architecture.md) | Distributed Architecture | Accepted | 2024-05 |
+| [ADR-0009](./0009-streaming-protocols.md) | Streaming Protocols (HLS/DASH) | Accepted | 2024-05 |
+| [ADR-0010](./0010-quality-metrics.md) | Multi-Metric Quality Assessment | Accepted | 2024-06 |
+| [ADR-0011](./0011-wasm-integration.md) | WebAssembly Integration | Accepted | 2024-06 |
+| [ADR-0012](./0012-python-bindings.md) | Python Bindings via PyO3 | Accepted | 2024-06 |
 
 ## ADR Template
 
