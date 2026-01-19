@@ -111,13 +111,42 @@ jobs:
           name: wheels-${{ matrix.os }}
           path: target/wheels/*.whl
 
+  # Generate SBOM (Software Bill of Materials)
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-sbom
+        run: cargo install cargo-sbom
+
+      - name: Generate SBOM (SPDX)
+        run: cargo sbom --output-format spdx-json > sbom-spdx.json
+
+      - name: Generate SBOM (CycloneDX)
+        run: cargo sbom --output-format cyclonedx-json > sbom-cyclonedx.json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: |
+            sbom-spdx.json
+            sbom-cyclonedx.json
+
   # Create GitHub release
   release:
     name: Create Release
-    needs: [build, python-wheels]
+    needs: [build, python-wheels, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write  # Required for sigstore signing
+      attestations: write  # Required for artifact attestations
+    outputs:
+      release-tag: ${{ steps.release.outputs.tag_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -129,19 +158,30 @@ jobs:
       - name: Create checksums
         run: |
           cd artifacts
-          find . -type f -name "transcode-*" -exec sha256sum {} \; > checksums.txt
-          cat checksums.txt
+          find . -type f \( -name "transcode-*" -o -name "*.whl" -o -name "*.json" \) -exec sha256sum {} \; > checksums-sha256.txt
+          find . -type f \( -name "transcode-*" -o -name "*.whl" -o -name "*.json" \) -exec sha512sum {} \; > checksums-sha512.txt
+          cat checksums-sha256.txt
 
       - name: Create Release
+        id: release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             artifacts/transcode-*/*
             artifacts/wheels-*/*.whl
-            artifacts/checksums.txt
+            artifacts/sbom/*
+            artifacts/checksums-sha256.txt
+            artifacts/checksums-sha512.txt
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            artifacts/transcode-*/*
+            artifacts/wheels-*/*.whl
 
   # Publish to crates.io
   publish-crates:
