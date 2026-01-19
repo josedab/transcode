@@ -274,7 +274,7 @@ fn alaw_to_linear(alaw: u8) -> i16 {
     let a = alaw ^ 0x55;
     let sign = (a & 0x80) != 0;
     let segment = (a >> 4) & 0x07;
-    let value = (a & 0x0F) << 1 | 0x21;
+    let value = ((a & 0x0F) << 1) | 0x21;
 
     let linear = if segment == 0 {
         (value << 4) as i16

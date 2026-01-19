@@ -4,6 +4,7 @@
 //! Floor type 0 uses LSP coefficients, floor type 1 uses piecewise linear curves.
 
 #![allow(clippy::needless_range_loop)]
+#![allow(clippy::ptr_arg)]
 
 use crate::codebook::Codebook;
 use crate::error::Result;

@@ -362,7 +362,7 @@ impl FrameHeader {
         // Profile
         let profile_low = reader.read_bit().map_err(|_| Vp9Error::UnexpectedEndOfStream)?;
         let profile_high = reader.read_bit().map_err(|_| Vp9Error::UnexpectedEndOfStream)?;
-        let profile = (profile_high as u8) << 1 | (profile_low as u8);
+        let profile = ((profile_high as u8) << 1) | (profile_low as u8);
         if profile == 3 {
             // Reserved bit for profile 3
             let _reserved = reader.read_bit().map_err(|_| Vp9Error::UnexpectedEndOfStream)?;

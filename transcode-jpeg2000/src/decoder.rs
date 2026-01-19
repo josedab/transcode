@@ -62,6 +62,16 @@ impl DecodedImage {
         self.num_components == 2 || self.num_components == 4
     }
 
+    /// Normalize a value to 8-bit based on bit depth.
+    fn normalize_to_8bit(&self, val: i32, max_val: i32) -> u8 {
+        use std::cmp::Ordering;
+        match self.bit_depth.cmp(&8) {
+            Ordering::Greater => (val >> (self.bit_depth - 8)) as u8,
+            Ordering::Less => ((val * 255) / max_val) as u8,
+            Ordering::Equal => val as u8,
+        }
+    }
+
     /// Convert to RGB byte array (8-bit).
     pub fn to_rgb_bytes(&self) -> Result<Vec<u8>> {
         if self.num_components < 3 {
@@ -84,13 +94,7 @@ impl DecodedImage {
                 };
 
                 // Normalize to 8-bit
-                let normalized = if self.bit_depth > 8 {
-                    (val >> (self.bit_depth - 8)) as u8
-                } else if self.bit_depth < 8 {
-                    ((val * 255) / max_val) as u8
-                } else {
-                    val as u8
-                };
+                let normalized = self.normalize_to_8bit(val, max_val);
 
                 rgb.push(normalized);
             }
@@ -117,13 +121,7 @@ impl DecodedImage {
                 };
 
                 // Normalize to 8-bit
-                let normalized = if self.bit_depth > 8 {
-                    (val >> (self.bit_depth - 8)) as u8
-                } else if self.bit_depth < 8 {
-                    ((val * 255) / max_val) as u8
-                } else {
-                    val as u8
-                };
+                let normalized = self.normalize_to_8bit(val, max_val);
 
                 rgba.push(normalized);
             }
@@ -142,13 +140,7 @@ impl DecodedImage {
         let mut gray = Vec::with_capacity(self.num_pixels());
 
         for &val in &self.components[0] {
-            let normalized = if self.bit_depth > 8 {
-                (val >> (self.bit_depth - 8)) as u8
-            } else if self.bit_depth < 8 {
-                ((val * 255) / max_val) as u8
-            } else {
-                val as u8
-            };
+            let normalized = self.normalize_to_8bit(val, max_val);
             gray.push(normalized);
         }
 

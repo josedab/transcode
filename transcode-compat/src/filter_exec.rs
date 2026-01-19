@@ -5,7 +5,7 @@
 
 #![allow(clippy::type_complexity)]
 #![allow(clippy::manual_strip)]
-#![allow(clippy::manual_slice_fill)]
+#![allow(clippy::manual_memcpy)]
 #![allow(clippy::should_implement_trait)]
 #![allow(dead_code)]
 

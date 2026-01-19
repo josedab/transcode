@@ -54,7 +54,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 #![allow(clippy::needless_borrow)]
-#![allow(clippy::manual_slice_fill)]
+#![allow(clippy::manual_memcpy)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::approx_constant)]

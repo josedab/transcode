@@ -8,7 +8,7 @@
 //! - Lookahead buffer for frame type decisions
 
 #![allow(clippy::too_many_arguments)]
-#![allow(clippy::manual_is_multiple_of)]
+#![allow(clippy::manual_range_contains)]
 
 use parking_lot::{Mutex, RwLock};
 use rayon::prelude::*;

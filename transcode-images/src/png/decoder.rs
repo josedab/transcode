@@ -326,24 +326,29 @@ impl PngDecoder {
 
     /// Inflate with fixed Huffman codes.
     fn inflate_fixed_huffman(&self, reader: &mut BitReader, output: &mut Vec<u8>) -> Result<()> {
+        use std::cmp::Ordering;
         loop {
             let code = self.decode_fixed_literal(reader)?;
 
-            if code < 256 {
-                output.push(code as u8);
-            } else if code == 256 {
-                break;
-            } else {
-                let length = self.decode_length(code, reader)?;
-                let distance = self.decode_fixed_distance(reader)?;
-
-                if distance > output.len() {
-                    return Err(ImageError::DecoderError("Invalid distance".into()));
+            match code.cmp(&256) {
+                Ordering::Less => {
+                    output.push(code as u8);
                 }
+                Ordering::Equal => {
+                    break;
+                }
+                Ordering::Greater => {
+                    let length = self.decode_length(code, reader)?;
+                    let distance = self.decode_fixed_distance(reader)?;
 
-                for _ in 0..length {
-                    let idx = output.len() - distance;
-                    output.push(output[idx]);
+                    if distance > output.len() {
+                        return Err(ImageError::DecoderError("Invalid distance".into()));
+                    }
+
+                    for _ in 0..length {
+                        let idx = output.len() - distance;
+                        output.push(output[idx]);
+                    }
                 }
             }
         }
@@ -480,25 +485,30 @@ impl PngDecoder {
         let dist_tree = self.build_huffman_tree(&lengths[hlit..])?;
 
         // Decode compressed data
+        use std::cmp::Ordering;
         loop {
             let code = self.decode_huffman(reader, &lit_tree)?;
 
-            if code < 256 {
-                output.push(code as u8);
-            } else if code == 256 {
-                break;
-            } else {
-                let length = self.decode_length(code, reader)?;
-                let dist_code = self.decode_huffman(reader, &dist_tree)?;
-                let distance = self.decode_distance(dist_code, reader)?;
-
-                if distance > output.len() {
-                    return Err(ImageError::DecoderError("Invalid distance".into()));
+            match code.cmp(&256) {
+                Ordering::Less => {
+                    output.push(code as u8);
                 }
+                Ordering::Equal => {
+                    break;
+                }
+                Ordering::Greater => {
+                    let length = self.decode_length(code, reader)?;
+                    let dist_code = self.decode_huffman(reader, &dist_tree)?;
+                    let distance = self.decode_distance(dist_code, reader)?;
 
-                for _ in 0..length {
-                    let idx = output.len() - distance;
-                    output.push(output[idx]);
+                    if distance > output.len() {
+                        return Err(ImageError::DecoderError("Invalid distance".into()));
+                    }
+
+                    for _ in 0..length {
+                        let idx = output.len() - distance;
+                        output.push(output[idx]);
+                    }
                 }
             }
         }
@@ -701,18 +711,21 @@ impl PngDecoder {
     fn raw_to_image(&self, data: &[u8], info: &PngInfo) -> Result<Image> {
         let (format, output_data) = match info.color_type {
             ColorType::Grayscale => {
-                if info.bit_depth == 8 {
-                    (PixelFormat::Gray8, data.to_vec())
-                } else if info.bit_depth < 8 {
-                    // Expand to 8-bit
-                    let expanded = self.expand_bits(data, info)?;
-                    (PixelFormat::Gray8, expanded)
-                } else {
-                    // 16-bit grayscale - reduce to 8-bit
-                    let reduced: Vec<u8> = data.chunks(2)
-                        .map(|c| c[0])
-                        .collect();
-                    (PixelFormat::Gray8, reduced)
+                use std::cmp::Ordering;
+                match info.bit_depth.cmp(&8) {
+                    Ordering::Equal => (PixelFormat::Gray8, data.to_vec()),
+                    Ordering::Less => {
+                        // Expand to 8-bit
+                        let expanded = self.expand_bits(data, info)?;
+                        (PixelFormat::Gray8, expanded)
+                    }
+                    Ordering::Greater => {
+                        // 16-bit grayscale - reduce to 8-bit
+                        let reduced: Vec<u8> = data.chunks(2)
+                            .map(|c| c[0])
+                            .collect();
+                        (PixelFormat::Gray8, reduced)
+                    }
                 }
             }
             ColorType::Rgb => {

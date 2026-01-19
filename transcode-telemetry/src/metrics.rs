@@ -363,7 +363,7 @@ impl<'a> Timer<'a> {
     }
 }
 
-impl<'a> Drop for Timer<'a> {
+impl Drop for Timer<'_> {
     fn drop(&mut self) {
         // Record duration if not already observed
         let duration = self.start.elapsed();

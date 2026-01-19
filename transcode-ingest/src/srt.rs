@@ -627,7 +627,7 @@ impl SrtConnection {
         let mut buf = BytesMut::with_capacity(SRT_HDR_SIZE + payload.len());
 
         // Control packet header
-        buf.put_u32(SRT_CONTROL_PACKET | (ctrl_type as u32) << 16);
+        buf.put_u32(SRT_CONTROL_PACKET | ((ctrl_type as u32) << 16));
         buf.put_u32(additional_info);
         buf.put_u32(self.get_timestamp());
         buf.put_u32(self.peer_socket_id);

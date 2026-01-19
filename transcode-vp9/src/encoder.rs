@@ -925,7 +925,7 @@ impl Vp9Encoder {
                 let abs_coeff = coeff.unsigned_abs();
 
                 if abs_coeff < 128 {
-                    output.push((abs_coeff as u8) << 1 | sign);
+                    output.push(((abs_coeff as u8) << 1) | sign);
                 } else {
                     output.push(0xFF);
                     output.extend_from_slice(&abs_coeff.to_le_bytes());
@@ -963,7 +963,7 @@ impl Vp9Encoder {
                 let abs_coeff = coeff.unsigned_abs();
 
                 if abs_coeff < 128 {
-                    output.push((abs_coeff as u8) << 1 | sign);
+                    output.push(((abs_coeff as u8) << 1) | sign);
                 } else {
                     output.push(0xFF);
                     output.extend_from_slice(&abs_coeff.to_le_bytes());

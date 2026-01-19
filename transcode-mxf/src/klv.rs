@@ -155,26 +155,31 @@ impl<'a> KlvReader<'a> {
 
         let first_byte = self.data[self.position];
 
-        if first_byte < 0x80 {
-            // Short form: length is in the byte itself
-            Ok((first_byte as usize, 1))
-        } else if first_byte == 0x80 {
-            // Indefinite length (not supported for now)
-            Err(MxfError::BerError("Indefinite length not supported".into()))
-        } else {
-            // Long form: first byte indicates number of length bytes
-            let num_bytes = (first_byte & 0x7F) as usize;
-
-            if self.position + 1 + num_bytes > self.data.len() {
-                return Err(MxfError::BerError("Not enough bytes for length".into()));
+        use std::cmp::Ordering;
+        match first_byte.cmp(&0x80) {
+            Ordering::Less => {
+                // Short form: length is in the byte itself
+                Ok((first_byte as usize, 1))
             }
-
-            let mut length: usize = 0;
-            for i in 0..num_bytes {
-                length = (length << 8) | (self.data[self.position + 1 + i] as usize);
+            Ordering::Equal => {
+                // Indefinite length (not supported for now)
+                Err(MxfError::BerError("Indefinite length not supported".into()))
             }
+            Ordering::Greater => {
+                // Long form: first byte indicates number of length bytes
+                let num_bytes = (first_byte & 0x7F) as usize;
 
-            Ok((length, 1 + num_bytes))
+                if self.position + 1 + num_bytes > self.data.len() {
+                    return Err(MxfError::BerError("Not enough bytes for length".into()));
+                }
+
+                let mut length: usize = 0;
+                for i in 0..num_bytes {
+                    length = (length << 8) | (self.data[self.position + 1 + i] as usize);
+                }
+
+                Ok((length, 1 + num_bytes))
+            }
         }
     }
 
@@ -240,23 +245,24 @@ pub fn decode_ber_length(data: &[u8]) -> Result<(usize, usize)> {
 
     let first_byte = data[0];
 
-    if first_byte < 0x80 {
-        Ok((first_byte as usize, 1))
-    } else if first_byte == 0x80 {
-        Err(MxfError::BerError("Indefinite length not supported".into()))
-    } else {
-        let num_bytes = (first_byte & 0x7F) as usize;
+    use std::cmp::Ordering;
+    match first_byte.cmp(&0x80) {
+        Ordering::Less => Ok((first_byte as usize, 1)),
+        Ordering::Equal => Err(MxfError::BerError("Indefinite length not supported".into())),
+        Ordering::Greater => {
+            let num_bytes = (first_byte & 0x7F) as usize;
 
-        if data.len() < 1 + num_bytes {
-            return Err(MxfError::BerError("Not enough bytes".into()));
+            if data.len() < 1 + num_bytes {
+                return Err(MxfError::BerError("Not enough bytes".into()));
+            }
+
+            let mut length: usize = 0;
+            for byte in data.iter().skip(1).take(num_bytes) {
+                length = (length << 8) | (*byte as usize);
+            }
+
+            Ok((length, 1 + num_bytes))
         }
-
-        let mut length: usize = 0;
-        for byte in data.iter().skip(1).take(num_bytes) {
-            length = (length << 8) | (*byte as usize);
-        }
-
-        Ok((length, 1 + num_bytes))
     }
 }
 

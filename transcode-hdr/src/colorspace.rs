@@ -404,6 +404,7 @@ pub fn identity_matrix() -> [[f64; 3]; 3] {
 }
 
 /// Multiply two 3x3 matrices.
+#[allow(clippy::needless_range_loop)]
 pub fn multiply_matrices(a: &[[f64; 3]; 3], b: &[[f64; 3]; 3]) -> [[f64; 3]; 3] {
     let mut result = [[0.0; 3]; 3];
     for i in 0..3 {

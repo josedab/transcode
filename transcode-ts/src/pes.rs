@@ -126,7 +126,7 @@ impl PesTimestamp {
             return Err(TsError::BufferOverflow("Need 5 bytes for timestamp".to_string()));
         }
 
-        data[0] = prefix | (((self.value >> 30) as u8) & 0x07) << 1 | 0x01;
+        data[0] = prefix | ((((self.value >> 30) as u8) & 0x07) << 1) | 0x01;
         data[1] = ((self.value >> 22) & 0xFF) as u8;
         data[2] = (((self.value >> 15) & 0x7F) << 1) as u8 | 0x01;
         data[3] = ((self.value >> 7) & 0xFF) as u8;

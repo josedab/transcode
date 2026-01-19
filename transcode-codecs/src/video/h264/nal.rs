@@ -220,7 +220,7 @@ impl<'a> NalIterator<'a> {
     }
 }
 
-impl<'a> Iterator for NalIterator<'a> {
+impl Iterator for NalIterator<'_> {
     type Item = Result<NalUnit>;
 
     fn next(&mut self) -> Option<Self::Item> {

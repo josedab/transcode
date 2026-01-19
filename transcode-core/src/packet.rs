@@ -160,7 +160,7 @@ impl<'a> Packet<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Packet<'a> {
+impl fmt::Debug for Packet<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Packet")
             .field("size", &self.size())
@@ -172,7 +172,7 @@ impl<'a> fmt::Debug for Packet<'a> {
     }
 }
 
-impl<'a> Default for Packet<'a> {
+impl Default for Packet<'_> {
     fn default() -> Self {
         Self::empty()
     }

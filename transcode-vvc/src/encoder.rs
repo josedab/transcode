@@ -12,7 +12,7 @@
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::manual_div_ceil)]
 #![allow(clippy::derivable_impls)]
-#![allow(clippy::manual_is_multiple_of)]
+#![allow(clippy::manual_range_contains)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 

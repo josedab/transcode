@@ -2,6 +2,8 @@
 //!
 //! Residue encodes the spectral detail after the floor is removed.
 
+#![allow(clippy::ptr_arg)]
+
 use crate::codebook::Codebook;
 use crate::error::Result;
 

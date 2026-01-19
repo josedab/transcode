@@ -137,19 +137,24 @@ impl CavlcDecoder {
             }
         }
 
-        let level_code = if prefix < 14 {
-            if suffix_length > 0 {
-                let suffix = reader.read_bits(suffix_length)?;
-                (prefix << suffix_length) + suffix
-            } else {
-                prefix
+        use std::cmp::Ordering;
+        let level_code = match prefix.cmp(&14) {
+            Ordering::Less => {
+                if suffix_length > 0 {
+                    let suffix = reader.read_bits(suffix_length)?;
+                    (prefix << suffix_length) + suffix
+                } else {
+                    prefix
+                }
             }
-        } else if prefix == 14 {
-            let suffix = reader.read_bits(suffix_length.max(4))?;
-            (prefix << suffix_length) + suffix
-        } else {
-            let suffix = reader.read_bits(12)?;
-            (prefix << 12) + suffix
+            Ordering::Equal => {
+                let suffix = reader.read_bits(suffix_length.max(4))?;
+                (prefix << suffix_length) + suffix
+            }
+            Ordering::Greater => {
+                let suffix = reader.read_bits(12)?;
+                (prefix << 12) + suffix
+            }
         };
 
         let level = if level_code % 2 == 0 {
@@ -390,30 +395,33 @@ impl CavlcEncoder {
 
     /// Compute prefix and suffix for level encoding.
     fn compute_level_prefix_suffix(&self, level_code: u32, suffix_length: u8) -> (u32, u32, u8) {
+        use std::cmp::Ordering;
         if suffix_length == 0 {
             // No suffix for suffix_length 0
             let prefix = level_code;
-            if prefix < 14 {
-                (prefix, 0, 0)
-            } else if prefix == 14 {
-                let suffix = level_code - 14;
-                (14, suffix, 4)
-            } else {
-                let suffix = level_code - 15;
-                (15, suffix, 12)
+            match prefix.cmp(&14) {
+                Ordering::Less => (prefix, 0, 0),
+                Ordering::Equal => {
+                    let suffix = level_code - 14;
+                    (14, suffix, 4)
+                }
+                Ordering::Greater => {
+                    let suffix = level_code - 15;
+                    (15, suffix, 12)
+                }
             }
         } else {
             let level_suffix_size = suffix_length as u32;
             let prefix = level_code >> level_suffix_size;
             let suffix = level_code & ((1 << level_suffix_size) - 1);
 
-            if prefix < 14 {
-                (prefix, suffix, suffix_length)
-            } else if prefix == 14 {
-                (14, suffix, suffix_length.max(4))
-            } else {
-                let suffix = level_code - (15 << suffix_length);
-                (15, suffix, 12)
+            match prefix.cmp(&14) {
+                Ordering::Less => (prefix, suffix, suffix_length),
+                Ordering::Equal => (14, suffix, suffix_length.max(4)),
+                Ordering::Greater => {
+                    let suffix = level_code - (15 << suffix_length);
+                    (15, suffix, 12)
+                }
             }
         }
     }

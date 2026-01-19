@@ -526,7 +526,7 @@ impl DolbyVisionRpu {
 
         // Parse RPU header (simplified)
         let rpu_type = (data[0] >> 6) & 0x03;
-        let rpu_format = u16::from(data[0] & 0x3F) << 8 | u16::from(data[1]);
+        let rpu_format = (u16::from(data[0] & 0x3F) << 8) | u16::from(data[1]);
 
         let header = DolbyVisionRpuHeader {
             rpu_type,

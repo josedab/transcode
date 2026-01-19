@@ -9,7 +9,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::manual_div_ceil)]
-#![allow(clippy::manual_is_multiple_of)]
+#![allow(clippy::manual_range_contains)]
 #![allow(clippy::derivable_impls)]
 #![allow(unused_variables)]
 #![allow(dead_code)]

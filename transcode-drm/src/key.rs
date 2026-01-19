@@ -119,7 +119,11 @@ impl ContentKey {
 
     /// Encode the key as hexadecimal.
     pub fn to_hex(&self) -> String {
-        self.key.iter().map(|b| format!("{:02x}", b)).collect()
+        use std::fmt::Write;
+        self.key.iter().fold(String::new(), |mut acc, b| {
+            let _ = write!(acc, "{:02x}", b);
+            acc
+        })
     }
 }
 
@@ -223,7 +227,11 @@ impl KeyId {
 
     /// Format as hexadecimal (without dashes).
     pub fn to_hex(&self) -> String {
-        self.as_bytes().iter().map(|b| format!("{:02x}", b)).collect()
+        use std::fmt::Write;
+        self.as_bytes().iter().fold(String::new(), |mut acc, b| {
+            let _ = write!(acc, "{:02x}", b);
+            acc
+        })
     }
 
     /// Encode as base64.
@@ -350,7 +358,11 @@ impl Iv {
 
     /// Format as hexadecimal.
     pub fn to_hex(&self) -> String {
-        self.bytes.iter().map(|b| format!("{:02x}", b)).collect()
+        use std::fmt::Write;
+        self.bytes.iter().fold(String::new(), |mut acc, b| {
+            let _ = write!(acc, "{:02x}", b);
+            acc
+        })
     }
 
     /// Increment the IV counter (last 8 bytes as big-endian).
