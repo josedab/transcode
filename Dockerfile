@@ -8,7 +8,7 @@
 # =============================================================================
 # Stage 1: Builder - Compile with release optimizations and LTO
 # =============================================================================
-FROM rust:1.75-bookworm AS builder
+FROM rust:1.92-bookworm AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -187,7 +187,7 @@ CMD ["--help"]
 # =============================================================================
 # Stage 3: Development - Full Rust toolchain for development
 # =============================================================================
-FROM rust:1.75-bookworm AS development
+FROM rust:1.92-bookworm AS development
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
