@@ -1,0 +1,46 @@
+[book]
+title = "Transcode Documentation"
+authors = ["Transcode Contributors"]
+description = "A memory-safe, high-performance universal codec library written in Rust"
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = true
+
+[preprocessor.links]
+
+[output.html]
+default-theme = "rust"
+preferred-dark-theme = "ayu"
+git-repository-url = "https://github.com/transcode/transcode"
+edit-url-template = "https://github.com/transcode/transcode/edit/main/docs/{path}"
+site-url = "/transcode/"
+cname = ""
+input-404 = "404.md"
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.playground]
+editable = true
+copyable = true
+copy-js = true
+line-numbers = true
+runnable = true
+
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30
+use-hierarchical-headers = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
+
+[output.html.code.hidelines]
+rust = "# "
