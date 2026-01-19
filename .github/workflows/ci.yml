@@ -124,6 +124,34 @@ jobs:
       - name: Check MSRV
         run: cargo check --all-features
 
+  # Semver compatibility check (only on PRs)
+  semver:
+    name: Semver Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-semver-checks
+        run: cargo install cargo-semver-checks --locked
+      - name: Check semver compatibility
+        run: cargo semver-checks check-release --package transcode-core --package transcode-codecs --package transcode-containers --package transcode
+        continue-on-error: true  # Don't block PRs, just warn
+
+  # License and dependency check
+  deny:
+    name: Cargo Deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          command: check
+          arguments: --all-features
+
   # Benchmarks (only on main branch)
   bench:
     name: Benchmarks
