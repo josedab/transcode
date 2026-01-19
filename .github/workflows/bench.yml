@@ -9,31 +9,53 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   benchmark:
     name: Run Benchmarks
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-bench-${{ hashFiles('**/Cargo.lock') }}
+          key: bench
 
       - name: Run benchmarks
-        run: cargo bench --package transcode-bench -- --noplot
+        run: |
+          cargo bench --package transcode-bench -- --noplot --save-baseline current 2>&1 | tee benchmark-output.txt
+
+      - name: Extract benchmark results
+        id: benchmark
+        run: |
+          # Extract timing information from criterion output
+          echo "## Benchmark Results" > benchmark-results.md
+          echo "" >> benchmark-results.md
+          echo "| Benchmark | Time | Change |" >> benchmark-results.md
+          echo "|-----------|------|--------|" >> benchmark-results.md
+          grep -E "time:.*\[" benchmark-output.txt | while read line; do
+            name=$(echo "$line" | cut -d' ' -f1)
+            time=$(echo "$line" | grep -oP 'time:\s*\[\K[^\]]+' | head -1)
+            change=$(echo "$line" | grep -oP 'change:\s*\[\K[^\]]+' || echo "N/A")
+            echo "| $name | $time | $change |" >> benchmark-results.md
+          done
 
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
+          name: Transcode Benchmarks
           tool: 'cargo'
           output-file-path: target/criterion/*/new/estimates.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -41,3 +63,109 @@ jobs:
           alert-threshold: '150%'
           comment-on-alert: true
           fail-on-alert: false
+          # Store benchmark data in gh-pages branch
+          benchmark-data-dir-path: dev/bench
+
+      - name: Compare benchmarks (PR only)
+        if: github.event_name == 'pull_request'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Transcode Benchmarks
+          tool: 'cargo'
+          output-file-path: target/criterion/*/new/estimates.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: false
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: false
+          # Compare against main branch
+          external-data-json-path: ./cache/benchmark-data.json
+        continue-on-error: true
+
+      - name: Comment benchmark results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const results = fs.readFileSync('benchmark-results.md', 'utf8');
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('## Benchmark Results')
+            );
+
+            const body = `## Benchmark Results\n\n${results}\n\n*Updated at ${new Date().toISOString()}*`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+  # Codec-specific benchmarks
+  codec-benchmarks:
+    name: Codec Benchmarks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: codec-bench
+
+      - name: Run H.264 benchmarks
+        run: cargo bench --package transcode-codecs -- h264
+
+      - name: Run quality benchmarks
+        run: cargo bench --package transcode-quality
+
+      - name: Run intel benchmarks
+        run: cargo bench --package transcode-intel
+
+  # Memory profiling (weekly)
+  memory-profile:
+    name: Memory Profile
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install valgrind
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+
+      - name: Build release binary
+        run: cargo build --release -p transcode-cli
+
+      - name: Run memory profile
+        run: |
+          # Create a small test file for profiling
+          echo "Memory profiling would run here with actual test files"
+          # valgrind --tool=massif target/release/transcode-cli --help
+        continue-on-error: true
