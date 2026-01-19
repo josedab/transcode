@@ -1,0 +1,64 @@
+# CODEOWNERS - Default reviewers for pull requests
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything
+* @josedab
+
+# Core libraries
+/transcode-core/ @josedab
+/transcode-codecs/ @josedab
+/transcode-containers/ @josedab
+/transcode-pipeline/ @josedab
+
+# Video codecs
+/transcode-av1/ @josedab
+/transcode-hevc/ @josedab
+/transcode-vp9/ @josedab
+/transcode-vp8/ @josedab
+/transcode-prores/ @josedab
+/transcode-dnxhd/ @josedab
+/transcode-mpeg2/ @josedab
+/transcode-ffv1/ @josedab
+/transcode-vvc/ @josedab
+
+# Audio codecs
+/transcode-opus/ @josedab
+/transcode-flac/ @josedab
+/transcode-ac3/ @josedab
+/transcode-dts/ @josedab
+/transcode-vorbis/ @josedab
+/transcode-alac/ @josedab
+/transcode-pcm/ @josedab
+
+# Containers
+/transcode-mkv/ @josedab
+/transcode-webm/ @josedab
+/transcode-ts/ @josedab
+/transcode-avi/ @josedab
+/transcode-flv/ @josedab
+/transcode-mxf/ @josedab
+
+# Advanced features
+/transcode-gpu/ @josedab
+/transcode-ai/ @josedab
+/transcode-neural/ @josedab
+/transcode-distributed/ @josedab
+/transcode-streaming/ @josedab
+/transcode-hwaccel/ @josedab
+
+# Platform bindings
+/transcode-cli/ @josedab
+/transcode-python/ @josedab
+/transcode-wasm/ @josedab
+/transcode-node/ @josedab
+/transcode-capi/ @josedab
+
+# CI/CD and infrastructure
+/.github/ @josedab
+/Dockerfile* @josedab
+/docker-compose.yml @josedab
+/deny.toml @josedab
+
+# Documentation
+/docs/ @josedab
+/*.md @josedab
