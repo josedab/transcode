@@ -1,0 +1,124 @@
+# Configuration for Release Drafter
+# https://github.com/release-drafter/release-drafter
+
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: 'Breaking Changes'
+    labels:
+      - 'breaking change'
+  - title: 'New Features'
+    labels:
+      - 'type: feature'
+  - title: 'Enhancements'
+    labels:
+      - 'type: enhancement'
+  - title: 'Bug Fixes'
+    labels:
+      - 'type: bug'
+  - title: 'Performance'
+    labels:
+      - 'type: performance'
+  - title: 'Security'
+    labels:
+      - 'type: security'
+      - 'security'
+  - title: 'Documentation'
+    labels:
+      - 'type: documentation'
+  - title: 'Dependencies'
+    labels:
+      - 'dependencies'
+    collapse-after: 5
+  - title: 'Other Changes'
+    labels:
+      - 'type: refactor'
+      - '*'
+
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+exclude-labels:
+  - 'skip-changelog'
+  - 'duplicate'
+  - 'invalid'
+  - 'status: wontfix'
+
+version-resolver:
+  major:
+    labels:
+      - 'breaking change'
+  minor:
+    labels:
+      - 'type: feature'
+  patch:
+    labels:
+      - 'type: bug'
+      - 'type: enhancement'
+      - 'type: performance'
+      - 'type: documentation'
+      - 'type: refactor'
+      - 'dependencies'
+  default: patch
+
+autolabeler:
+  - label: 'type: documentation'
+    files:
+      - '*.md'
+      - 'docs/**/*'
+    branch:
+      - '/docs?[-/].+/'
+  - label: 'type: bug'
+    branch:
+      - '/fix[-/].+/'
+    title:
+      - '/fix/i'
+  - label: 'type: feature'
+    branch:
+      - '/feat(ure)?[-/].+/'
+    title:
+      - '/feat/i'
+  - label: 'component: cli'
+    files:
+      - 'transcode-cli/**/*'
+  - label: 'component: core'
+    files:
+      - 'transcode-core/**/*'
+  - label: 'component: codecs'
+    files:
+      - 'transcode-codecs/**/*'
+  - label: 'component: gpu'
+    files:
+      - 'transcode-gpu/**/*'
+  - label: 'component: ai'
+    files:
+      - 'transcode-ai/**/*'
+  - label: 'component: streaming'
+    files:
+      - 'transcode-streaming/**/*'
+  - label: 'component: python'
+    files:
+      - 'transcode-python/**/*'
+  - label: 'component: wasm'
+    files:
+      - 'transcode-wasm/**/*'
+  - label: 'dependencies'
+    files:
+      - 'Cargo.lock'
+      - '**/Cargo.toml'
+
+replacers:
+  - search: '/\[.*?\]\(.*?\)/g'
+    replace: ''
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
