@@ -18,12 +18,12 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
 # Optional: Full OpenTelemetry integration
-opentelemetry = { version = "0.21", optional = true }
-opentelemetry_sdk = { version = "0.21", optional = true }
-opentelemetry-otlp = { version = "0.14", optional = true }
+opentelemetry = { version = "0.31", optional = true }
+opentelemetry_sdk = { version = "0.31", optional = true }
+opentelemetry-otlp = { version = "0.31", optional = true }
 
 # Optional: Prometheus client library (alternative to built-in exporter)
-prometheus = { version = "0.13", optional = true }
+prometheus = { version = "0.14", optional = true }
 
 # Optional: tracing ecosystem integration
 tracing = { workspace = true, optional = true }
