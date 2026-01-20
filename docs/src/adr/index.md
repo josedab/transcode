@@ -27,6 +27,14 @@ An Architecture Decision Record (ADR) captures an important architectural decisi
 | [ADR-0010](./0010-quality-metrics.md) | Multi-Metric Quality Assessment | Accepted | 2024-06 |
 | [ADR-0011](./0011-wasm-integration.md) | WebAssembly Integration | Accepted | 2024-06 |
 | [ADR-0012](./0012-python-bindings.md) | Python Bindings via PyO3 | Accepted | 2024-06 |
+| [ADR-0013](./0013-hardware-acceleration.md) | Hardware Acceleration Abstraction | Accepted | 2024-07 |
+| [ADR-0014](./0014-drm-content-protection.md) | DRM and Content Protection | Accepted | 2024-07 |
+| [ADR-0015](./0015-zero-copy-io.md) | Zero-Copy I/O Optimizations | Accepted | 2024-07 |
+| [ADR-0016](./0016-ffmpeg-compatibility.md) | FFmpeg Compatibility Layer | Accepted | 2024-07 |
+| [ADR-0017](./0017-c-api.md) | C API for System Integration | Accepted | 2024-07 |
+| [ADR-0018](./0018-conformance-testing.md) | Codec Conformance Testing | Accepted | 2024-08 |
+| [ADR-0019](./0019-buffer-pool.md) | Buffer Pool and Memory Reuse | Accepted | 2024-08 |
+| [ADR-0020](./0020-filter-chain.md) | Filter Chain Composition | Accepted | 2024-08 |
 
 ## ADR Template
 
