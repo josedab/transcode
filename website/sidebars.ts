@@ -32,8 +32,10 @@ const sidebars: SidebarsConfig = {
         'guides/streaming-output',
         'guides/gpu-acceleration',
         'guides/ai-enhancement',
+        'guides/filter-chains',
         'guides/quality-metrics',
         'guides/distributed-processing',
+        'guides/error-handling',
         'guides/docker-deployment',
       ],
     },
@@ -53,6 +55,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'reference/cli',
         'reference/api',
+        'reference/codec-parameters',
         'reference/codecs-matrix',
         'reference/configuration',
         'reference/benchmarks',
