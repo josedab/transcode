@@ -1,0 +1,8 @@
+transcode-team:
+  name: Transcode Team
+  title: Core Maintainers
+  url: https://github.com/transcode
+  image_url: https://github.com/transcode.png
+  socials:
+    github: transcode
+    x: transcode_rs

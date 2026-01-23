@@ -1,0 +1,24 @@
+release:
+  label: Release
+  description: Release announcements and updates
+  permalink: /release
+
+technical:
+  label: Technical
+  description: Technical deep-dives and architecture
+  permalink: /technical
+
+rust:
+  label: Rust
+  description: Rust-specific topics
+  permalink: /rust
+
+performance:
+  label: Performance
+  description: Performance optimization and benchmarks
+  permalink: /performance
+
+tutorial:
+  label: Tutorial
+  description: Guides and tutorials
+  permalink: /tutorial
