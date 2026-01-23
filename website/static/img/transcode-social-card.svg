@@ -1,0 +1,63 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e0f2fe;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradient)"/>
+
+  <!-- Decorative elements -->
+  <circle cx="100" cy="530" r="200" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="1100" cy="100" r="150" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="900" cy="500" r="100" fill="rgba(255,255,255,0.03)"/>
+
+  <!-- Logo icon - stylized play/transcode symbol -->
+  <g transform="translate(500, 180)">
+    <!-- Outer ring -->
+    <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+    <!-- Inner play symbol morphing into arrows -->
+    <path d="M70 60 L140 100 L70 140 L70 60" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round"/>
+    <!-- Circular arrow suggesting transcoding -->
+    <path d="M160 70 A70 70 0 0 1 160 130" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>
+    <path d="M40 130 A70 70 0 0 1 40 70" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/>
+    <!-- Arrow heads -->
+    <path d="M155 60 L160 70 L170 65" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M45 140 L40 130 L30 135" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="400" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="72" font-weight="700" fill="white" text-anchor="middle">
+    Transcode
+  </text>
+
+  <!-- Tagline -->
+  <text x="600" y="470" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" fill="rgba(255,255,255,0.9)" text-anchor="middle">
+    Memory-safe, high-performance media transcoding for Rust
+  </text>
+
+  <!-- Feature badges -->
+  <g transform="translate(300, 520)">
+    <rect x="0" y="0" width="120" height="36" rx="18" fill="rgba(255,255,255,0.2)"/>
+    <text x="60" y="24" font-family="system-ui, sans-serif" font-size="14" fill="white" text-anchor="middle">Pure Rust</text>
+  </g>
+  <g transform="translate(440, 520)">
+    <rect x="0" y="0" width="140" height="36" rx="18" fill="rgba(255,255,255,0.2)"/>
+    <text x="70" y="24" font-family="system-ui, sans-serif" font-size="14" fill="white" text-anchor="middle">SIMD Optimized</text>
+  </g>
+  <g transform="translate(600, 520)">
+    <rect x="0" y="0" width="100" height="36" rx="18" fill="rgba(255,255,255,0.2)"/>
+    <text x="50" y="24" font-family="system-ui, sans-serif" font-size="14" fill="white" text-anchor="middle">GPU Accel</text>
+  </g>
+  <g transform="translate(720, 520)">
+    <rect x="0" y="0" width="180" height="36" rx="18" fill="rgba(255,255,255,0.2)"/>
+    <text x="90" y="24" font-family="system-ui, sans-serif" font-size="14" fill="white" text-anchor="middle">No FFmpeg Required</text>
+  </g>
+</svg>

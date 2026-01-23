@@ -1,0 +1,257 @@
+/**
+ * Transcode Documentation Theme
+ * Custom styling for the Transcode codec library documentation
+ */
+
+/* Primary color palette - Blue/Cyan theme for media/video tooling */
+:root {
+  --ifm-color-primary: #3b82f6;
+  --ifm-color-primary-dark: #2563eb;
+  --ifm-color-primary-darker: #1d4ed8;
+  --ifm-color-primary-darkest: #1e40af;
+  --ifm-color-primary-light: #60a5fa;
+  --ifm-color-primary-lighter: #93c5fd;
+  --ifm-color-primary-lightest: #bfdbfe;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(59, 130, 246, 0.1);
+
+  /* Custom variables */
+  --transcode-gradient-start: #3b82f6;
+  --transcode-gradient-end: #06b6d4;
+  --transcode-surface: #f8fafc;
+  --transcode-border: #e2e8f0;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+  --docusaurus-highlighted-code-line-bg: rgba(96, 165, 250, 0.2);
+
+  --transcode-surface: #1e293b;
+  --transcode-border: #334155;
+}
+
+/* Hero section styling */
+.hero--primary {
+  background: linear-gradient(135deg, var(--transcode-gradient-start) 0%, var(--transcode-gradient-end) 100%);
+}
+
+/* Code block styling */
+.prism-code {
+  border-radius: 8px;
+}
+
+/* Feature cards */
+.feature-card {
+  background: var(--transcode-surface);
+  border: 1px solid var(--transcode-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .feature-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Install command styling */
+.install-command {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.install-command code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.install-command .copy-button {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: color 0.2s ease;
+}
+
+.install-command .copy-button:hover {
+  color: #60a5fa;
+}
+
+/* Badge styling */
+.badge-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.badge-row img {
+  height: 20px;
+}
+
+/* Platform icons */
+.platform-icons {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 2rem 0;
+}
+
+.platform-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ifm-font-color-secondary);
+  transition: color 0.2s ease;
+}
+
+.platform-icon:hover {
+  color: var(--ifm-color-primary);
+}
+
+.platform-icon svg {
+  width: 48px;
+  height: 48px;
+}
+
+/* Codec matrix table styling */
+.codec-matrix {
+  overflow-x: auto;
+}
+
+.codec-matrix table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.codec-matrix th {
+  background: var(--ifm-color-primary);
+  color: white;
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.codec-matrix td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--transcode-border);
+}
+
+.codec-matrix tr:hover {
+  background: var(--transcode-surface);
+}
+
+/* Status indicators */
+.status-complete {
+  color: #22c55e;
+}
+
+.status-partial {
+  color: #f59e0b;
+}
+
+.status-planned {
+  color: #94a3b8;
+}
+
+/* Quick example code block */
+.quick-example {
+  text-align: left;
+  max-width: 700px;
+  margin: 2rem auto;
+}
+
+/* Section headers */
+.section-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.section-header h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-header p {
+  color: var(--ifm-font-color-secondary);
+  font-size: 1.1rem;
+}
+
+/* Announcement bar customization */
+.announcement {
+  font-weight: 500;
+}
+
+/* Navbar improvements */
+.navbar__title {
+  font-weight: 700;
+}
+
+/* Footer styling */
+.footer--dark {
+  background: #0f172a;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 996px) {
+  .platform-icons {
+    gap: 1rem;
+  }
+
+  .platform-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Code tabs */
+.tabs-container {
+  margin: 1rem 0;
+}
+
+/* Admonition customization */
+.admonition {
+  border-radius: 8px;
+}
+
+/* Table of contents */
+.table-of-contents {
+  font-size: 0.9rem;
+}
+
+/* Search highlight */
+mark {
+  background: rgba(59, 130, 246, 0.3);
+  padding: 0.1em 0.2em;
+  border-radius: 2px;
+}
+
+/* Mermaid diagram styling */
+.mermaid {
+  text-align: center;
+  margin: 2rem 0;
+}
