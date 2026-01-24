@@ -19,6 +19,7 @@ transcode-core.workspace = true
 transcode-codecs.workspace = true
 transcode-compat.workspace = true
 clap.workspace = true
+clap_complete = "4"
 anyhow.workspace = true
 tokio.workspace = true
 tracing.workspace = true

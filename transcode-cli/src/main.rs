@@ -1,6 +1,9 @@
 //! Transcode CLI - Command-line interface for media transcoding.
 
-use clap::Parser;
+mod commands;
+
+use clap::{Parser, Subcommand};
+use commands::{CmdCodecs, CmdCompletions, CmdDoctor, CmdInfo, CmdPresets};
 use console::style;
 use glob::glob;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
@@ -12,6 +15,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tracing::{debug, info, warn};
 use transcode_compat::FilterChain;
+use transcode_core::error::ErrorSuggestion;
 
 /// Output mode for the CLI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,6 +105,21 @@ struct FinalStats {
     avg_audio_bitrate_kbps: f64,
 }
 
+/// CLI subcommands.
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// List available codecs.
+    Codecs(CmdCodecs),
+    /// Show encoding presets.
+    Presets(CmdPresets),
+    /// Inspect a media file.
+    Info(CmdInfo),
+    /// Run environment diagnostics.
+    Doctor(CmdDoctor),
+    /// Generate shell completions.
+    Completions(CmdCompletions),
+}
+
 /// Command-line arguments for the transcode tool.
 #[derive(Parser, Debug)]
 #[command(name = "transcode")]
@@ -109,6 +128,12 @@ struct FinalStats {
 #[command(long_about = "Transcode is a universal media transcoding tool built in Rust.\n\n\
     It provides memory-safe, high-performance transcoding with SIMD \n\
     optimizations (AVX2, NEON) and automatic runtime detection.\n\n\
+    SUBCOMMANDS:\n    \
+    transcode codecs              List available codecs\n    \
+    transcode presets             Show encoding presets\n    \
+    transcode info <file>         Inspect a media file\n    \
+    transcode doctor              Run environment diagnostics\n    \
+    transcode completions <shell> Generate shell completions\n\n\
     EXAMPLES:\n    \
     transcode -i input.mp4 -o output.mp4\n    \
     transcode -i input.mp4 -o output.mp4 --video-bitrate 5000\n    \
@@ -116,13 +141,17 @@ struct FinalStats {
     transcode -i input.mp4 -o output.mp4 --json\n    \
     transcode -i input.mp4 -o output.mp4 --verbose")]
 struct Args {
+    /// Subcommand to run.
+    #[command(subcommand)]
+    command: Option<Commands>,
+
     /// Input file path
     #[arg(short, long)]
-    input: PathBuf,
+    input: Option<PathBuf>,
 
     /// Output file path
     #[arg(short, long)]
-    output: PathBuf,
+    output: Option<PathBuf>,
 
     /// Video codec (h264, h265)
     #[arg(long, default_value = "h264")]
@@ -201,6 +230,11 @@ impl Args {
         } else {
             OutputMode::Normal
         }
+    }
+
+    /// Check if this is a legacy transcode invocation (has -i/-o but no subcommand).
+    fn is_legacy_transcode(&self) -> bool {
+        self.command.is_none() && (self.input.is_some() || self.batch.is_some())
     }
 }
 
@@ -486,6 +520,28 @@ fn format_duration(seconds: f64) -> String {
 fn main() -> anyhow::Result<()> {
     // Parse command-line arguments
     let args = Args::parse();
+
+    // Handle subcommands
+    if let Some(ref command) = args.command {
+        return match command {
+            Commands::Codecs(cmd) => cmd.run(),
+            Commands::Presets(cmd) => cmd.run(),
+            Commands::Info(cmd) => cmd.run(),
+            Commands::Doctor(cmd) => cmd.run(),
+            Commands::Completions(cmd) => cmd.run::<Args>(),
+        };
+    }
+
+    // Legacy transcode mode requires input
+    if !args.is_legacy_transcode() {
+        // Show help if no arguments provided
+        use clap::CommandFactory;
+        let mut cmd = Args::command();
+        cmd.print_help()?;
+        println!();
+        return Ok(());
+    }
+
     let output_mode = args.output_mode();
 
     // Initialize logging (not in JSON or quiet mode)
@@ -567,39 +623,43 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    // Get input/output paths
+    let input = args.input.as_ref().expect("Input file is required");
+    let output = args.output.as_ref().expect("Output file is required");
+
     // Validate input file exists
-    if !args.input.exists() {
+    if !input.exists() {
         if output_mode == OutputMode::Json {
             let error = serde_json::json!({
                 "type": "error",
                 "error": "input_not_found",
-                "message": format!("Input file not found: {}", args.input.display())
+                "message": format!("Input file not found: {}", input.display())
             });
             println!("{}", error);
         } else if output_mode != OutputMode::Quiet {
             eprintln!(
                 "{} Input file not found: {}",
                 style("Error:").red().bold(),
-                args.input.display()
+                input.display()
             );
         }
         std::process::exit(1);
     }
 
     // Check output file
-    if args.output.exists() && !args.overwrite {
+    if output.exists() && !args.overwrite {
         if output_mode == OutputMode::Json {
             let error = serde_json::json!({
                 "type": "error",
                 "error": "output_exists",
-                "message": format!("Output file already exists: {}", args.output.display())
+                "message": format!("Output file already exists: {}", output.display())
             });
             println!("{}", error);
         } else if output_mode != OutputMode::Quiet {
             eprintln!(
                 "{} Output file already exists: {}",
                 style("Error:").red().bold(),
-                args.output.display()
+                output.display()
             );
             eprintln!("       Use -y to overwrite");
         }
@@ -610,8 +670,8 @@ fn main() -> anyhow::Result<()> {
     if output_mode == OutputMode::Normal || output_mode == OutputMode::Verbose {
         println!();
         println!("{}", style("Configuration:").cyan().bold());
-        println!("  Input:        {}", style(args.input.display()).white());
-        println!("  Output:       {}", style(args.output.display()).white());
+        println!("  Input:        {}", style(input.display()).white());
+        println!("  Output:       {}", style(output.display()).white());
         println!("  Video codec:  {}", style(&args.video_codec).white());
         println!("  Audio codec:  {}", style(&args.audio_codec).white());
 
@@ -664,8 +724,8 @@ fn main() -> anyhow::Result<()> {
     if output_mode == OutputMode::Json {
         let start = serde_json::json!({
             "type": "start",
-            "input": args.input.to_string_lossy(),
-            "output": args.output.to_string_lossy(),
+            "input": input.to_string_lossy(),
+            "output": output.to_string_lossy(),
             "video_codec": args.video_codec,
             "audio_codec": args.audio_codec
         });
@@ -674,8 +734,8 @@ fn main() -> anyhow::Result<()> {
 
     // Create transcoder options
     let mut options = transcode::TranscodeOptions::new()
-        .input(&args.input)
-        .output(&args.output)
+        .input(input)
+        .output(output)
         .overwrite(args.overwrite);
 
     if let Some(bitrate) = args.video_bitrate {
@@ -695,7 +755,13 @@ fn main() -> anyhow::Result<()> {
     let shared_progress_clone = Arc::clone(&shared_progress);
 
     // Create transcoder with progress callback
-    let mut transcoder = transcode::Transcoder::new(options)?;
+    let mut transcoder = match transcode::Transcoder::new(options) {
+        Ok(t) => t,
+        Err(e) => {
+            print_error_with_suggestion(&e, output_mode);
+            std::process::exit(1);
+        }
+    };
     transcoder = transcoder.on_progress(move |progress, frames| {
         shared_progress_clone.update(progress, frames);
     });
@@ -715,11 +781,20 @@ fn main() -> anyhow::Result<()> {
     let start = Instant::now();
 
     // Initialize transcoder first to get total duration info
-    transcoder.initialize()?;
+    if let Err(e) = transcoder.initialize() {
+        print_error_with_suggestion(&e, output_mode);
+        std::process::exit(1);
+    }
 
     // For demonstration, we'll poll progress during run
     // In a real implementation, this would be done via callback
-    transcoder.run()?;
+    if let Err(e) = transcoder.run() {
+        if let Some(ref reporter) = reporter {
+            reporter.finish();
+        }
+        print_error_with_suggestion(&e, output_mode);
+        std::process::exit(1);
+    }
 
     let elapsed = start.elapsed();
 
@@ -766,7 +841,7 @@ fn main() -> anyhow::Result<()> {
         }
         OutputMode::Quiet => {
             // Just print the output path
-            println!("{}", args.output.display());
+            println!("{}", output.display());
         }
         OutputMode::Normal => {
             println!("{}", style("Transcoding complete!").green().bold());
@@ -790,7 +865,7 @@ fn main() -> anyhow::Result<()> {
             println!(
                 "{} {}",
                 style("Output saved to:").white(),
-                style(args.output.display()).green().bold()
+                style(output.display()).green().bold()
             );
         }
         OutputMode::Verbose => {
@@ -841,7 +916,7 @@ fn main() -> anyhow::Result<()> {
             println!(
                 "{} {}",
                 style("Output saved to:").white(),
-                style(args.output.display()).green().bold()
+                style(output.display()).green().bold()
             );
         }
     }
@@ -946,7 +1021,8 @@ fn process_batch(
     }
 
     // Get output extension from args
-    let output_ext = args.output.extension()
+    let output_ext = args.output.as_ref()
+        .and_then(|p| p.extension())
         .and_then(|e| e.to_str())
         .unwrap_or("mp4");
 
@@ -989,7 +1065,7 @@ fn process_batch(
             Ok(()) => {
                 println!(
                     "  {} {} -> {} ({:.1}s)",
-                    style("✓").green(),
+                    style("OK").green(),
                     input.display(),
                     output.display(),
                     elapsed.as_secs_f64()
@@ -1005,7 +1081,7 @@ fn process_batch(
             Err(e) => {
                 println!(
                     "  {} {} - {}",
-                    style("✗").red(),
+                    style("FAIL").red(),
                     input.display(),
                     e
                 );
@@ -1045,6 +1121,35 @@ fn print_header() {
         "{}",
         style("+---------------------------------------------------------+").cyan()
     );
+}
+
+/// Print an error message with an optional suggestion.
+fn print_error_with_suggestion<E: std::fmt::Display + ErrorSuggestion>(
+    error: &E,
+    output_mode: OutputMode,
+) {
+    match output_mode {
+        OutputMode::Json => {
+            let mut json = serde_json::json!({
+                "type": "error",
+                "message": error.to_string()
+            });
+            if let Some(suggestion) = error.suggestion() {
+                json["suggestion"] = serde_json::json!(suggestion);
+            }
+            println!("{}", json);
+        }
+        OutputMode::Quiet => {
+            // Minimal output in quiet mode
+            eprintln!("{}", error);
+        }
+        _ => {
+            eprintln!("{} {}", style("Error:").red().bold(), error);
+            if let Some(suggestion) = error.suggestion() {
+                eprintln!("  {} {}", style("Suggestion:").yellow(), suggestion);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1111,8 +1216,9 @@ mod tests {
     #[test]
     fn test_output_mode_default() {
         let args = Args {
-            input: PathBuf::from("input.mp4"),
-            output: PathBuf::from("output.mp4"),
+            command: None,
+            input: Some(PathBuf::from("input.mp4")),
+            output: Some(PathBuf::from("output.mp4")),
             video_codec: "h264".to_string(),
             audio_codec: "aac".to_string(),
             video_bitrate: None,
@@ -1136,8 +1242,9 @@ mod tests {
     #[test]
     fn test_output_mode_json() {
         let args = Args {
-            input: PathBuf::from("input.mp4"),
-            output: PathBuf::from("output.mp4"),
+            command: None,
+            input: Some(PathBuf::from("input.mp4")),
+            output: Some(PathBuf::from("output.mp4")),
             video_codec: "h264".to_string(),
             audio_codec: "aac".to_string(),
             video_bitrate: None,
@@ -1161,8 +1268,9 @@ mod tests {
     #[test]
     fn test_output_mode_quiet() {
         let args = Args {
-            input: PathBuf::from("input.mp4"),
-            output: PathBuf::from("output.mp4"),
+            command: None,
+            input: Some(PathBuf::from("input.mp4")),
+            output: Some(PathBuf::from("output.mp4")),
             video_codec: "h264".to_string(),
             audio_codec: "aac".to_string(),
             video_bitrate: None,
@@ -1186,8 +1294,9 @@ mod tests {
     #[test]
     fn test_output_mode_verbose() {
         let args = Args {
-            input: PathBuf::from("input.mp4"),
-            output: PathBuf::from("output.mp4"),
+            command: None,
+            input: Some(PathBuf::from("input.mp4")),
+            output: Some(PathBuf::from("output.mp4")),
             video_codec: "h264".to_string(),
             audio_codec: "aac".to_string(),
             video_bitrate: None,
@@ -1348,5 +1457,85 @@ mod tests {
         };
         assert!(!result.success);
         assert_eq!(result.error.as_deref(), Some("File not found"));
+    }
+
+    // ===== is_legacy_transcode tests =====
+
+    #[test]
+    fn test_is_legacy_transcode_with_input() {
+        let args = Args {
+            command: None,
+            input: Some(PathBuf::from("input.mp4")),
+            output: Some(PathBuf::from("output.mp4")),
+            video_codec: "h264".to_string(),
+            audio_codec: "aac".to_string(),
+            video_bitrate: None,
+            audio_bitrate: None,
+            threads: None,
+            overwrite: false,
+            no_progress: false,
+            verbose: false,
+            quiet: false,
+            json: false,
+            progress_interval: 500,
+            video_filter: None,
+            audio_filter: None,
+            batch: None,
+            batch_output_dir: None,
+            jobs: 1,
+        };
+        assert!(args.is_legacy_transcode());
+    }
+
+    #[test]
+    fn test_is_legacy_transcode_with_batch() {
+        let args = Args {
+            command: None,
+            input: None,
+            output: None,
+            video_codec: "h264".to_string(),
+            audio_codec: "aac".to_string(),
+            video_bitrate: None,
+            audio_bitrate: None,
+            threads: None,
+            overwrite: false,
+            no_progress: false,
+            verbose: false,
+            quiet: false,
+            json: false,
+            progress_interval: 500,
+            video_filter: None,
+            audio_filter: None,
+            batch: Some("*.mp4".to_string()),
+            batch_output_dir: None,
+            jobs: 1,
+        };
+        assert!(args.is_legacy_transcode());
+    }
+
+    #[test]
+    fn test_is_not_legacy_transcode() {
+        let args = Args {
+            command: None,
+            input: None,
+            output: None,
+            video_codec: "h264".to_string(),
+            audio_codec: "aac".to_string(),
+            video_bitrate: None,
+            audio_bitrate: None,
+            threads: None,
+            overwrite: false,
+            no_progress: false,
+            verbose: false,
+            quiet: false,
+            json: false,
+            progress_interval: 500,
+            video_filter: None,
+            audio_filter: None,
+            batch: None,
+            batch_output_dir: None,
+            jobs: 1,
+        };
+        assert!(!args.is_legacy_transcode());
     }
 }
