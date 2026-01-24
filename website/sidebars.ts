@@ -36,6 +36,7 @@ const sidebars: SidebarsConfig = {
         'guides/quality-metrics',
         'guides/distributed-processing',
         'guides/error-handling',
+        'guides/ffmpeg-migration',
         'guides/docker-deployment',
       ],
     },
