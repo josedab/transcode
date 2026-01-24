@@ -1,0 +1,5 @@
+module CTranscode {
+    header "transcode.h"
+    link "transcode_capi"
+    export *
+}
