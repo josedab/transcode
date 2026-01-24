@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transcode Playground - Browser Video Transcoding</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Transcode Playground</h1>
+            <p class="subtitle">Browser-based video transcoding powered by WebAssembly</p>
+        </header>
+
+        <main>
+            <!-- Browser Support Check -->
+            <section id="browser-check" class="card">
+                <h2>Browser Support</h2>
+                <div id="support-status"></div>
+            </section>
+
+            <!-- File Input -->
+            <section id="input-section" class="card">
+                <h2>Input</h2>
+                <div id="drop-zone" class="drop-zone">
+                    <div class="drop-zone-content">
+                        <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <p>Drag & drop a video file here</p>
+                        <p class="drop-hint">or click to select</p>
+                    </div>
+                    <input type="file" id="file-input" accept="video/*" hidden>
+                </div>
+                <div id="input-info" class="info-box hidden"></div>
+            </section>
+
+            <!-- Settings -->
+            <section id="settings-section" class="card hidden">
+                <h2>Output Settings</h2>
+
+                <div class="setting-group">
+                    <label>Preset</label>
+                    <select id="preset-select">
+                        <option value="web" selected>Web Optimized (Recommended)</option>
+                        <option value="high">High Quality</option>
+                        <option value="small">Small File Size</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <div id="custom-settings" class="hidden">
+                    <div class="setting-group">
+                        <label>Resolution</label>
+                        <select id="resolution-select">
+                            <option value="original">Original</option>
+                            <option value="1920x1080">1080p (1920x1080)</option>
+                            <option value="1280x720" selected>720p (1280x720)</option>
+                            <option value="854x480">480p (854x480)</option>
+                            <option value="640x360">360p (640x360)</option>
+                        </select>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Video Bitrate</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="video-bitrate" value="2500" min="500" max="50000">
+                            <span class="unit">kbps</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Audio Bitrate</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="audio-bitrate" value="128" min="64" max="320">
+                            <span class="unit">kbps</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="transcode-btn" class="primary-btn">
+                    <span class="btn-text">Start Transcoding</span>
+                    <span class="btn-spinner hidden"></span>
+                </button>
+            </section>
+
+            <!-- Progress -->
+            <section id="progress-section" class="card hidden">
+                <h2>Progress</h2>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progress-percent">0%</span>
+                        <span id="progress-eta"></span>
+                    </div>
+                </div>
+                <div class="progress-stats">
+                    <div class="stat">
+                        <span class="stat-label">Speed</span>
+                        <span id="stat-fps" class="stat-value">-- fps</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Frames</span>
+                        <span id="stat-frames" class="stat-value">--</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Output Size</span>
+                        <span id="stat-size" class="stat-value">-- MB</span>
+                    </div>
+                </div>
+                <button id="cancel-btn" class="secondary-btn">Cancel</button>
+            </section>
+
+            <!-- Output -->
+            <section id="output-section" class="card hidden">
+                <h2>Output</h2>
+                <div class="output-preview">
+                    <video id="output-video" controls></video>
+                </div>
+                <div class="output-info">
+                    <div class="stat">
+                        <span class="stat-label">Duration</span>
+                        <span id="output-duration" class="stat-value">--</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">File Size</span>
+                        <span id="output-size" class="stat-value">--</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Compression</span>
+                        <span id="output-compression" class="stat-value">--</span>
+                    </div>
+                </div>
+                <div class="output-actions">
+                    <button id="download-btn" class="primary-btn">Download</button>
+                    <button id="reset-btn" class="secondary-btn">Transcode Another</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>
+                Powered by <a href="https://github.com/anthropics/transcode" target="_blank">Transcode</a> |
+                <span id="version-info">v--</span>
+            </p>
+        </footer>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
