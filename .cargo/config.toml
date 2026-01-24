@@ -1,0 +1,29 @@
+# Build optimizations for the transcode workspace
+# See CONTRIBUTING.md or docs for details on each setting.
+
+[build]
+# Use sccache for compilation caching across builds
+# Install: cargo install sccache
+# This avoids recompiling unchanged crates even after `cargo clean`
+rustc-wrapper = "sccache"
+
+# Match CPU core count (default is ncpu, explicit for clarity)
+jobs = 10
+
+[target.aarch64-apple-darwin]
+# Use zld-compatible flags for faster linking on macOS
+# Apple's linker on recent Xcode versions supports these natively
+rustflags = [
+    "-C", "link-arg=-Wl,-dead_strip",
+]
+
+[profile.dev]
+# Split debug info into separate files — dramatically faster linking
+split-debuginfo = "unpacked"
+
+[profile.release]
+# Split debug info in release too
+split-debuginfo = "off"
+
+[registries.crates-io]
+protocol = "sparse"
