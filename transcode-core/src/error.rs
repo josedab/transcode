@@ -392,6 +392,130 @@ impl<T> ErrorContext<T> for std::result::Result<T, std::io::Error> {
     }
 }
 
+/// Trait for errors that can provide actionable suggestions.
+///
+/// This trait enables errors to provide helpful suggestions to users
+/// about how to resolve the issue.
+///
+/// # Example
+///
+/// ```
+/// use transcode_core::error::{Error, ErrorSuggestion};
+///
+/// let err = Error::Unsupported("VP9 codec not available".into());
+/// if let Some(suggestion) = err.suggestion() {
+///     println!("Suggestion: {}", suggestion);
+/// }
+/// ```
+pub trait ErrorSuggestion {
+    /// Get a suggestion for how to resolve this error.
+    ///
+    /// Returns `None` if no specific suggestion is available.
+    fn suggestion(&self) -> Option<&'static str>;
+}
+
+impl ErrorSuggestion for Error {
+    fn suggestion(&self) -> Option<&'static str> {
+        match self {
+            Error::Io(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                Some("Check that the file path is correct and the file exists")
+            }
+            Error::Io(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                Some("Check file permissions or try running with elevated privileges")
+            }
+            Error::Io(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                Some("Use --overwrite flag to replace existing output file")
+            }
+            Error::Unsupported(msg) if msg.contains("codec") => {
+                Some("Run 'transcode codecs' to see available codecs")
+            }
+            Error::Unsupported(msg) if msg.contains("format") => {
+                Some("Check that the input file is a supported format (MP4, MKV, WebM)")
+            }
+            Error::InvalidParameter(msg) if msg.contains("resolution") => {
+                Some("Resolution should be in format WIDTHxHEIGHT (e.g., 1920x1080)")
+            }
+            Error::InvalidParameter(msg) if msg.contains("bitrate") => {
+                Some("Bitrate should be a positive number, optionally with k/M suffix (e.g., 5M, 2500k)")
+            }
+            Error::Config(msg) if msg.contains("input") => {
+                Some("Specify an input file with -i <file>")
+            }
+            Error::Config(msg) if msg.contains("output") => {
+                Some("Specify an output file with -o <file>")
+            }
+            Error::Container(e) => e.suggestion(),
+            Error::Codec(e) => e.suggestion(),
+            Error::Bitstream(e) => e.suggestion(),
+            Error::ResourceExhausted(_) => {
+                Some("Try reducing resolution, frame rate, or quality settings")
+            }
+            Error::WithContext { source, .. } => source.suggestion(),
+            _ => None,
+        }
+    }
+}
+
+impl ErrorSuggestion for ContainerError {
+    fn suggestion(&self) -> Option<&'static str> {
+        match self {
+            ContainerError::UnknownFormat => {
+                Some("Check that the file is a valid media container (MP4, MKV, WebM)")
+            }
+            ContainerError::InvalidStructure(_) => {
+                Some("The file may be corrupted - try re-downloading or using a different source")
+            }
+            ContainerError::MissingElement(elem) if elem.contains("moov") => {
+                Some("MP4 file appears truncated - try running 'qt-faststart' to repair")
+            }
+            ContainerError::SeekFailed(_) => {
+                Some("Try using a file path instead of stdin for seekable input")
+            }
+            _ => None,
+        }
+    }
+}
+
+impl ErrorSuggestion for CodecError {
+    fn suggestion(&self) -> Option<&'static str> {
+        match self {
+            CodecError::UnsupportedProfile(p) if p.contains("High 10") => {
+                Some("10-bit profiles require hardware support - try converting to 8-bit")
+            }
+            CodecError::UnsupportedProfile(_) => {
+                Some("Try a different encoder profile (e.g., --profile baseline)")
+            }
+            CodecError::BitstreamCorruption { .. } => {
+                Some("Input file may be corrupted - try re-encoding from source")
+            }
+            CodecError::NotInitialized => {
+                Some("Internal error - please report this issue")
+            }
+            CodecError::EncoderConfig(_) => {
+                Some("Run 'transcode presets' to see valid encoding configurations")
+            }
+            CodecError::DimensionsExceeded { .. } => {
+                Some("Try scaling to a smaller resolution with --scale")
+            }
+            _ => None,
+        }
+    }
+}
+
+impl ErrorSuggestion for BitstreamError {
+    fn suggestion(&self) -> Option<&'static str> {
+        match self {
+            BitstreamError::UnexpectedEnd => {
+                Some("File appears truncated - check if download completed")
+            }
+            BitstreamError::InvalidStartCode { .. } => {
+                Some("Input file may not be in the expected format")
+            }
+            _ => None,
+        }
+    }
+}
+
 impl Error {
     /// Create an invalid parameter error.
     pub fn invalid_param(msg: impl Into<String>) -> Self {

@@ -25,7 +25,7 @@ pub mod format;
 pub mod rational;
 pub mod metrics;
 
-pub use error::{Error, ErrorContext, Result};
+pub use error::{Error, ErrorContext, ErrorSuggestion, Result};
 pub use frame::{Frame, FrameBuffer, PixelFormat, ColorSpace, ColorRange};
 pub use sample::{Sample, SampleBuffer, SampleFormat};
 pub use packet::{Packet, PacketFlags};
