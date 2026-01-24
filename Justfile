@@ -16,9 +16,13 @@ default:
 build:
     cargo build --workspace --exclude transcode-python
 
-# Build in release mode with optimizations
+# Build in release mode with optimizations (thin LTO, fast)
 build-release:
     cargo build --release --workspace --exclude transcode-python
+
+# Build with maximum optimizations (full LTO, codegen-units=1 — slow but smallest/fastest binary)
+build-release-max:
+    cargo build --profile release-max --workspace --exclude transcode-python
 
 # Build the CLI tool
 build-cli:
@@ -211,6 +215,15 @@ deps:
 # Show duplicate dependencies
 deps-duplicates:
     cargo tree --duplicates
+
+# Build with timing report (opens HTML in browser)
+build-timings:
+    cargo build --workspace --exclude transcode-python --timings
+    @echo "Timing report: target/cargo-timings/"
+
+# Show sccache statistics
+cache-stats:
+    sccache --show-stats
 
 # Count lines of code
 loc:
