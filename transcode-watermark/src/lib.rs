@@ -210,7 +210,7 @@ impl Watermarker {
     pub fn new(config: WatermarkConfig) -> Self {
         use rand::RngCore;
         let mut key = [0u8; 32];
-        rand::rng().fill_bytes(&mut key);
+        rand::thread_rng().fill_bytes(&mut key);
         Self { config, key }
     }
 

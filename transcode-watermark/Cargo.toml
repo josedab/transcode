@@ -16,7 +16,7 @@ thiserror.workspace = true
 tracing.workspace = true
 
 # Cryptography
-rand = "0.9"
+rand.workspace = true
 sha2 = "0.10"
 
 [dev-dependencies]
