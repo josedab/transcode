@@ -79,11 +79,13 @@
 #![allow(dead_code)]
 
 mod error;
+mod relay;
 mod sdp;
 mod server;
 mod session;
 
 pub use error::{Result, WhipError};
+pub use relay::{MediaRelay, MediaRelayHandle, RelayPacket, RelayStats};
 pub use sdp::{
     Codec, IceCandidate, MediaDescription, MediaDirection, MediaType, SessionDescription,
 };
