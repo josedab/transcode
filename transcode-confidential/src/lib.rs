@@ -88,6 +88,7 @@
 #![allow(dead_code)]
 
 mod attestation;
+mod audit;
 mod enclave;
 mod error;
 mod keys;
@@ -95,6 +96,10 @@ mod keys;
 pub use attestation::{
     generate_nonce, generate_simulated_report, AttestationReport, AttestationVerifier,
     PlatformInfo, TeeType, VerificationResult,
+};
+pub use audit::{
+    AuditEvent, AuditEventType, AuditLog, AuditSeverity, KeyRotationManager, KeyRotationPolicy,
+    ManagedKey,
 };
 pub use enclave::{
     EnclaveBuilder, EnclaveCapabilities, EnclaveConfig, EnclaveState, EnclaveStats, SecureEnclave,
