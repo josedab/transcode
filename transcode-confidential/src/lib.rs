@@ -92,6 +92,7 @@ mod audit;
 mod enclave;
 mod error;
 mod keys;
+pub mod pipeline;
 
 pub use attestation::{
     generate_nonce, generate_simulated_report, AttestationReport, AttestationVerifier,
@@ -106,6 +107,7 @@ pub use enclave::{
 };
 pub use error::{ConfidentialError, Result};
 pub use keys::{ContentKey, KeyDerivation, KeyWrapKey, SealPolicy, SealedData, WrappedKey};
+pub use pipeline::{ConfidentialPipeline, PipelineConfig, PipelineState, PipelineStats};
 
 /// Library version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
