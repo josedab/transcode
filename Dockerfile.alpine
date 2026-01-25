@@ -70,7 +70,7 @@ RUN cargo build --release --package transcode-cli --locked \
 # =============================================================================
 # Stage 2: Runtime
 # =============================================================================
-FROM alpine:3.19 AS runtime
+FROM alpine:3.23 AS runtime
 
 # Install minimal runtime dependencies
 RUN apk add --no-cache \
