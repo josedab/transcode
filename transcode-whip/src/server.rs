@@ -1,6 +1,7 @@
 //! WHIP/WHEP HTTP server implementation.
 
 use crate::error::{Result, WhipError};
+use crate::relay::MediaRelayHandle;
 use crate::sdp::{Codec, MediaDescription, MediaDirection, MediaType, SessionDescription};
 use crate::session::{Session, SessionManager, SessionManagerHandle, SessionState, SessionType};
 use axum::{
@@ -83,6 +84,7 @@ pub struct ServerState {
     pub config: ServerConfig,
     pub sessions: SessionManagerHandle,
     pub events: broadcast::Sender<ServerEvent>,
+    pub relay: MediaRelayHandle,
 }
 
 /// WHIP/WHEP server.
@@ -97,11 +99,13 @@ impl WhipServer {
     pub fn new(config: ServerConfig) -> Self {
         let (event_tx, event_rx) = broadcast::channel(1000);
         let sessions = Arc::new(SessionManager::new(config.max_sessions));
+        let relay = Arc::new(crate::relay::MediaRelay::new(1000));
 
         let state = ServerState {
             config: config.clone(),
             sessions,
             events: event_tx,
+            relay,
         };
 
         Self {
@@ -147,6 +151,7 @@ impl WhipServer {
             // Management endpoints
             .route("/sessions", get(handle_list_sessions))
             .route("/sessions/:id", get(handle_get_session))
+            .route("/streams", get(handle_list_streams))
             .route("/health", get(handle_health))
             .with_state(self.state.clone())
             .layer(TraceLayer::new_for_http());
@@ -288,7 +293,7 @@ async fn handle_ice_trickle(
         .get(header::IF_MATCH)
         .and_then(|v| v.to_str().ok());
 
-    let session = match state.sessions.get_session(&id) {
+    let mut session = match state.sessions.get_session(&id) {
         Ok(s) => s,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
@@ -299,9 +304,28 @@ async fn handle_ice_trickle(
         }
     }
 
-    // In a real implementation, we would process the ICE candidate here
-    // For now, just acknowledge
-    tracing::debug!(session_id = %id, "Received ICE candidate: {}", body);
+    // Parse and store ICE candidates from the trickle body
+    for line in body.lines() {
+        let line = line.trim();
+        if line.starts_with("a=candidate:") {
+            let candidate_str = &line["a=candidate:".len()..];
+            if let Ok(candidate) = crate::sdp::parse_candidate(candidate_str) {
+                session.add_ice_candidate(candidate);
+            }
+        }
+    }
+
+    // If we received end-of-candidates, mark session as ready
+    if body.contains("a=end-of-candidates") {
+        session.set_state(SessionState::Connected);
+        let _ = state.events.send(ServerEvent::SessionConnected {
+            session_id: session.id.clone(),
+        });
+    }
+
+    if let Err(e) = state.sessions.update_session(session) {
+        return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response();
+    }
 
     StatusCode::NO_CONTENT.into_response()
 }
@@ -368,6 +392,11 @@ async fn handle_health(State(state): State<ServerState>) -> impl IntoResponse {
         sessions: state.sessions.session_count(),
         active_sessions: state.sessions.active_session_count(),
     })
+}
+
+/// List active streams with relay stats.
+async fn handle_list_streams(State(state): State<ServerState>) -> impl IntoResponse {
+    Json(state.relay.stats())
 }
 
 /// Session info for listing.

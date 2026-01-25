@@ -92,6 +92,7 @@ pub struct Session {
     pub tracks: Vec<MediaTrack>,
     pub stats: SessionStats,
     pub metadata: HashMap<String, String>,
+    pub ice_candidates: Vec<crate::sdp::IceCandidate>,
     pub etag: String,
 }
 
@@ -112,6 +113,7 @@ impl Session {
             tracks: Vec::new(),
             stats: SessionStats::default(),
             metadata: HashMap::new(),
+            ice_candidates: Vec::new(),
             etag: generate_etag(&id),
         }
     }
@@ -193,6 +195,12 @@ impl Session {
     /// Set local SDP (answer to client).
     pub fn set_local_sdp(&mut self, sdp: String) {
         self.local_sdp = Some(sdp);
+        self.etag = generate_etag(&self.id);
+    }
+
+    /// Add an ICE candidate to this session.
+    pub fn add_ice_candidate(&mut self, candidate: crate::sdp::IceCandidate) {
+        self.ice_candidates.push(candidate);
         self.etag = generate_etag(&self.id);
     }
 

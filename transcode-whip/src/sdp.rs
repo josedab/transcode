@@ -487,7 +487,7 @@ fn parse_session_attribute(desc: &mut SessionDescription, value: &str) -> Result
     Ok(())
 }
 
-fn parse_candidate(value: &str) -> Result<IceCandidate> {
+pub fn parse_candidate(value: &str) -> Result<IceCandidate> {
     let parts: Vec<&str> = value.split_whitespace().collect();
     if parts.len() < 8 {
         return Err(WhipError::InvalidSdp("Invalid candidate".to_string()));
