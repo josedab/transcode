@@ -55,10 +55,13 @@ pub mod qsv;
 pub use error::{HwAccelError, Result};
 pub use types::*;
 pub use detect::{detect_accelerators, HwAccelInfo};
+pub mod fallback;
+
 pub use encoder::{HwEncoder, HwEncoderConfig};
 pub use decoder::{HwDecoder, HwDecoderConfig};
 pub use av1_hw::{Av1Profile, Av1Level, Av1TileConfig, Av1HwEncoderConfig};
 pub use av1_obu::{ObuType, Obu, ObuHeader, SequenceHeader, FrameHeader};
+pub use fallback::{FallbackEncoder, FallbackChain};
 
 /// Hardware acceleration type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
