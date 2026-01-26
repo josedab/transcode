@@ -77,11 +77,16 @@
 #![allow(dead_code)]
 
 mod error;
+mod health;
 mod job;
 mod orchestrator;
 mod provider;
 
 pub use error::{MultiCloudError, Result};
+pub use health::{
+    CircuitBreaker, CircuitState, CostBreakdown, CostEstimate, CostEstimator, HealthMonitor,
+    HealthProbe, ProviderPricing, ProviderStatus,
+};
 pub use job::{
     AudioCodec, AudioOutput, JobResult, JobStats, JobStatus, JobTimestamps, OutputConfig,
     OutputFormat, Preset, QualityPreset, TranscodeJob, TranscodeJobBuilder, VideoCodec,
