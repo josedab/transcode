@@ -21,7 +21,7 @@ bytes.workspace = true
 url = "2.5"
 
 # Random number generation for socket IDs
-rand = "0.8"
+rand = "0.9"
 
 [dev-dependencies]
 pretty_assertions.workspace = true
