@@ -81,11 +81,16 @@
 #![allow(dead_code)]
 
 mod error;
+mod inference;
 mod models;
 mod pipeline;
 mod processors;
 
 pub use error::{GenAiError, Result};
+pub use inference::{
+    BatchInference, InferenceResult, InferenceSession, ModelCache, QualityValidator,
+    ValidationResult,
+};
 pub use models::{
     ModelBackend, ModelInfo, ModelPrecision, ModelRegistry, ModelType, TensorDType, TensorFormat,
     TensorSpec,
