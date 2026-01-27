@@ -1,0 +1,43 @@
+[package]
+name = "transcode-k8s"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Kubernetes operator for distributed transcoding with auto-scaling and GPU affinity"
+keywords = ["kubernetes", "operator", "transcoding", "distributed", "gpu"]
+categories = ["multimedia", "asynchronous"]
+
+[features]
+default = ["metrics"]
+metrics = []
+gpu = []
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+transcode-distributed = { path = "../transcode-distributed" }
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Async runtime
+tokio = { workspace = true }
+futures.workspace = true
+async-trait = "0.1"
+
+# Serialization
+serde = { workspace = true }
+serde_json.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Utilities
+uuid = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tokio-test = "0.4"
