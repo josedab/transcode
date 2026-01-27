@@ -108,6 +108,7 @@ mod error;
 mod features;
 mod ladder;
 mod model;
+pub mod training;
 
 pub use error::{PerTitleMlError, Result};
 pub use features::{
@@ -118,6 +119,10 @@ pub use ladder::{EncodingLadder, LadderConfig, LadderGenerator, LadderRung};
 pub use model::{
     BitratePredictor, EncodingPrediction, GradientBoostingModel, HeuristicPredictor,
     LinearRegressionModel, ModelInfo, ModelInput, SceneRecommendation,
+};
+pub use training::{
+    convex_hull_optimize, train, train_with_cv, TrainingConfig, TrainingDataset, TrainingResult,
+    TrainingSample,
 };
 
 /// Library version.
