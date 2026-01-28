@@ -1,0 +1,33 @@
+[package]
+name = "transcode-plugin"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Plugin SDK for extending transcode with dynamic codec, filter, and muxer plugins"
+keywords = ["plugin", "codec", "filter", "dynamic", "extensible"]
+categories = ["multimedia"]
+
+[features]
+default = []
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror.workspace = true
+
+# Serialization
+serde = { workspace = true }
+serde_json.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Utilities
+uuid = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+tempfile.workspace = true
