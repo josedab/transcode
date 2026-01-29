@@ -1,0 +1,29 @@
+[package]
+name = "transcode-edit"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Frame-accurate video editing API with trim, concat, overlay, transitions, and timeline support"
+keywords = ["video", "editing", "trim", "concat", "timeline"]
+categories = ["multimedia::video"]
+
+[dependencies]
+transcode-core = { path = "../transcode-core" }
+
+# Error handling
+thiserror.workspace = true
+
+# Serialization
+serde = { workspace = true }
+serde_json.workspace = true
+
+# Logging
+tracing.workspace = true
+
+# Utilities
+uuid = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
