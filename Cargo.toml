@@ -108,6 +108,14 @@ members = [
     "transcode-multicloud",
     "transcode-compliance",
     "transcode-genai",
+    # Next-gen Phase 2
+    "transcode-k8s",
+    "transcode-abr",
+    "transcode-plugin",
+    "transcode-ffcompat",
+    "transcode-ingest-server",
+    "transcode-edit",
+    "transcode-dashboard",
 ]
 resolver = "2"
 
