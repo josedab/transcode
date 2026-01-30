@@ -1,0 +1,113 @@
+{
+  "name": "vscode-transcode",
+  "displayName": "Transcode - Media Processing",
+  "description": "Media file inspector, transcoding profile builder, and one-click transcode for the Transcode codec library",
+  "version": "0.1.0",
+  "publisher": "transcode",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/transcode/transcode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Formatters"
+  ],
+  "keywords": [
+    "video",
+    "audio",
+    "codec",
+    "transcode",
+    "media",
+    "ffmpeg"
+  ],
+  "activationEvents": [
+    "onLanguage:json",
+    "workspaceContains:**/*.mp4",
+    "workspaceContains:**/*.mkv",
+    "workspaceContains:**/*.avi"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "transcode.inspectFile",
+        "title": "Transcode: Inspect Media File"
+      },
+      {
+        "command": "transcode.transcode",
+        "title": "Transcode: Transcode File"
+      },
+      {
+        "command": "transcode.showCodecs",
+        "title": "Transcode: Show Supported Codecs"
+      },
+      {
+        "command": "transcode.buildProfile",
+        "title": "Transcode: Build Encoding Profile"
+      },
+      {
+        "command": "transcode.compareQuality",
+        "title": "Transcode: Compare Quality (PSNR/SSIM)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceExtname =~ /\\.(mp4|mkv|avi|mov|webm|ts|flv|mxf|wav|flac|aac|mp3|opus)$/",
+          "command": "transcode.inspectFile",
+          "group": "transcode"
+        },
+        {
+          "when": "resourceExtname =~ /\\.(mp4|mkv|avi|mov|webm|ts|flv|mxf|wav|flac|aac|mp3|opus)$/",
+          "command": "transcode.transcode",
+          "group": "transcode"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Transcode",
+      "properties": {
+        "transcode.cliPath": {
+          "type": "string",
+          "default": "transcode",
+          "description": "Path to the transcode CLI binary"
+        },
+        "transcode.defaultPreset": {
+          "type": "string",
+          "default": "medium",
+          "enum": ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"],
+          "description": "Default encoding preset"
+        },
+        "transcode.defaultVideoCodec": {
+          "type": "string",
+          "default": "h264",
+          "enum": ["h264", "hevc", "av1", "vp9", "vp8", "prores"],
+          "description": "Default video codec"
+        },
+        "transcode.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notifications on transcode completion"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.50.0"
+  }
+}
