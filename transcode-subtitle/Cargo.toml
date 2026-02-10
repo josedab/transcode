@@ -11,7 +11,7 @@ categories = ["multimedia", "parser-implementations", "encoding"]
 
 [dependencies]
 thiserror = { workspace = true }
-regex = "1.10"
+regex = "1.12"
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

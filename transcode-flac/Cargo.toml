@@ -11,11 +11,11 @@ categories = ["multimedia::audio", "encoding"]
 
 [dependencies]
 thiserror.workspace = true
-bitstream-io = "2.0"
+bitstream-io = "4.9"
 crc = "3.0"
 
 [dev-dependencies]
-tempfile = "3.0"
+tempfile = "3.25"
 
 [features]
 default = []
