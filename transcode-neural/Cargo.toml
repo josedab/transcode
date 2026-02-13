@@ -14,7 +14,7 @@ transcode-core = { path = "../transcode-core" }
 
 thiserror.workspace = true
 tracing.workspace = true
-ndarray = "0.16"
+ndarray = "0.17"
 
 # ONNX Runtime (optional)
 # Note: ort 2.0 is in release candidate stage; API is production-ready but not yet stable
