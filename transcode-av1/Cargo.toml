@@ -18,10 +18,10 @@ decoder = ["dav1d"]
 transcode-core = { path = "../transcode-core" }
 
 # AV1 encoder
-rav1e = { version = "0.7", optional = true }
+rav1e = { version = "0.8", optional = true }
 
 # AV1 decoder
-dav1d = { version = "0.10", optional = true }
+dav1d = { version = "0.11", optional = true }
 
 # Utilities
 log = "0.4"

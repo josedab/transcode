@@ -19,8 +19,8 @@ transcode-codecs = { workspace = true }
 transcode-containers = { workspace = true }
 
 # napi-rs for Node.js bindings
-napi = { version = "2", features = ["async", "tokio_rt", "napi9", "serde-json"] }
-napi-derive = "2"
+napi = { version = "3", features = ["async", "tokio_rt", "napi9", "serde-json"] }
+napi-derive = "3"
 
 # Async runtime
 tokio = { workspace = true }
