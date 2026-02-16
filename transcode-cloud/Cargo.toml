@@ -20,16 +20,16 @@ futures.workspace = true
 async-trait = "0.1"
 
 # AWS S3 (optional)
-aws-sdk-s3 = { version = "1.82", optional = true }
+aws-sdk-s3 = { version = "1.123", optional = true }
 aws-config = { version = "1.6", optional = true }
 
 # GCS (optional)
 cloud-storage = { version = "0.11", optional = true }
 
 # Azure Blob Storage (optional)
-azure_storage = { version = "0.20", optional = true }
-azure_storage_blobs = { version = "0.20", optional = true }
-azure_identity = { version = "0.20", optional = true }
+azure_storage = { version = "0.21", optional = true }
+azure_storage_blobs = { version = "0.21", optional = true }
+azure_identity = { version = "0.32", optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true
