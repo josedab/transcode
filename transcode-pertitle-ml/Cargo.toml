@@ -31,7 +31,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Math and statistics
-nalgebra = "0.33"
+nalgebra = "0.34"
 statrs = "0.18"
 
 # ONNX runtime (optional) - use prerelease version
