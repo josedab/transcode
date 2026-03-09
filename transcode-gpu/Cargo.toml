@@ -18,7 +18,7 @@ async = ["dep:tokio", "dep:futures"]
 transcode-core = { path = "../transcode-core" }
 
 # GPU compute
-wgpu = "23.0"
+wgpu = "28.0"
 bytemuck = { version = "1.17", features = ["derive"] }
 
 # Error handling
@@ -32,7 +32,7 @@ tokio = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 
 # Math utilities
-nalgebra = "0.33"
+nalgebra = "0.34"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
