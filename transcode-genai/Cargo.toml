@@ -38,7 +38,7 @@ parking_lot = { workspace = true }
 uuid = { workspace = true }
 
 # Math
-nalgebra = "0.33"
+nalgebra = "0.34"
 
 [dev-dependencies]
 tokio-test = "0.4"
