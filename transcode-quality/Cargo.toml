@@ -16,11 +16,11 @@ transcode-core = { path = "../transcode-core" }
 thiserror.workspace = true
 
 # Math operations
-ndarray = "0.16"
+ndarray = "0.17"
 num-traits = "0.2"
 
 # Parallel processing
-rayon = "1.10"
+rayon = "1.12"
 
 # Logging
 tracing.workspace = true

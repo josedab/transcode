@@ -19,7 +19,7 @@ num-traits.workspace = true
 num-derive.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
-rayon = "1.10"
+rayon = "1.12"
 parking_lot = "0.12"
 crossbeam-channel = "0.5"
 
