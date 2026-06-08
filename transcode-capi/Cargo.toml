@@ -20,7 +20,7 @@ transcode-core = { workspace = true }
 libc = "0.2"
 
 [build-dependencies]
-cbindgen = "0.27"
+cbindgen = "0.29"
 
 [features]
 default = []

@@ -15,7 +15,7 @@ bitstream-io = "2.0"
 crc = "3.0"
 
 [dev-dependencies]
-tempfile = "3.0"
+tempfile = "3.27"
 
 [features]
 default = []

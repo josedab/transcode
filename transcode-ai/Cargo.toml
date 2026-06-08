@@ -28,7 +28,7 @@ tracing.workspace = true
 
 # Image processing
 image = "0.25"
-ndarray = "0.16"
+ndarray = "0.17"
 
 # ONNX runtime (optional)
 # Note: ort 2.0 is in release candidate stage; API is production-ready but not yet stable

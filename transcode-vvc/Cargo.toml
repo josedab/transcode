@@ -13,7 +13,7 @@ categories = ["multimedia::video", "encoding"]
 transcode-core = { path = "../transcode-core" }
 
 [dev-dependencies]
-criterion = "0.5"
+criterion = "0.8"
 
 [[bench]]
 name = "vvc_bench"
