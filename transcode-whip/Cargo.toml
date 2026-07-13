@@ -30,7 +30,7 @@ futures = { workspace = true }
 axum = "0.8"
 hyper = { version = "1.0", features = ["full"] }
 tower = "0.5"
-tower-http = { version = "0.6", features = ["cors", "trace"] }
+tower-http = { version = "0.7", features = ["cors", "trace"] }
 
 # WebRTC
 # Note: Using webrtc-rs for pure Rust WebRTC implementation
