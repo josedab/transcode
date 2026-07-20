@@ -14,8 +14,8 @@ transcode-core = { path = "../transcode-core" }
 
 thiserror.workspace = true
 tracing.workspace = true
-aes = "0.8"
-ctr = "0.9"
+aes = "0.9"
+ctr = "0.10"
 sha2.workspace = true
 rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
