@@ -27,9 +27,9 @@ aws-config = { version = "1.6", optional = true }
 cloud-storage = { version = "0.11", optional = true }
 
 # Azure Blob Storage (optional)
-azure_storage = { version = "0.20", optional = true }
-azure_storage_blobs = { version = "0.20", optional = true }
-azure_identity = { version = "0.20", optional = true }
+azure_storage = { version = "0.21", optional = true }
+azure_storage_blobs = { version = "0.21", optional = true }
+azure_identity = { version = "1.0", optional = true }
 
 [dev-dependencies]
 pretty_assertions.workspace = true

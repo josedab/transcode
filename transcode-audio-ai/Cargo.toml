@@ -14,7 +14,7 @@ transcode-core = { path = "../transcode-core" }
 
 thiserror.workspace = true
 tracing.workspace = true
-ndarray = "0.16"
+ndarray = "0.17"
 
 # DSP
 rustfft = "6.2"

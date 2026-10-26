@@ -16,7 +16,7 @@ transcode-core = { path = "../transcode-core" }
 thiserror.workspace = true
 
 # Math and image processing
-ndarray = "0.16"
+ndarray = "0.17"
 image = "0.25"
 
 
